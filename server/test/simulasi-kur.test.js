@@ -1,0 +1,175 @@
+/**
+ * Uji Simulasi KUR — penggeser jumlah & tenor di halaman Laporan.
+ *
+ * Rumusnya hidup di lib/simulasi-kur.js: berkas YANG SAMA diimpor uji ini
+ * dan disajikan ke peramban lewat /simulasi-kur.js. Karena itu yang diuji
+ * di sini persis hitungan yang dilihat pengguna — bukan tiruannya.
+ *
+ * Aturan ambang 30%/50% sengaja SATU SUMBER: metrics.js mengimpor
+ * konstantanya dari simulasi-kur.js, jadi simulasi di halaman Laporan
+ * dan skor kesehatan di dasbor tidak mungkin berbeda diam-diam.
+ *
+ *   npm test
+ */
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import test from 'node:test';
+
+const {
+  RASIO_AMAN_PORSEN,
+  RASIO_BERISIKO_PORSEN,
+  BUNGA_KUR_TAHUNAN,
+  JUMLAH_MIN,
+  JUMLAH_MAKS,
+  LANGKAH_JUMLAH,
+  TENOR_MIN,
+  TENOR_MAKS,
+  cicilanBulanan,
+  statusKur,
+  simulasiKur,
+} = await import('../lib/simulasi-kur.js');
+
+/* ================================================== Rumus cicilan */
+
+test('cicilan bulanan bunga flat: pokok/tenor + bunga 6% per tahun dibagi 12', () => {
+  // Rp 10 jt, 12 bulan: 833.333,33 pokok + 50.000 bunga = 883.333,33 → 883.333
+  assert.equal(cicilanBulanan(10_000_000, 12), 883_333);
+  // Rp 10 jt, 6 bulan: 1.666.666,67 + 50.000 = 1.716.666,67 → 1.716.667
+  assert.equal(cicilanBulanan(10_000_000, 6), 1_716_667);
+  // Tenor makin panjang, cicilan makin ringan — selalu, tanpa kecuali.
+  assert.ok(cicilanBulanan(10_000_000, 60) < cicilanBulanan(10_000_000, 36));
+  assert.ok(cicilanBulanan(10_000_000, 36) < cicilanBulanan(10_000_000, 12));
+  assert.ok(cicilanBulanan(10_000_000, 12) < cicilanBulanan(10_000_000, 3));
+});
+
+test('jumlah minimum dan maksimum penggeser menghasilkan cicilan yang masuk akal', () => {
+  const kecil = cicilanBulanan(JUMLAH_MIN, TENOR_MAKS); // Rp500rb, 60 bln
+  const besar = cicilanBulanan(JUMLAH_MAKS, TENOR_MIN); // Rp50jt, 3 bln
+  assert.equal(JUMLAH_MIN, 500_000);
+  assert.equal(JUMLAH_MAKS, 50_000_000);
+  assert.ok(kecil > 0 && kecil < 100_000, `cicilan teringan ${kecil} harus kecil tapi nyata`);
+  assert.ok(besar > JUMLAH_MAKS / TENOR_MIN, `cicilan terberat ${besar} wajib di atas pokok per bulan`);
+  // Langkah penggeser harus membagi habis rentangnya — kalau tidak, nilai
+  // terakhir penggeser tidak pernah mencapai JUMLAH_MAKS.
+  assert.equal((JUMLAH_MAKS - JUMLAH_MIN) % LANGKAH_JUMLAH, 0);
+});
+
+test('tenor di luar 3–60 dan masukan tidak masuk akal ditolak dengan null', () => {
+  assert.equal(cicilanBulanan(10_000_000, 0), null);
+  assert.equal(cicilanBulanan(10_000_000, -12), null);
+  assert.equal(cicilanBulanan(10_000_000, 4.5), null);
+  assert.equal(cicilanBulanan(0, 12), null);
+  assert.equal(cicilanBulanan(-1, 12), null);
+  assert.equal(cicilanBulanan('bukan angka', 12), null);
+  assert.equal(cicilanBulanan(NaN, 12), null);
+  assert.equal(cicilanBulanan(10_000_000, NaN), null);
+});
+
+/* ================================================== Ambang & status */
+
+test('ambang sama dengan aturan metrics.js: 30 aman, 30–50 hati-hati, >50 berisiko', () => {
+  assert.deepEqual([RASIO_AMAN_PORSEN, RASIO_BERISIKO_PORSEN], [30, 50]);
+  assert.equal(statusKur(0), 'aman');
+  assert.equal(statusKur(15), 'aman');
+  assert.equal(statusKur(30), 'aman', 'tepat 30% masih aman — sama dengan bebanCicilan metrics');
+  assert.equal(statusKur(30.1), 'hati-hati');
+  assert.equal(statusKur(50), 'hati-hati');
+  assert.equal(statusKur(50.1), 'berisiko');
+  assert.equal(statusKur(999), 'berisiko');
+  assert.equal(statusKur(NaN), 'berisiko');
+});
+
+/* ================================================== Simulasi utuh */
+
+test('simulasi menghitung rasio terhadap laba, bukan hanya cicilannya', () => {
+  const h = simulasiKur({ jumlah: 10_000_000, tenorBulan: 12, labaBulanan: 4_000_000, cicilanBerjalan: 0 });
+  assert.equal(h.cicilan, 883_333);
+  assert.equal(h.rasioPorsen, 22.1); // 883.333 / 4.000.000
+  assert.equal(h.status, 'aman');
+  assert.equal(h.totalBayar, 883_333 * 12);
+  assert.ok(h.totalBunga > 0 && h.totalBunga < 1_000_000, 'total bunga 6% flat satu tahun ≈ Rp600 rb');
+});
+
+test('cicilan berjalan ikut menambah beban — bank menilai seluruh cicilan', () => {
+  const tanpaLama = simulasiKur({ jumlah: 10_000_000, tenorBulan: 12, labaBulanan: 4_000_000, cicilanBerjalan: 0 });
+  const denganLama = simulasiKur({ jumlah: 10_000_000, tenorBulan: 12, labaBulanan: 4_000_000, cicilanBerjalan: 500_000 });
+  assert.ok(denganLama.rasioPorsen > tanpaLama.rasioPorsen);
+  assert.equal(denganLama.totalBeban, denganLama.cicilan + 500_000);
+  // Cicilan lama bisa mengubah status tanpa mengubah cicilan barunya.
+  assert.equal(denganLama.cicilan, tanpaLama.cicilan);
+  assert.equal(statusKur(tanpaLama.rasioPorsen), 'aman');
+  assert.notEqual(statusKur(denganLama.rasioPorsen), 'aman');
+});
+
+test('laba nol atau negatif: beban apa pun di atas nol terlalu berat, bukan 0%', () => {
+  const labaNol = simulasiKur({ jumlah: 5_000_000, tenorBulan: 12, labaBulanan: 0 });
+  assert.equal(labaNol.status, 'berisiko');
+  assert.ok(labaNol.rasioPorsen >= 999);
+  const rugi = simulasiKur({ jumlah: 5_000_000, tenorBulan: 12, labaBulanan: -2_000_000 });
+  assert.equal(rugi.status, 'berisiko');
+  // Tanpa cicilan simulasi, tidak ada beban → tidak perlu menakut-nakuti.
+  const kosong = simulasiKur({ jumlah: 5_000_000, tenorBulan: 12, labaBulanan: 0 });
+  assert.ok(kosong.cicilan > 0);
+  const labaNull = simulasiKur({ jumlah: 5_000_000, tenorBulan: 12, labaBulanan: null });
+  assert.equal(labaNull.status, 'berisiko');
+});
+
+test('skenario penggeser dari ujung ke ujung selalu menghasilkan hitungan sah', () => {
+  /*
+   * Nilai yang mungkin dicapai penggeser: langkahnya diskret, jadi yang
+   * diuji adalah titik-titik yang benar-benar dilaluinya — ujung bawah,
+   * ujung atas, dan beberapa titik tengah. Semuanya wajib menghasilkan
+   * objek (bukan null) dengan status yang sah.
+   */
+  const STATUS = ['aman', 'hati-hati', 'berisiko'];
+  for (const langkahJumlah of [0, 1, 20, 50, 99]) {
+    for (const tenor of [TENOR_MIN, 6, 12, 24, 36, 48, TENOR_MAKS]) {
+      const jumlah = JUMLAH_MIN + langkahJumlah * LANGKAH_JUMLAH;
+      const h = simulasiKur({ jumlah, tenorBulan: tenor, labaBulanan: 3_000_000, cicilanBerjalan: 0 });
+      assert.ok(h, `${jumlah}/${tenor} bulan harus menghasilkan hitungan`);
+      assert.ok(STATUS.includes(h.status), `${jumlah}/${tenor}: status asing ${h.status}`);
+      assert.ok(h.cicilan > 0);
+      assert.ok(h.totalBayar > jumlah, 'total bayar wajib di atas pokok (ada bunga)');
+    }
+  }
+  // Titik terakhir penggeser harus betul-betul JUMLAH_MAKS.
+  const langkahTerakhir = (JUMLAH_MAKS - JUMLAH_MIN) / LANGKAH_JUMLAH;
+  assert.equal(JUMLAH_MIN + langkahTerakhir * LANGKAH_JUMLAH, JUMLAH_MAKS);
+});
+
+test('simulasiKur menolak masukan yang tidak bisa dihitung', () => {
+  assert.equal(simulasiKur({ jumlah: 0, tenorBulan: 12, labaBulanan: 1_000_000 }), null);
+  assert.equal(simulasiKur({ jumlah: 10_000_000, tenorBulan: 0, labaBulanan: 1_000_000 }), null);
+  assert.equal(simulasiKur(null), null);
+  assert.equal(simulasiKur(), null);
+});
+
+/* ============================================ Kontrak antarberkas & rute */
+
+test('BUNGA memakai tarif flat KUR Mikro 6% per tahun', () => {
+  assert.equal(BUNGA_KUR_TAHUNAN, 0.06);
+});
+
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+
+const DATA_DIR = mkdtempSync(path.join(tmpdir(), 'nova-uji-sim-'));
+process.env.NOVA_DATA_DIR = DATA_DIR;
+process.env.PORT = '0';
+process.on('exit', () => rmSync(DATA_DIR, { recursive: true, force: true }));
+
+const app = (await import('../server.js')).default;
+const server = await new Promise((resolve) => {
+  const s = app.listen(0, () => resolve(s));
+});
+
+test('/simulasi-kur.js disajikan sebagai berkas yang sama dengan yang diuji', async () => {
+  const res = await fetch(`http://127.0.0.1:${server.address().port}/simulasi-kur.js`);
+  assert.equal(res.status, 200);
+  const teks = await res.text();
+  assert.ok(teks.includes('function cicilanBulanan'), 'rumus harus ada di berkas yang disajikan');
+  assert.ok(teks.includes('window.NOVA_SIMULASI'), 'peramban harus menerima API globalnya');
+  assert.ok(!teks.includes('ANTHROPIC_API_KEY'), 'aset publik tidak membawa rahasia');
+});
+
+test.after(() => server.close());

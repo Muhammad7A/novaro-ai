@@ -1,0 +1,13 @@
+# Batas upload source ke Cloud Build.
+# Sengaja TIDAK meniru .gitignore: users-seed.json wajib ikut (entrypoint
+# menyalinnya ke NOVA_DATA_DIR saat boot), sedangkan daftar kode akses
+# berplaintext tidak boleh masuk image.
+.git
+.gcloudignore
+node_modules/
+server/export/
+server/data/*
+!server/data/users-seed.json
+.env
+*.env
+*.log

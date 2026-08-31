@@ -1,0 +1,14 @@
+# Data peserta tidak pernah ikut ke dalam citra. Ia hidup di volume.
+data/
+!data/users-seed.json
+export/
+
+node_modules/
+.env
+*.env
+!.env.example
+
+.git/
+.gitignore
+*.log
+.DS_Store

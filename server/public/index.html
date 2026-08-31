@@ -1,0 +1,3661 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nova Explorer — Pendamping Keuangan UMKM</title>
+<meta name="description" content="Aplikasi pendamping keuangan UMKM: profil usaha, rekomendasi personal, dan konsultasi AI AI Gemini 2.5.">
+<meta name="robots" content="noindex, nofollow">
+<!--
+  Tidak ada satu pun berkas dari domain luar di halaman ini.
+
+  Font Google sengaja dilepas: ia membuat ponsel setiap peserta menghubungi
+  server Google tiap kali halaman dibuka, padahal teks persetujuan hanya
+  menyebut Anthropic sebagai pihak ketiga. Untuk program penelitian kecil,
+  menyelaraskan keduanya lebih baik dengan menghapus permintaannya. Untungnya
+  ganda: halaman tetap tampil utuh di sinyal buruk dan saat luring — dua kondisi
+  yang justru sering dialami pemilik warung.
+-->
+<style>
+:root{
+  --paper:#FBFBF7; --card:#FFFFFF; --ink:#1A1F2B; --ink-soft:#5A6478;
+  --blue:#2B6CB0; --blue-deep:#1A365D; --blue-tint:#EBF4FF;
+  --gold:#D69E2E; --gold-tint:#FFFFF0; --line:#E2E8F0;
+  --red:#E53E3E; --red-tint:#FFF5F5; --nav-bg:rgba(251,251,247,.92);
+  --green:#2F855A; --green-tint:rgba(72,187,120,.14);
+  --star-off:#CBD5E0; --placeholder:#A0AEC0; --code-bg:#EDF2F7; --stars:0;
+  --radius:14px; --shadow:0 1px 2px rgba(26,31,43,.06),0 6px 20px rgba(26,31,43,.06);
+}
+:root[data-theme="dark"]{
+  --paper:#0F172A; --card:#1E293B; --ink:#F8FAFC; --ink-soft:#94A3B8;
+  --blue:#3B82F6; --blue-deep:#93C5FD; --blue-tint:#1E3A8A;
+  --gold:#F59E0B; --gold-tint:#451A03; --line:#334155;
+  --red:#EF4444; --red-tint:#450A0A; --nav-bg:rgba(15,23,42,.88);
+  --star-off:#475569; --placeholder:#64748B; --code-bg:#0F172A; --stars:1;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  /* Font bawaan sistem: Roboto di Android, SF di iOS, Segoe di Windows.
+     Tanpa unduhan, tanpa jeda tampil, tanpa permintaan ke pihak ketiga. */
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  background:var(--paper);color:var(--ink);font-size:16px;line-height:1.65;
+  -webkit-font-smoothing:antialiased;transition:background .3s ease,color .3s ease;
+}
+.starfield{
+  position:fixed;inset:0;z-index:0;pointer-events:none;opacity:var(--stars);transition:opacity .4s ease;
+  background-image: url('bg-stars.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+nav,section,footer,.auth{position:relative;z-index:1}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+a{color:var(--blue)} :root[data-theme="dark"] a{color:var(--blue-deep)}
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+h1{font-size:clamp(1.7rem,4vw,2.4rem);font-weight:800;letter-spacing:-.03em;line-height:1.15;text-wrap:balance}
+h2{font-size:1.45rem;font-weight:800;letter-spacing:-.02em;margin-bottom:6px;text-wrap:balance}
+h3{font-size:1.05rem;font-weight:700}
+.eyebrow{font-size:.75rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+.sub{color:var(--ink-soft);max-width:620px}
+
+/* ---------- Login ---------- */
+.auth{min-height:100vh;display:grid;place-items:center;padding:24px}
+.auth-card{
+  background:var(--card);border:1px solid var(--line);border-radius:18px;
+  padding:34px 30px;max-width:420px;width:100%;box-shadow:var(--shadow);
+}
+.auth-mark{width:46px;height:46px;border-radius:13px;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:1.3rem;font-weight:800;margin-bottom:16px}
+.auth-card h1{font-size:1.5rem;margin-bottom:6px}
+.auth-card p{color:var(--ink-soft);font-size:.92rem;margin-bottom:20px}
+.code-input{
+  width:100%;border:1.5px solid var(--line);border-radius:12px;padding:14px 16px;
+  font:inherit;font-size:1.05rem;letter-spacing:.08em;text-align:center;text-transform:uppercase;
+  background:var(--paper);color:var(--ink);outline:none;font-variant-numeric:tabular-nums;
+}
+.code-input:focus{border-color:var(--blue)}
+.code-input::placeholder{color:var(--placeholder);letter-spacing:.04em}
+.auth-hint{font-size:.8rem;color:var(--ink-soft);margin-top:16px;text-align:center}
+
+/* ---------- Navbar ---------- */
+nav{position:sticky;top:0;z-index:50;background:var(--nav-bg);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.nav-inner{display:flex;align-items:center;gap:8px;height:60px;max-width:1040px;margin:0 auto;padding:0 20px}
+.brand{font-weight:800;font-size:1.05rem;letter-spacing:-.01em;color:var(--ink);display:flex;align-items:center;gap:8px;margin-right:auto;flex-shrink:0}
+.brand-mark{width:26px;height:26px;border-radius:7px;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:.8rem;font-weight:800}
+.nav-links{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;min-width:0}
+.nav-links::-webkit-scrollbar{display:none}
+.nav-links button{padding:7px 12px;border-radius:9px;font-size:.86rem;font-weight:600;color:var(--ink-soft);white-space:nowrap;flex-shrink:0}
+.nav-links button{padding:7px 12px;border-radius:9px;font-size:.86rem;font-weight:600;color:var(--ink-soft);white-space:nowrap}
+.nav-links button.active{background:var(--blue-tint);color:var(--blue-deep)}
+.nav-links button:hover{color:var(--blue-deep)}
+.icon-btn{width:36px;height:36px;border-radius:10px;border:1.5px solid var(--line);display:grid;place-items:center;font-size:1rem;flex:none;margin-left:6px}
+.icon-btn:hover{border-color:var(--blue)}
+
+/* ---------- Halaman ---------- */
+.page{display:none;padding:32px 0 80px}
+.page.active{display:block}
+.page-head{margin-bottom:18px}
+
+/* ---------- Tombol ---------- */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:11px;font-weight:700;font-size:.92rem;transition:transform .12s ease,filter .12s ease}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--blue);color:#fff;box-shadow:var(--shadow)}
+.btn-primary:hover{filter:brightness(1.1)}
+.btn-ghost{background:var(--card);color:var(--blue-deep);border:1.5px solid var(--line)}
+.btn-ghost:hover{border-color:var(--blue)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+
+/* ---------- Mode demo ---------- */
+.demo-divider{display:flex;align-items:center;gap:12px;margin:16px 0 12px;color:var(--ink-soft);font-size:.82rem}
+.demo-divider::before,.demo-divider::after{content:'';flex:1;height:1px;background:var(--line)}
+.demo-badge{display:inline-flex;align-items:center;gap:6px;background:var(--gold-tint);color:var(--gold);border:1px solid var(--gold);font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:3px 10px;vertical-align:middle;margin-left:10px}
+
+/*
+ * Kartu tur demo — melayang di kanan bawah, di atas tabbar ponsel.
+ * Dibangun dan dibongkar lewat JS agar tidak pernah ikut tercetak saat
+ * peserta memakai halaman Laporan untuk mencetak PDF ke bank.
+ */
+.tour-card{position:fixed;right:16px;bottom:88px;z-index:70;width:min(320px,calc(100vw - 32px));background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:16px 16px 12px}
+.tour-card h4{font-size:.95rem;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+.tour-card .tour-sub{font-size:.78rem;color:var(--ink-soft);margin-bottom:10px}
+.tour-card .tour-close{background:none;border:none;color:var(--ink-soft);font-size:1rem;cursor:pointer;padding:2px 6px;border-radius:6px}
+.tour-card .tour-close:hover{color:var(--ink);background:var(--blue-tint)}
+.tour-list{list-style:none;margin:0;padding:0}
+.tour-list button{display:flex;width:100%;text-align:left;gap:10px;align-items:flex-start;background:none;border:none;border-radius:10px;padding:8px;cursor:pointer;color:inherit;font:inherit}
+.tour-list button:hover{background:var(--blue-tint)}
+.tour-list .no{flex:none;width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;font-size:.72rem;font-weight:800;display:grid;place-items:center;margin-top:1px}
+.tour-list b{display:block;font-size:.86rem}
+.tour-list small{color:var(--ink-soft);font-size:.76rem;line-height:1.35;display:block}
+.tour-open{position:fixed;right:16px;bottom:88px;z-index:69;background:var(--blue);color:#fff;border:none;border-radius:999px;padding:9px 16px;font-size:.8rem;font-weight:800;cursor:pointer;box-shadow:var(--shadow)}
+.tour-open:hover{filter:brightness(1.1)}
+
+/* ---------- Scan nota ---------- */
+.scan-cta{display:flex;width:100%;align-items:center;gap:14px;background:var(--blue-tint);border:1.5px dashed var(--blue);border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;cursor:pointer;text-align:left;color:var(--blue-deep);transition:filter .12s ease}
+.scan-cta:hover{filter:brightness(1.04)}
+.scan-cta:disabled{opacity:.6;cursor:progress}
+.scan-cta .sc-ic{font-size:1.6rem;flex:none}
+.scan-cta b{display:block;font-size:.95rem;color:var(--ink)}
+.scan-cta small{color:var(--ink-soft);font-size:.78rem;line-height:1.4;display:block}
+
+/* Kartu hasil scan — lembar bawah di ponsel, dialog di layar lebar. */
+.nota-backdrop{position:fixed;inset:0;z-index:80;background:rgba(8,12,20,.55);display:grid;place-items:end center}
+.nota-modal{width:min(480px,100%);background:var(--card);border-radius:18px 18px 0 0;padding:20px;max-height:88vh;overflow:auto;box-shadow:var(--shadow)}
+@media(min-width:640px){.nota-backdrop{place-items:center}.nota-modal{border-radius:var(--radius)}}
+.nota-modal h3{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+.nota-modal .nota-close{background:none;border:none;color:var(--ink-soft);font-size:1rem;cursor:pointer;padding:2px 6px;border-radius:6px}
+.nota-modal .nota-close:hover{color:var(--ink);background:var(--blue-tint)}
+.nota-merchant{font-size:.85rem;color:var(--ink-soft);margin-bottom:12px}
+.nota-merchant:empty{display:none}
+.nota-warn{background:var(--gold-tint);border:1px solid var(--gold);color:var(--gold);border-radius:10px;padding:10px 12px;font-size:.84rem;margin-bottom:12px}
+.nota-low{background:var(--red-tint);border:1px solid var(--red);color:var(--red);border-radius:10px;padding:12px;font-size:.88rem;margin-bottom:12px}
+.nota-grid{display:grid;gap:12px;margin-bottom:6px}
+.nota-grid label{display:grid;gap:5px;font-size:.8rem;font-weight:700;color:var(--ink-soft)}
+.nota-grid input,.nota-grid select{font:inherit;font-size:.95rem;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;width:100%}
+.nota-jenis{display:flex;gap:8px;margin-bottom:12px}
+.nota-jenis button{flex:1;padding:9px;border-radius:10px;border:1.5px solid var(--line);background:var(--paper);color:var(--ink-soft);font-weight:700;font-size:.86rem;cursor:pointer}
+.nota-jenis button[aria-pressed="true"]{border-color:var(--blue);background:var(--blue-tint);color:var(--blue-deep)}
+
+/* ---------- Simulasi KUR ---------- */
+.sim-tag{font-size:.66rem;font-weight:800;letter-spacing:.1em;background:var(--gold-tint);color:var(--gold);border:1px solid var(--gold);border-radius:999px;padding:2px 10px}
+.sim-row{margin-top:16px}
+.sim-label{display:flex;justify-content:space-between;align-items:baseline;font-size:.84rem;font-weight:700;color:var(--ink-soft);margin-bottom:6px}
+.sim-label output{font-size:1.05rem;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+.sim-ujung{display:flex;justify-content:space-between;font-size:.7rem;color:var(--ink-soft);margin-top:2px}
+input[type="range"]{width:100%;accent-color:var(--blue);height:28px}
+.sim-hasil{margin-top:16px;border-top:1px solid var(--line);padding-top:14px;display:grid;gap:8px}
+.sim-baris{display:flex;justify-content:space-between;gap:12px;font-size:.9rem}
+.sim-baris span:first-child{color:var(--ink-soft)}
+.sim-baris b{font-variant-numeric:tabular-nums;text-align:right}
+.sim-status{display:inline-flex;align-items:center;gap:6px;border-radius:10px;padding:8px 14px;font-weight:800;font-size:.95rem;margin-top:4px}
+.sim-status.aman{background:rgba(72,187,120,.14);color:#2f855a}
+.sim-status.hati-hati{background:var(--gold-tint);color:var(--gold)}
+.sim-status.berisiko{background:var(--red-tint);color:var(--red)}
+.sim-alasan{font-size:.82rem;color:var(--ink-soft);line-height:1.5;margin-top:6px}
+
+/* ---------- Kartu Kesehatan Usaha ---------- */
+.kartu-preview{border:1px solid var(--line);border-radius:16px;padding:18px;background:var(--paper)}
+.kp-usaha{font-size:1.15rem;font-weight:800;letter-spacing:-.02em;line-height:1.25}
+.kp-jenis{font-size:.8rem;color:var(--ink-soft);margin-bottom:10px}
+.kp-skor{display:flex;gap:14px;align-items:center;padding:12px;background:var(--blue-tint);border-radius:12px;margin-bottom:10px}
+.kp-dial{width:74px;height:74px;flex:none;position:relative;display:grid;place-items:center}
+.kp-dial svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.kp-dial-num{font-size:1.3rem;font-weight:800}
+.kp-label{font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
+.kp-status{font-weight:800}
+.kp-foot{margin-top:10px;font-size:.72rem;color:var(--ink-soft)}
+.kp-foot b{color:var(--ink)}
+@media print{
+  body.cetak-kartu > *:not(#kartuBackdrop){display:none!important}
+  body.cetak-kartu #kartuBackdrop{display:block!important;position:static;background:none;padding:0}
+  body.cetak-kartu .nota-modal{width:auto;max-width:none;max-height:none;border:none;box-shadow:none;border-radius:0;padding:0}
+  body.cetak-kartu .kartu-preview{border:none;background:none;padding:0}
+}
+
+/* ---------- Garis waktu kesehatan ---------- */
+.garis-waktu{display:flex;gap:8px;align-items:flex-end;overflow-x:auto;padding:4px 0 2px}
+.gt-titik{flex:1;min-width:44px;display:flex;flex-direction:column;align-items:center;gap:5px}
+.gt-batang{width:100%;max-width:34px;border-radius:8px 8px 3px 3px;background:var(--blue);min-height:6px;transition:height .5s ease}
+.gt-titik.terakhir .gt-batang{background:var(--blue-deep)}
+.gt-skor{font-size:.82rem;font-weight:800;font-variant-numeric:tabular-nums}
+.gt-bulan{font-size:.7rem;color:var(--ink-soft);text-transform:capitalize}
+.gt-tren{margin-top:10px;font-size:.84rem;font-weight:700;color:var(--green)}
+.gt-tren.turun{color:var(--red)}
+.gt-kosong{font-size:.88rem;color:var(--ink-soft)}
+
+/* ---------- Apa yang berubah ---------- */
+.pb-baris{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.9rem}
+.pb-baris:last-of-type{border-bottom:none}
+.pb-panah{width:18px;text-align:center;font-weight:800}
+.pb-label{flex:1;color:var(--ink-soft)}
+.pb-nilai{font-variant-numeric:tabular-nums}
+.pb-persen{width:64px;text-align:right;font-variant-numeric:tabular-nums}
+.perubahan-kalimat{margin-top:10px;padding:10px 12px;background:var(--blue-tint);border-radius:10px}
+.perubahan-kalimat p{font-size:.84rem;color:var(--ink);margin-top:4px}
+.perubahan-kalimat p:first-child{margin-top:0}
+
+/* ---------- Check-up ---------- */
+.ck-item{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line);font-size:.9rem}
+.ck-item:last-child{border-bottom:none}
+.ck-tanda{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:.72rem;font-weight:800;margin-top:1px}
+.ck-tanda.ok{background:var(--green-tint);color:var(--green)}
+.ck-tanda.perhatian{background:var(--gold-tint);color:var(--gold)}
+.ck-insight{margin-top:12px;padding:12px 14px;background:var(--blue-tint);border-radius:12px;font-size:.88rem}
+
+/* ---------- Pencarian & filter buku kas ---------- */
+.kas-filter{margin:16px 0 12px}
+.kas-filter #kasCari{width:100%;padding:11px 14px;font:inherit;font-size:.92rem;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:11px}
+.kas-filter #kasCari:focus{outline:none;border-color:var(--blue)}
+.kf-row{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.kf-chips{display:flex;gap:6px}
+.kf-chips button{border:1.5px solid var(--line);background:var(--card);color:var(--ink-soft);border-radius:999px;padding:6px 13px;font-size:.8rem;font-weight:700;cursor:pointer}
+.kf-chips button[aria-pressed="true"]{border-color:var(--blue);background:var(--blue-tint);color:var(--blue-deep)}
+.kf-row select{flex:1;min-width:150px;max-width:240px;padding:8px 10px;font:inherit;font-size:.84rem;background:var(--card);color:var(--ink);border:1.5px solid var(--line);border-radius:10px}
+
+/* ---------- Kartu ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+
+/* ---------- Dasbor ---------- */
+.hero-row{display:grid;grid-template-columns:1.1fr .9fr;gap:16px;align-items:stretch}
+.score-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;display:flex;gap:22px;align-items:center}
+.dial{width:118px;height:118px;flex:none;position:relative;display:grid;place-items:center}
+.dial svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.dial-track{fill:none;stroke:var(--blue-tint);stroke-width:11}
+.dial-fill{fill:none;stroke:var(--blue);stroke-width:11;stroke-linecap:round;transition:stroke-dasharray .7s ease}
+.dial-num{font-size:1.9rem;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+.dial-num small{display:block;font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.score-body h2{margin-bottom:2px}
+.score-body p{font-size:.88rem;color:var(--ink-soft)}
+.pill{display:inline-block;padding:3px 11px;border-radius:99px;font-size:.75rem;font-weight:700;background:var(--blue-tint);color:var(--blue-deep);margin-top:8px}
+.pill.warn{background:var(--gold-tint);color:var(--gold)}
+.pill.bad{background:var(--red-tint);color:var(--red)}
+.stat-list{display:grid;gap:2px}
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:9px 0;border-bottom:1px dashed var(--line);font-size:.9rem}
+.stat-row:last-child{border:none}
+.stat-row span{color:var(--ink-soft)}
+.stat-row b{font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.stat-row b.pos{color:var(--blue-deep)} .stat-row b.neg{color:var(--red)}
+.bar-row{display:grid;gap:5px;padding:9px 0;border-bottom:1px dashed var(--line)}
+.bar-row:last-child{border:none}
+.bar-top{display:flex;justify-content:space-between;font-size:.85rem;gap:12px}
+.bar-top b{font-variant-numeric:tabular-nums;font-size:.8rem;color:var(--ink-soft)}
+.bar-track{height:7px;border-radius:99px;background:var(--blue-tint);overflow:hidden}
+.bar-fill{height:100%;border-radius:99px;background:var(--blue);transition:width .6s ease}
+.bar-note{font-size:.76rem;color:var(--ink-soft)}
+.empty{text-align:center;padding:46px 24px;color:var(--ink-soft)}
+.empty .big{font-size:2.2rem;display:block;margin-bottom:10px}
+
+/* ---------- Formulir ---------- */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field.full{grid-column:1/-1}
+.field label{font-size:.82rem;font-weight:700;color:var(--ink-soft)}
+.field .help{font-size:.76rem;color:var(--ink-soft);font-weight:500}
+.field input,.field select,.field textarea{
+  border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;font:inherit;font-size:.93rem;
+  background:var(--paper);color:var(--ink);outline:none;width:100%;
+}
+.field input[type=number]{font-variant-numeric:tabular-nums}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue)}
+.field textarea{resize:vertical;min-height:82px}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:.9rem;cursor:pointer;padding:10px 0}
+.check input{width:17px;height:17px;accent-color:var(--blue);margin-top:3px;flex:none}
+.section-title{font-size:.78rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);grid-column:1/-1;margin-top:8px}
+.form-error{background:var(--red-tint);color:var(--red);border-radius:10px;padding:11px 15px;font-size:.87rem;font-weight:600;margin-top:16px}
+
+/* ---------- Rekomendasi ---------- */
+.rec{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:12px;border-left:4px solid var(--blue)}
+.rec.tinggi{border-left-color:var(--red)}
+.rec.sedang{border-left-color:var(--gold)}
+.rec-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px}
+.rec h3{line-height:1.35}
+.rec-prio{font-size:.7rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--blue-tint);color:var(--blue-deep);flex:none}
+.rec-prio.tinggi{background:var(--red-tint);color:var(--red)}
+.rec-prio.sedang{background:var(--gold-tint);color:var(--gold)}
+.rec p{font-size:.9rem;color:var(--ink-soft)}
+.rec ol{margin:12px 0 0 18px;display:grid;gap:6px;font-size:.9rem}
+.rec-foot{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);font-size:.8rem;color:var(--ink-soft)}
+.tag{padding:3px 9px;border-radius:99px;background:var(--blue-tint);color:var(--blue-deep);font-weight:700}
+.callout{border-radius:12px;padding:15px 18px;margin-bottom:14px;font-size:.9rem}
+.callout.warn{background:var(--gold-tint);border:1px solid var(--gold);color:var(--ink)}
+.callout ul{margin:6px 0 0 18px;display:grid;gap:4px}
+.target-list{display:grid;gap:10px;margin-top:10px}
+.target{display:flex;gap:11px;align-items:flex-start;font-size:.92rem}
+.target .no{width:24px;height:24px;border-radius:8px;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:.78rem;font-weight:800;flex:none}
+.stamp{font-size:.78rem;color:var(--ink-soft);margin-top:14px}
+
+/* ---------- Chat ---------- */
+.chat-shell{max-width:720px;margin:0 auto}
+.chat-box{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;height:min(68vh,600px);overflow:hidden}
+.chat-head{display:flex;align-items:center;gap:11px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--blue-tint)}
+.bot-avatar{width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:1.1rem;flex:none}
+.chat-id{display:flex;flex-direction:column;line-height:1.3;margin-right:auto}
+.chat-id b{font-size:.95rem}
+.chat-sub{font-size:.75rem;color:var(--ink-soft);display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--star-off);flex:none}
+.chat-sub.online .dot{background:#3DBA7E;box-shadow:0 0 0 3px rgba(61,186,126,.2)}
+.chat-sub.offline .dot{background:var(--gold)}
+.chat-log{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px}
+.msg{max-width:84%;padding:11px 15px;border-radius:15px;font-size:.9rem;line-height:1.55;overflow-wrap:break-word;position:relative}
+.msg.ai{background:var(--blue-tint);color:var(--ink);border-bottom-left-radius:5px;align-self:flex-start}
+.msg.user{background:var(--blue);color:#fff;border-bottom-right-radius:5px;align-self:flex-end}
+.msg ul{padding-left:18px;margin:6px 0;display:grid;gap:3px}
+.msg code{background:var(--code-bg);border-radius:5px;padding:1px 6px;font-size:.84em}
+.msg-meta{display:block;margin-top:7px;font-size:.68rem;color:var(--ink-soft);font-weight:600}
+.msg.err{background:var(--red-tint);color:var(--red)}
+.dots{display:inline-flex;gap:4px;align-items:center;padding:4px 2px}
+.dots span{width:6px;height:6px;border-radius:50%;background:var(--ink-soft);animation:blink 1.2s infinite}
+.dots span:nth-child(2){animation-delay:.2s}
+.dots span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.chips{display:flex;gap:8px;flex-wrap:wrap;padding:0 18px 12px}
+.chip{font-size:.78rem;font-weight:600;padding:7px 12px;border-radius:99px;border:1.5px solid var(--line);color:var(--ink-soft);background:var(--paper)}
+.chip:hover{border-color:var(--blue);color:var(--blue-deep)}
+/* Penanda bahwa pertanyaan berikutnya dibaca bersama materi satu modul.
+   Peserta harus bisa melihat konteks apa yang ikut terkirim, dan melepasnya. */
+.modul-konteks{display:flex;align-items:center;gap:8px;margin:0 12px 10px;padding:8px 12px;border-radius:10px;background:var(--blue-tint);border:1px solid var(--blue);font-size:.8rem;font-weight:600;color:var(--blue-deep)}
+.modul-konteks span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.modul-konteks button{font-size:1rem;line-height:1;padding:2px 6px;border-radius:6px;color:var(--blue-deep)}
+.chat-input{display:flex;gap:10px;border-top:1px solid var(--line);padding:12px}
+.chat-input input{flex:1;border:1.5px solid var(--line);border-radius:11px;padding:11px 14px;font:inherit;outline:none;background:var(--paper);color:var(--ink)}
+.chat-input input:focus{border-color:var(--blue)}
+.chat-input button{background:var(--blue);color:#fff;border-radius:11px;padding:0 18px;font-weight:700}
+.chat-input button:disabled{opacity:.5;cursor:wait}
+.ai-note{font-size:.76rem;color:var(--ink-soft);text-align:center;margin-top:12px}
+
+/* ---------- Modul ---------- */
+.mod-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.mod{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;gap:8px;text-align:left;transition:border-color .15s,box-shadow .15s;width:100%}
+.mod:hover{border-color:var(--blue);box-shadow:var(--shadow)}
+.mod-no{font-size:.72rem;font-weight:800;color:var(--gold);letter-spacing:.1em;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.mod h3{font-size:1rem;line-height:1.4}
+.mod p{font-size:.86rem;color:var(--ink-soft)}
+.mod-foot{display:flex;gap:8px;align-items:center;margin-top:auto;padding-top:10px;font-size:.78rem;font-weight:700}
+.mod a{font-size:.78rem;font-weight:700}
+.mod-menit{font-weight:700;color:var(--ink-soft);letter-spacing:0}
+/* Modul selesai: pita hijau tipis di tepi kiri, bukan kartu yang diredupkan —
+   yang sudah dipelajari tetap harus mudah dibaca ulang. */
+.mod.selesai{border-left:4px solid var(--blue)}
+.mod.terkunci{opacity:.62}
+.mod.terkunci:hover{border-color:var(--line);transform:none}
+.mod-cek.kunci{color:var(--gold)}
+.mod-cek{font-size:.78rem;font-weight:800;color:var(--blue)}
+
+/* Sesi hari ini — satu kartu menonjol, sengaja sendirian.
+   Peserta hari ke-3 tidak perlu melihat 32 pilihan; ia perlu melihat satu. */
+.sesi-kini{background:var(--blue-tint);border:1.5px solid var(--blue);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.sesi-kini .eyebrow{color:var(--blue-deep)}
+.sesi-kini h3{font-size:1.15rem;margin:6px 0 4px;line-height:1.35}
+.sesi-kini p{font-size:.9rem;color:var(--ink-soft)}
+.sesi-kini .actions{margin-top:14px}
+
+/* Penyaring jalur — bisa digeser mendatar di ponsel */
+.jalur-bar{display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;margin-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.jalur-bar::-webkit-scrollbar{display:none}
+.jalur-bar .chip{white-space:nowrap;flex:0 0 auto;cursor:pointer}
+.jalur-bar .chip.aktif{border-color:var(--blue);background:var(--blue);color:#fff}
+:root[data-theme="dark"] .jalur-bar .chip.aktif{color:var(--paper)}
+.jalur-ket{font-size:.84rem;color:var(--ink-soft);margin-bottom:14px}
+
+/* Pembaca modul */
+.baca-atas{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.baca h2{font-size:1.5rem;line-height:1.3;margin:8px 0 6px}
+.baca-meta{font-size:.82rem;color:var(--ink-soft);margin-bottom:18px}
+.baca-isi section{margin-bottom:20px}
+.baca-isi h3{font-size:1.02rem;color:var(--blue-deep);margin-bottom:6px;line-height:1.4}
+:root[data-theme="dark"] .baca-isi h3{color:var(--blue-deep)}
+.baca-isi p{font-size:.95rem;line-height:1.75}
+.baca-isi ul{margin:6px 0 0 20px;display:grid;gap:7px}
+.baca-isi li{font-size:.94rem;line-height:1.65}
+.praktik{background:var(--gold-tint);border:1px solid var(--gold);border-radius:12px;padding:16px 18px;margin:22px 0}
+.praktik b{display:block;font-size:.76rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+.praktik p{font-size:.92rem;line-height:1.7}
+.baca-bawah{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+
+/* ---------- Toast ---------- */
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:99px;font-size:.84rem;font-weight:600;opacity:0;pointer-events:none;z-index:99;transition:opacity .25s,transform .25s;box-shadow:var(--shadow)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:var(--ink-soft);text-align:center}
+
+/* ---------- Buku kas ---------- */
+.kas-form{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+.jenis-toggle{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.jenis-btn{
+  padding:15px 12px;border-radius:12px;border:2px solid var(--line);font-weight:800;font-size:.95rem;
+  background:var(--paper);color:var(--ink-soft);transition:all .15s;display:flex;flex-direction:column;gap:2px;align-items:center;
+}
+.jenis-btn small{font-size:.72rem;font-weight:600;opacity:.8}
+.jenis-btn[aria-pressed="true"][data-jenis="masuk"]{border-color:var(--blue);background:var(--blue-tint);color:var(--blue-deep)}
+.jenis-btn[aria-pressed="true"][data-jenis="keluar"]{border-color:var(--red);background:var(--red-tint);color:var(--red)}
+.amount-wrap{position:relative;margin-bottom:14px}
+.amount-wrap .rp{position:absolute;left:16px;top:50%;transform:translateY(-50%);font-weight:700;color:var(--ink-soft);font-size:1.1rem;pointer-events:none}
+#kasJumlah{
+  width:100%;border:2px solid var(--line);border-radius:12px;padding:16px 16px 16px 46px;
+  font:inherit;font-size:1.5rem;font-weight:800;letter-spacing:-.02em;background:var(--paper);color:var(--ink);
+  outline:none;font-variant-numeric:tabular-nums;
+}
+#kasJumlah:focus{border-color:var(--blue)}
+.kat-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.kat-chip{
+  font-size:.82rem;font-weight:700;padding:9px 14px;border-radius:99px;
+  border:1.5px solid var(--line);color:var(--ink-soft);background:var(--paper);
+}
+.kat-chip[aria-pressed="true"]{border-color:var(--blue);background:var(--blue-tint);color:var(--blue-deep)}
+.kat-chip.warn[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-tint);color:var(--gold)}
+.kas-row{display:grid;grid-template-columns:1fr auto;gap:10px;margin-bottom:14px}
+.kas-row input{border:1.5px solid var(--line);border-radius:10px;padding:11px 13px;font:inherit;font-size:.92rem;background:var(--paper);color:var(--ink);outline:none;width:100%}
+.kas-row input:focus{border-color:var(--blue)}
+.kas-save{width:100%;justify-content:center;padding:15px;font-size:1rem}
+.prive-hint{background:var(--gold-tint);border-radius:10px;padding:10px 14px;font-size:.82rem;color:var(--ink);margin-bottom:14px;display:none}
+.prive-hint.show{display:block}
+
+.month-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.month-bar select{border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;font:inherit;font-size:.9rem;background:var(--card);color:var(--ink);outline:none}
+.kas-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.kas-stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.kas-stat span{display:block;font-size:.74rem;color:var(--ink-soft);font-weight:700;margin-bottom:3px}
+.kas-stat b{font-size:1.02rem;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kas-stat b.pos{color:var(--blue-deep)} .kas-stat b.neg{color:var(--red)}
+.kas-stat .sub{font-size:.72rem;color:var(--ink-soft);font-weight:600;margin-top:2px}
+
+.trx-day{margin-bottom:6px;font-size:.78rem;font-weight:800;color:var(--gold);letter-spacing:.06em;text-transform:uppercase;padding-top:12px}
+.trx{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.trx-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:.95rem;flex:none}
+.trx-icon.masuk{background:var(--blue-tint);color:var(--blue-deep)}
+.trx-icon.keluar{background:var(--red-tint);color:var(--red)}
+.trx-body{flex:1;min-width:0}
+.trx-body b{display:block;font-size:.92rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trx-body span{font-size:.76rem;color:var(--ink-soft);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trx-amt{font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em;white-space:nowrap}
+.trx-amt.masuk{color:var(--blue-deep)} .trx-amt.keluar{color:var(--red)}
+.trx-del{color:var(--ink-soft);font-size:1rem;padding:4px 6px;border-radius:8px;flex:none}
+.trx-del:hover{color:var(--red);background:var(--red-tint)}
+.source-badge{display:inline-flex;align-items:center;gap:6px;font-size:.74rem;font-weight:700;padding:4px 11px;border-radius:99px;background:var(--gold-tint);color:var(--gold);margin-top:8px}
+.source-badge.real{background:var(--blue-tint);color:var(--blue-deep)}
+
+/* ---------- Grafik ----------
+   Warna grafik dipilih lewat validator kontras/buta-warna, bukan dikira-kira.
+   Pasangan hijau/merah yang lazim dipakai untuk uang GAGAL uji buta warna
+   merah-hijau (ΔE 4.0) — pemakainya tidak bisa membedakan surplus dan defisit.
+   Pasangan biru/merah di bawah lolos semua uji (ΔE 21.6). Arah batang (di atas
+   atau di bawah garis nol) tetap menjadi penanda kedua, jadi warna tidak pernah
+   menjadi satu-satunya pembawa makna. */
+.viz{
+  --surplus:#2a78d6;      /* hari surplus  */
+  --defisit:#e34948;      /* hari defisit  */
+  --seri:#0E8A57;         /* satu seri (laba bulanan) */
+  --grid:rgba(28,42,34,.10);
+  --zero:rgba(28,42,34,.34);
+}
+:root[data-theme="dark"] .viz{
+  --surplus:#3987e5;
+  --defisit:#e66767;
+  --seri:#199e70;
+  --grid:rgba(233,238,248,.11);
+  --zero:rgba(233,238,248,.38);
+}
+.chart-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.chart-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:4px;flex-wrap:wrap}
+.chart-head h3{font-size:1rem}
+.chart-head p{font-size:.82rem;color:var(--ink-soft);margin-top:1px}
+.chart-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.76rem;font-weight:600;color:var(--ink-soft);margin-top:10px}
+.chart-legend span{display:inline-flex;align-items:center;gap:6px}
+.chart-legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.chart-wrap{position:relative;margin-top:14px;overflow:visible}
+.chart-wrap svg{display:block;width:100%;height:auto;overflow:visible}
+/* Garis nol, grid, dan label hanya hiasan — kalau ikut menangkap pointer, garis
+   nol (digambar paling akhir, tepat di tengah batang) akan mencuri semua hover
+   dan tooltip tidak pernah muncul. */
+.chart-wrap svg line,.chart-wrap svg text{pointer-events:none}
+.bar{transition:opacity .12s;pointer-events:none}
+.chart-wrap:hover .bar{opacity:.42}
+.bar.on{opacity:1}
+.bar-hit{fill:transparent;cursor:pointer}
+.chart-tip{
+  position:absolute;pointer-events:none;opacity:0;transform:translate(-50%,-114%);
+  background:var(--ink);color:var(--paper);padding:7px 11px;border-radius:9px;
+  font-size:.76rem;font-weight:600;white-space:nowrap;z-index:5;transition:opacity .12s;
+  box-shadow:0 4px 14px rgba(0,0,0,.22);
+}
+.chart-tip.show{opacity:1}
+.chart-tip b{display:block;font-size:.84rem;font-variant-numeric:tabular-nums}
+.chart-empty{text-align:center;padding:26px 12px;color:var(--ink-soft);font-size:.88rem}
+.chart-table-toggle{font-size:.78rem;font-weight:700;color:var(--blue-deep);margin-top:10px;padding:4px 0}
+.chart-table-toggle:hover{text-decoration:underline}
+.chart-table{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:10px;display:none}
+.chart-table.show{display:table}
+.chart-table th,.chart-table td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right}
+.chart-table th:first-child,.chart-table td:first-child{text-align:left}
+.chart-table td{font-variant-numeric:tabular-nums}
+.axis-label{font-size:9px;fill:var(--ink-soft);font-weight:600}
+
+/* ---------- Laporan KUR ---------- */
+.report-sheet{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:28px}
+.report-head{border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:18px}
+.report-head h2{margin-bottom:2px}
+.report-head p{font-size:.86rem;color:var(--ink-soft)}
+.report-table{width:100%;border-collapse:collapse;font-size:.84rem;margin-bottom:20px}
+.report-table th,.report-table td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right}
+.report-table th:first-child,.report-table td:first-child{text-align:left}
+.report-table thead th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);border-bottom:1.5px solid var(--line)}
+.report-table tfoot td{font-weight:800;border-top:1.5px solid var(--ink);border-bottom:none;background:var(--blue-tint)}
+.report-table td.num{font-variant-numeric:tabular-nums}
+.report-sign{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:34px;font-size:.84rem}
+.report-sign div{text-align:center}
+.report-sign .line{margin-top:56px;border-top:1px solid var(--ink);padding-top:6px}
+
+/* ---------- Navigasi bawah (ponsel) ---------- */
+.tabbar{
+    /* `top:auto` wajib: aturan `nav{position:sticky;top:0}` di atas ikut
+       terpakai di sini, dan `top:0` + `bottom:0` membuat bilah ini setinggi
+       satu layar penuh sehingga menutupi seluruh halaman. */
+    display:grid;grid-template-columns:repeat(6,1fr);position:fixed;top:auto;bottom:0;left:0;right:0;z-index:60;
+    background:var(--nav-bg);backdrop-filter:blur(10px);border-top:1px solid var(--line);
+    padding:4px 2px calc(4px + env(safe-area-inset-bottom,0));
+    box-shadow:0 -2px 10px rgba(0,0,0,.06);
+  }
+  .tabbar button{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:5px 1px 4px;
+    font-size:.62rem;font-weight:600;color:var(--ink-soft);min-height:48px;min-width:0;line-height:1.1;
+  }
+  .tabbar button .ic{font-size:1.15rem;line-height:1;margin-bottom:1px}
+  .tabbar button .ic{font-size:1.2rem;line-height:1}
+  .tabbar button.active{color:var(--blue-deep)}
+  .tabbar button.active .ic{transform:translateY(-1px)}
+  #toast{bottom:88px}
+}
+
+/* ---------- Cetak (laporan KUR) ---------- */
+@media print{
+  nav,.tabbar,footer,.page-head,.no-print,#toast{display:none!important}
+  body{background:#fff;color:#000;padding:0}
+  .starfield{display:none}
+  .page{padding:0}
+  .wrap{max-width:none;padding:0}
+  .report-sheet{border:none;border-radius:0;padding:0;background:#fff;color:#000}
+  .report-table tfoot td{background:#f0f0f0}
+  .report-table{page-break-inside:auto}
+  .report-table tr{page-break-inside:avoid}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="starfield" aria-hidden="true"></div>
+
+<!-- Rumus simulasi KUR — berkas yang sama dengan yang diuji server (lib/simulasi-kur.js).
+     type="module" dieksekusi setelah dokumen siap; pemakaiannya baru saat halaman
+     Laporan dibuka, jadi urutannya aman. -->
+<script type="module" src="/simulasi-kur.js"></script>
+
+<!-- ==================== LOGIN ==================== -->
+<div class="auth" id="authScreen">
+  <div class="auth-card">
+    <div class="auth-mark">N</div>
+    <h1>Nova Explorer</h1>
+    <p>Pendamping keuangan untuk pemilik UMKM. Masukkan kode akses yang diberikan pengelola program.</p>
+    <form id="loginForm">
+      <input class="code-input" id="codeInput" placeholder="NOVA-XXXX-XXXX" autocomplete="one-time-code" aria-label="Kode akses" required>
+      <div class="form-error" id="loginError" style="display:none"></div>
+      <button class="btn btn-primary" id="loginBtn" style="width:100%;justify-content:center;margin-top:14px" type="submit">Masuk</button>
+    </form>
+    <div class="demo-divider"><span>atau</span></div>
+    <button class="btn btn-ghost" id="demoBtn" style="width:100%;justify-content:center" type="button">▶ Coba tanpa kode — Mode Demo</button>
+    <p class="auth-hint">Punya kode peserta? Masukkan di atas. Kode demo <b>101–120</b> juga bisa dipakai — datanya usaha contoh yang boleh diutak-atik bebas.</p>
+  </div>
+</div>
+
+<!-- ---------- Kartu Kesehatan Usaha (bagikan) ---------- -->
+<div class="nota-backdrop" id="kartuBackdrop" style="display:none">
+  <div class="nota-modal" role="dialog" aria-modal="true" aria-label="Kartu Kesehatan Usaha">
+    <h3 class="no-print" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      🪪 Kartu Kesehatan Usaha
+      <button class="nota-close" id="kartuClose" aria-label="Tutup" type="button">✕</button>
+    </h3>
+    <p class="no-print" style="font-size:.8rem;color:var(--ink-soft);margin-bottom:12px">Tautannya hanya membuka ringkasan baca-saja ini — tanpa akses ke akun atau pembukuanmu.</p>
+    <div id="kartuPratinjau"></div>
+    <div class="form-error no-print" id="kartuError" style="display:none"></div>
+    <div class="actions no-print" style="justify-content:flex-end;margin-top:14px">
+      <button class="btn btn-ghost" id="kartuSalin" type="button">🔗 Salin Link</button>
+      <button class="btn btn-ghost" id="kartuCetak" type="button">🖨 Unduh / Cetak Kartu</button>
+      <button class="btn btn-primary" id="kartuBagikan" type="button">Bagikan</button>
+    </div>
+    <p class="no-print" id="kartuTautan" style="font-size:.76rem;word-break:break-all;color:var(--ink-soft);margin-top:8px"></p>
+  </div>
+</div>
+
+<!-- ==================== PERSETUJUAN PESERTA ==================== -->
+<div class="auth" id="consentScreen" style="display:none">
+  <div class="auth-card" style="max-width:640px;text-align:left">
+    <div class="auth-mark" style="margin:0 auto 14px">N</div>
+    <h1 id="consentTitle" style="text-align:center"></h1>
+    <p id="consentLead" style="text-align:center"></p>
+    <div id="consentPoints" style="margin:18px 0"></div>
+    <p id="consentOutro" style="font-size:.88rem;color:var(--ink-soft)"></p>
+    <div class="form-error" id="consentError" style="display:none"></div>
+    <button class="btn btn-primary" id="consentAgree" style="width:100%;justify-content:center;margin-top:14px" type="button">
+      Saya mengerti dan setuju
+    </button>
+    <button class="btn btn-ghost" id="consentDecline" style="width:100%;justify-content:center;margin-top:8px" type="button">
+      Belum, keluar dulu
+    </button>
+  </div>
+</div>
+
+<!-- ==================== APLIKASI ==================== -->
+<div id="app" style="display:none">
+<nav>
+  <div class="nav-inner">
+    <span class="brand"><span class="brand-mark">N</span>Nova Explorer</span>
+    <div class="nav-links" id="navLinks">
+      <button data-page="dasbor" class="active">Dasbor</button>
+      <button data-page="kas">Buku Kas</button>
+      <button data-page="rekomendasi">Rekomendasi</button>
+      <button data-page="konsultasi">Konsultasi AI</button>
+      <button data-page="modul">Modul</button>
+      <button data-page="profil">Profil</button>
+    </div>
+    <button class="icon-btn" id="themeToggle" title="Ganti mode terang/gelap" aria-label="Ganti mode terang/gelap">🌙</button>
+    <button class="icon-btn" id="logoutBtn" title="Keluar" aria-label="Keluar">⏻</button>
+  </div>
+</nav>
+
+<!-- ---------- Dasbor ---------- -->
+<section class="page active" id="page-dasbor">
+  <div class="wrap">
+    <div class="page-head">
+      <div class="eyebrow">Dasbor</div>
+      <h2 id="greeting">Halo!</h2>
+      <p class="sub" id="dashSub">Ringkasan kondisi keuangan usahamu.</p>
+      <div class="actions" id="kartuAksi" style="margin-top:12px;display:none">
+        <button class="btn btn-ghost" id="kartuBtn" type="button">🪪 Bagikan Kartu Kesehatan Usaha</button>
+      </div>
+    </div>
+    <div id="dashBody"></div>
+
+    <!-- ---------- Garis waktu kesehatan usaha ---------- -->
+    <div class="card" id="timelineCard" style="margin-top:16px;display:none">
+      <h3>📈 Kesehatan Usaha</h3>
+      <p style="font-size:.8rem;color:var(--ink-soft);margin-bottom:12px">Skor dari bulan-bulan yang benar-benar tercatat — bulan kosong tidak dikarang.</p>
+      <div id="timelineBody"></div>
+    </div>
+
+    <!-- ---------- Apa yang berubah? ---------- -->
+    <div class="card" id="perubahanCard" style="margin-top:16px;display:none">
+      <h3>🔍 Apa yang Berubah?</h3>
+      <p id="perubahanPeriode" style="font-size:.8rem;color:var(--ink-soft);margin-bottom:10px"></p>
+      <div id="perubahanBody"></div>
+    </div>
+
+    <!-- ---------- Check-up keuangan (AI, dipicu pengguna) ---------- -->
+    <div class="card" id="checkupCard" style="margin-top:16px;display:none">
+      <h3>🩺 Periksa Usaha Saya</h3>
+      <p style="font-size:.8rem;color:var(--ink-soft);margin:4px 0 12px">AI menilai kondisi usaha dari angka buku kasmu — analisis edukatif, bukan jaminan atau nasihat keuangan profesional.</p>
+      <button class="btn btn-primary" id="checkupBtn" type="button">🩺 Periksa Sekarang</button>
+      <div class="form-error" id="checkupError" style="display:none"></div>
+      <div id="checkupHasil" style="margin-top:14px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ---------- Profil Usaha ---------- -->
+<section class="page" id="page-profil">
+  <div class="wrap">
+    <div class="page-head">
+      <div class="eyebrow">Personalisasi</div>
+      <h2>Profil usaha</h2>
+      <p class="sub">Isi data usahamu sekali. Semua saran, angka, dan jawaban konsultasi AI akan disesuaikan dengan data ini. Data tersimpan di server program, tidak dibagikan ke pihak lain.</p>
+    </div>
+    <form class="card" id="profileForm">
+      <div class="form-grid">
+        <div class="section-title">Tentang usaha</div>
+        <div class="field">
+          <label for="namaUsaha">Nama usaha *</label>
+          <input id="namaUsaha" name="namaUsaha" maxlength="80" placeholder="Warung Bu Sari" required>
+        </div>
+        <div class="field">
+          <label for="jenisUsaha">Jenis usaha *</label>
+          <select id="jenisUsaha" name="jenisUsaha" required>
+            <option value="">— pilih —</option>
+            <option value="kuliner">Kuliner (warung/kafe/katering)</option>
+            <option value="retail">Retail / toko kelontong</option>
+            <option value="jasa">Jasa (bengkel, salon, laundry)</option>
+            <option value="produksi">Produksi / kerajinan</option>
+            <option value="online">Toko online</option>
+            <option value="lainnya">Lainnya</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="lokasi">Kota / kabupaten</label>
+          <input id="lokasi" name="lokasi" maxlength="80" placeholder="Sleman, DIY">
+        </div>
+        <div class="field">
+          <label for="produkUtama">Produk atau layanan utama</label>
+          <input id="produkUtama" name="produkUtama" maxlength="120" placeholder="Nasi rames dan es teh">
+        </div>
+        <div class="field">
+          <label for="lamaUsahaBulan">Usaha sudah berjalan (bulan)</label>
+          <input id="lamaUsahaBulan" name="lamaUsahaBulan" type="number" min="0" max="1200" placeholder="18">
+        </div>
+        <div class="field">
+          <label for="jumlahKaryawan">Jumlah karyawan</label>
+          <input id="jumlahKaryawan" name="jumlahKaryawan" type="number" min="0" max="1000" placeholder="2">
+        </div>
+
+        <div class="section-title">Angka per bulan</div>
+        <div class="field">
+          <label for="omzetBulanan">Omzet / total penjualan (Rp) *</label>
+          <input id="omzetBulanan" name="omzetBulanan" type="number" min="0" placeholder="12000000" required>
+          <span class="help">Perkiraan kasar tidak apa-apa — yang penting mendekati.</span>
+        </div>
+        <div class="field">
+          <label for="belanjaBulanan">Belanja bahan / barang dagangan (Rp)</label>
+          <input id="belanjaBulanan" name="belanjaBulanan" type="number" min="0" placeholder="6500000">
+        </div>
+        <div class="field">
+          <label for="biayaOperasional">Biaya operasional (Rp)</label>
+          <input id="biayaOperasional" name="biayaOperasional" type="number" min="0" placeholder="3000000">
+          <span class="help">Sewa, listrik, gas, gaji, transport, internet.</span>
+        </div>
+        <div class="field">
+          <label for="cicilanBulanan">Cicilan pinjaman berjalan (Rp)</label>
+          <input id="cicilanBulanan" name="cicilanBulanan" type="number" min="0" placeholder="0">
+          <span class="help">Isi 0 kalau belum punya pinjaman.</span>
+        </div>
+
+        <div class="section-title">Kebiasaan &amp; tujuan</div>
+        <div class="field">
+          <label for="pencatatan">Cara mencatat keuangan saat ini *</label>
+          <select id="pencatatan" name="pencatatan" required>
+            <option value="">— pilih —</option>
+            <option value="belum">Belum mencatat sama sekali</option>
+            <option value="kadang">Kadang-kadang saja</option>
+            <option value="buku">Buku tulis</option>
+            <option value="excel">Excel / spreadsheet</option>
+            <option value="aplikasi">Aplikasi kasir/keuangan</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="tujuan">Tujuan utama 6 bulan ke depan *</label>
+          <select id="tujuan" name="tujuan" required>
+            <option value="">— pilih —</option>
+            <option value="rapikan-keuangan">Merapikan pencatatan keuangan</option>
+            <option value="naikkan-laba">Menaikkan laba</option>
+            <option value="ajukan-kur">Mempersiapkan pengajuan KUR</option>
+            <option value="kelola-stok">Mengelola stok lebih baik</option>
+            <option value="kembangkan-usaha">Mengembangkan usaha / buka cabang</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label class="check"><input type="checkbox" id="rekeningTerpisah" name="rekeningTerpisah"> <span>Uang usaha sudah dipisah dari uang pribadi (rekening, dompet, atau amplop khusus)</span></label>
+          <label class="check"><input type="checkbox" id="punyaNib" name="punyaNib"> <span>Usaha sudah punya NIB (Nomor Induk Berusaha)</span></label>
+        </div>
+        <div class="field full">
+          <label for="tantangan">Tantangan terbesar saat ini</label>
+          <textarea id="tantangan" name="tantangan" maxlength="500" placeholder="Contoh: sering kehabisan uang belanja di tengah bulan padahal jualan ramai."></textarea>
+        </div>
+      </div>
+      <div class="form-error" id="profileError" style="display:none"></div>
+      <div class="actions">
+        <button class="btn btn-primary" id="saveProfileBtn" type="submit">Simpan profil</button>
+        <button class="btn btn-ghost" type="button" onclick="goTo('dasbor')">Batal</button>
+      </div>
+    </form>
+
+    <!-- Datanya milik peserta. Berhenti dari program tidak boleh berarti
+         kehilangan pembukuan yang sudah dia kumpulkan berbulan-bulan. -->
+    <div class="card" style="margin-top:18px">
+      <h3 style="margin-bottom:6px">Data &amp; privasi</h3>
+      <p class="sub" style="font-size:.87rem;margin-bottom:12px">
+        Semua catatan di aplikasi ini milikmu. Kamu bisa mengunduhnya kapan saja, atau
+        menghapusnya sekaligus berhenti dari program uji coba.
+      </p>
+      <div class="actions">
+        <button class="btn btn-ghost" type="button" onclick="unduhDataSaya()">⬇ Unduh data saya</button>
+        <button class="btn btn-ghost" type="button" onclick="lihatPersetujuan()">Baca lagi persetujuan</button>
+        <button class="btn btn-ghost" type="button" onclick="hapusDataSaya()"
+                style="color:var(--red);border-color:var(--red)">Hapus data &amp; berhenti</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ---------- Buku Kas ---------- -->
+<section class="page" id="page-kas">
+  <div class="wrap">
+    <div class="page-head">
+      <div class="eyebrow">Buku Kas</div>
+      <h2>Catat transaksi hari ini</h2>
+      <p class="sub">Catat setiap uang masuk dan keluar — cukup 10 detik. Semakin rutin dicatat, semakin akurat angka dan saran di aplikasi ini, dan setelah 3 bulan catatanmu bisa langsung dipakai untuk mengajukan KUR.</p>
+    </div>
+
+    <button class="scan-cta" id="scanNotaBtn" type="button" hidden>
+      <span class="sc-ic">📷</span>
+      <span><b>Scan Nota</b><small>Foto struk belanja — diisi otomatis, kamu periksa dulu sebelum disimpan.</small></span>
+    </button>
+    <input type="file" id="scanNotaFile" accept="image/jpeg,image/png,image/webp" capture="environment" hidden>
+
+    <form class="kas-form" id="kasForm">
+      <div class="jenis-toggle">
+        <button type="button" class="jenis-btn" data-jenis="masuk" aria-pressed="true">↓ Uang Masuk<small>penjualan, pemasukan lain</small></button>
+        <button type="button" class="jenis-btn" data-jenis="keluar" aria-pressed="false">↑ Uang Keluar<small>belanja, biaya, prive</small></button>
+      </div>
+
+      <div class="amount-wrap">
+        <span class="rp">Rp</span>
+        <input id="kasJumlah" type="text" inputmode="numeric" placeholder="0" aria-label="Jumlah rupiah" autocomplete="off">
+      </div>
+
+      <div class="kat-chips" id="katChips"></div>
+      <div class="prive-hint" id="priveHint">
+        💡 <b>Prive</b> adalah uang usaha yang kamu pakai untuk keperluan pribadi. Ini <b>bukan biaya usaha</b>, jadi tidak mengurangi laba — tapi tetap mengurangi uang kas. Itu sebabnya dicatat terpisah (Modul 2).
+      </div>
+
+      <div class="kas-row">
+        <input id="kasKeterangan" maxlength="120" placeholder="Keterangan (mis. jual nasi rames)" autocomplete="off">
+        <input id="kasTanggal" type="date" style="width:auto" aria-label="Tanggal transaksi">
+      </div>
+
+      <div class="form-error" id="kasError" style="display:none"></div>
+      <button class="btn btn-primary kas-save" id="kasSaveBtn" type="submit">Simpan transaksi</button>
+    </form>
+
+    <div class="month-bar">
+      <select id="kasMonth" aria-label="Pilih bulan"></select>
+      <button class="btn btn-ghost" id="waShareBtn" style="padding:8px 14px;font-size:.84rem" type="button" title="Bagikan rekap 7 hari sebagai pesan WhatsApp">📲 Bagikan 7 hari</button>
+      <button class="btn btn-ghost" style="padding:8px 14px;font-size:.84rem" onclick="goTo('laporan')">📄 Laporan KUR</button>
+    </div>
+
+    <div class="kas-summary" id="kasSummary"></div>
+
+    <div class="chart-card viz" id="kasChartCard">
+      <div class="chart-head">
+        <div>
+          <h3>Sisa uang per hari</h3>
+          <p id="kasChartNote">Batang ke atas berarti hari itu uang masuk lebih besar dari uang keluar.</p>
+        </div>
+      </div>
+      <div class="chart-wrap" id="kasChart"></div>
+      <div class="chart-legend">
+        <span><i style="background:var(--surplus)"></i> Hari surplus</span>
+        <span><i style="background:var(--defisit)"></i> Hari defisit (nombok)</span>
+      </div>
+      <button class="chart-table-toggle" type="button" id="kasTableToggle">Lihat sebagai tabel angka</button>
+      <div id="kasTableWrap"></div>
+    </div>
+
+    <div class="kas-filter no-print">
+      <input id="kasCari" type="search" placeholder="Cari transaksi — keterangan / kategori…" autocomplete="off" aria-label="Cari transaksi">
+      <div class="kf-row">
+        <div class="kf-chips" id="kasJenisFilter">
+          <button type="button" data-jf="" aria-pressed="true">Semua</button>
+          <button type="button" data-jf="masuk" aria-pressed="false">Pemasukan</button>
+          <button type="button" data-jf="keluar" aria-pressed="false">Pengeluaran</button>
+        </div>
+        <select id="kasKategoriFilter" aria-label="Filter kategori"><option value="">Semua kategori</option></select>
+      </div>
+    </div>
+
+    <div id="kasList"></div>
+  </div>
+</section>
+
+<!-- ---------- Hasil scan nota (konfirmasi) ---------- -->
+<div class="nota-backdrop" id="notaBackdrop" style="display:none">
+  <div class="nota-modal" role="dialog" aria-modal="true" aria-label="Hasil scan nota">
+    <h3>🔎 Hasil Scan Nota <button class="nota-close" id="notaClose" aria-label="Tutup" type="button">✕</button></h3>
+    <p class="nota-merchant" id="notaMerchant"></p>
+    <div class="nota-warn" id="notaWarn" style="display:none">⚠️ Periksa kembali hasil scan sebelum menyimpan.</div>
+    <div class="nota-low" id="notaLow" style="display:none">
+      Nota sulit dibaca. Silakan periksa atau masukkan transaksi secara manual.
+      <div class="actions" style="margin-top:10px">
+        <button class="btn btn-ghost" id="notaIsiManual" type="button">Isi Manual</button>
+      </div>
+    </div>
+    <div id="notaForm">
+      <div class="nota-jenis">
+        <button type="button" data-nota-jenis="keluar" aria-pressed="true">↑ Uang Keluar</button>
+        <button type="button" data-nota-jenis="masuk" aria-pressed="false">↓ Uang Masuk</button>
+      </div>
+      <div class="nota-grid">
+        <label>Jumlah (Rp)
+          <input id="notaJumlah" inputmode="numeric" placeholder="0" autocomplete="off">
+        </label>
+        <label>Kategori
+          <select id="notaKat"></select>
+        </label>
+        <label>Keterangan
+          <input id="notaKet" maxlength="120" autocomplete="off">
+        </label>
+        <label>Tanggal
+          <input id="notaTanggal" type="date">
+        </label>
+      </div>
+    </div>
+    <div class="form-error" id="notaError" style="display:none"></div>
+    <div class="actions" style="justify-content:flex-end;margin-top:14px">
+      <button class="btn btn-ghost" id="notaBatal" type="button">Batal</button>
+      <button class="btn btn-primary" id="notaSimpan" type="button">Simpan Transaksi</button>
+    </div>
+  </div>
+</div>
+
+<!-- ---------- Laporan KUR ---------- -->
+<section class="page" id="page-laporan">
+  <div class="wrap">
+    <div class="page-head no-print">
+      <div class="eyebrow">Laporan</div>
+      <h2>Laporan keuangan untuk KUR</h2>
+      <p class="sub">Ringkasan buku kas beberapa bulan terakhir dalam format yang biasa diminta bank. Klik “Cetak / Simpan PDF”, lalu pilih “Save as PDF” di jendela cetak.</p>
+      <div class="actions">
+        <select id="reportMonths" aria-label="Jumlah bulan" style="border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;font:inherit;font-size:.9rem;background:var(--card);color:var(--ink)">
+          <option value="3">3 bulan terakhir</option>
+          <option value="6" selected>6 bulan terakhir</option>
+          <option value="12">12 bulan terakhir</option>
+        </select>
+        <button class="btn btn-primary" onclick="window.print()">🖨 Cetak / Simpan PDF</button>
+        <button class="btn btn-ghost" onclick="goTo('kas')">← Kembali</button>
+      </div>
+    </div>
+    <div id="reportBody"></div>
+
+    <!-- ---------- Simulasi KUR (bukan bagian lembar cetak) ---------- -->
+    <div class="card no-print" id="simulasiCard" style="margin-top:20px;display:none">
+      <h3 style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        🧮 Simulasi KUR
+        <span class="sim-tag">SIMULASI</span>
+      </h3>
+      <p style="font-size:.82rem;color:var(--ink-soft);margin-top:4px">Simulasi berdasarkan data usaha Anda. Estimasi, bukan keputusan kredit — keputusan KUR sepenuhnya ada di bank.</p>
+
+      <div class="sim-row">
+        <div class="sim-label"><span>Jumlah pinjaman</span><output id="simJumlahOut"></output></div>
+        <input type="range" id="simJumlah" min="500000" max="50000000" step="500000" value="10000000" aria-label="Jumlah pinjaman">
+        <div class="sim-ujung"><span>Rp 500 rb</span><span>Rp 50 jt</span></div>
+      </div>
+
+      <div class="sim-row">
+        <div class="sim-label"><span>Tenor</span><output id="simTenorOut"></output></div>
+        <input type="range" id="simTenor" min="3" max="60" step="1" value="12" aria-label="Tenor pinjaman">
+        <div class="sim-ujung"><span>3 bln</span><span>60 bln</span></div>
+      </div>
+
+      <div id="simHasil" class="sim-hasil"></div>
+      <p id="simCatatan" style="font-size:.8rem;color:var(--ink-soft);margin-top:10px"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ---------- Rekomendasi ---------- -->
+<section class="page" id="page-rekomendasi">
+  <div class="wrap">
+    <div class="page-head">
+      <div class="eyebrow">Personal</div>
+      <h2>Rekomendasi untuk usahamu</h2>
+      <p class="sub">Rencana perbaikan yang disusun AI berdasarkan angka dan kondisi usahamu sendiri — bukan saran umum.</p>
+    </div>
+    <div id="recBody"></div>
+  </div>
+</section>
+
+<!-- ---------- Konsultasi ---------- -->
+<section class="page" id="page-konsultasi">
+  <div class="wrap chat-shell">
+    <div class="page-head" style="text-align:center">
+      <div class="eyebrow">Konsultasi</div>
+      <h2>Tanya apa saja soal keuangan usahamu</h2>
+      <p class="sub" style="margin:0 auto">Konsultan AI sudah membaca profil usahamu, jadi jawabannya memakai angka usahamu sendiri.</p>
+    </div>
+    <div class="chat-box">
+      <div class="chat-head">
+        <span class="bot-avatar">🤖</span>
+        <div class="chat-id">
+          <b>Konsultan Nova</b>
+          <span class="chat-sub" id="chatSub"><span class="dot"></span><span id="chatStatus">Menyiapkan…</span></span>
+        </div>
+        <button class="icon-btn" id="clearChatBtn" title="Hapus percakapan" aria-label="Hapus percakapan">🗑</button>
+      </div>
+      <div class="chat-log" id="chatLog"></div>
+      <div class="chips" id="chatChips"></div>
+      <div id="modulKonteksBar"></div>
+      <form class="chat-input" id="chatForm">
+        <input id="chatInput" placeholder="Tulis pertanyaan…" autocomplete="off" aria-label="Pertanyaan">
+        <button id="chatSend" type="submit">Kirim</button>
+      </form>
+    </div>
+    <p class="ai-note" id="anggaranNote"></p>
+    <p class="ai-note">Ditenagai AI Gemini 2.5. Jawaban AI bisa keliru — untuk pajak, sengketa, atau pinjaman besar, konsultasikan ke ahlinya.</p>
+  </div>
+</section>
+
+<!-- ---------- Modul ---------- -->
+<section class="page" id="page-modul">
+  <div class="wrap">
+
+    <!-- Daftar -->
+    <div id="modDaftar">
+      <div class="page-head">
+        <div class="eyebrow">Belajar</div>
+        <h2 id="modJudul">Modul akuntansi &amp; keuangan UMKM</h2>
+        <p class="sub">Materi singkat, bisa dibaca langsung di sini. Jalur <b>Dasar</b> dijalani satu sesi per hari selama satu minggu — sesi berikutnya terbuka keesokan harinya, dan sesi yang sudah terbuka bisa dibaca ulang kapan saja. Jalur lain dibuka sesuai kebutuhanmu.</p>
+      </div>
+
+      <!-- Satu sesi untuk hari ini -->
+      <div id="modHariIni"></div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="bar-top"><b style="font-size:.9rem;color:var(--ink)">Sesi harian</b><b id="progressText">0 dari 14 selesai</b></div>
+        <div class="bar-track" style="margin-top:8px"><div class="bar-fill" id="progressBar" style="width:0%"></div></div>
+        <div class="bar-top" style="margin-top:14px"><b style="font-size:.9rem;color:var(--ink)">Pustaka lanjutan</b><b id="progressPustakaText">0 dari 18 selesai</b></div>
+        <div class="bar-track" style="margin-top:8px"><div class="bar-fill" id="progressPustakaBar" style="width:0%"></div></div>
+      </div>
+
+      <div class="jalur-bar" id="jalurBar"></div>
+      <p class="jalur-ket" id="jalurKet"></p>
+      <div class="mod-grid" id="modGrid"></div>
+    </div>
+
+    <!-- Pembaca satu modul -->
+    <article class="baca" id="modBaca" hidden></article>
+
+  </div>
+</section>
+
+<footer>Nova Explorer · Program pendampingan keuangan UMKM · Bukan nasihat keuangan profesional</footer>
+
+<!-- Navigasi bawah — hanya tampil di ponsel -->
+<nav class="tabbar" id="tabbar" aria-label="Menu utama">
+  <button data-page="dasbor" class="active"><span class="ic">📊</span>Dasbor</button>
+  <button data-page="kas"><span class="ic">🧾</span>Buku Kas</button>
+  <button data-page="rekomendasi"><span class="ic">✨</span>Saran</button>
+  <button data-page="konsultasi"><span class="ic">💬</span>Tanya AI</button>
+  <button data-page="modul"><span class="ic">📖</span>Modul</button>
+  <button data-page="profil"><span class="ic">👤</span>Profil</button>
+</nav>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!--
+  Kurikulum dimuat dari /modul.js, bukan ditulis ulang di sini.
+
+  Daftar modul dulu hidup di dua tempat: di berkas ini dan sebagai teks tetap di
+  prompt AI. Selama keduanya kebetulan sama tidak ada yang terlihat salah;
+  begitu salah satu berubah, AI menyarankan "buka modul 7" yang isinya bukan
+  modul 7 di layar peserta. Sekarang keduanya menurunkan dari satu berkas,
+  server/lib/kurikulum.js.
+
+  Skrip klasik, bukan modul ES — halaman ini masih memakai fungsi global lewat
+  atribut onclick, dan skrip modul dieksekusi belakangan sehingga NOVA_MODUL
+  belum ada saat skrip di bawah berjalan.
+-->
+<script src="/modul.js"></script>
+
+<script>
+/* ============================================================
+   Kurikulum
+============================================================ */
+const MODULES = window.NOVA_MODUL ?? [];
+const JALUR = window.NOVA_JALUR ?? {};
+/* Sesi harian jalur dasar — inilah 14 sesi yang dijalani peserta, urut. */
+const SESI = MODULES.filter((m) => m.sesi != null).sort((a, b) => a.sesi - b.sesi);
+const PUSTAKA = MODULES.filter((m) => m.sesi == null);
+let jalurAktif = 'dasar';
+
+/* ============================================================
+   Status aplikasi
+============================================================ */
+const TOKEN_KEY = 'nova-access-code';
+const THEME_KEY = 'nova-theme';
+/*
+ * Mode demo ditandai di sisi peramban, BUKAN di data pengguna.
+ *
+ * Menandainya lewat batch (mis. ikut mengirim `batch` dari server) akan
+ * membocorkan penugasan kelompok penelitian B1/B2 kepada pesertanya sendiri —
+ * hal yang justru paling dijaga rancangan waitlist-control ini. Tanda lokal
+ * hanya hidup di perangkat yang menekan tombol demo.
+ */
+const DEMO_KEY = 'nova-demo-mode';
+const TOUR_TUTUP_KEY = 'nova-demo-tur-tutup';
+let token = localStorage.getItem(TOKEN_KEY) || '';
+let state = { user: null, metrics: null, aiConfigured: false, chatBusy: false };
+
+const fmtRp = (n) => 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(Number(n) || 0));
+const el = (id) => document.getElementById(id);
+
+/**
+ * Rupiah ringkas untuk label grafik: "45 jt", "1,2 jt", "450 rb".
+ *
+ * Sebelumnya semuanya dibagi seribu, jadi Rp 45 juta tampil sebagai "45000rb" —
+ * susah dibaca sekilas, dan ini label yang ikut tercetak di lembar yang dibawa
+ * ke bank.
+ */
+function ringkasRp(n) {
+  const v = Number(n) || 0;
+  const a = Math.abs(v);
+  const tanda = v < 0 ? '−' : '';
+  if (a >= 1e9) return tanda + (a / 1e9).toFixed(a >= 1e10 ? 0 : 1).replace('.', ',') + ' M';
+  if (a >= 1e6) return tanda + (a / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace('.', ',') + ' jt';
+  if (a >= 1e3) return tanda + Math.round(a / 1e3) + ' rb';
+  return tanda + Math.round(a);
+}
+
+/** Label jenis usaha — laporan untuk bank tidak boleh menampilkan kode mentah. */
+const LABEL_JENIS = {
+  kuliner: 'Kuliner', retail: 'Retail / toko', jasa: 'Jasa',
+  produksi: 'Produksi / kerajinan', online: 'Toko online', lainnya: 'Lainnya',
+};
+
+function toast(msg) {
+  const t = el('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+/** Markdown ringan: **tebal**, `kode`, daftar "- ". Selalu di-escape dulu. */
+function mdLite(s) {
+  let h = escapeHtml(s);
+  h = h.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>');
+  h = h.split('\n').map((l) => (/^\s*[-•]\s+/.test(l) ? '<li>' + l.replace(/^\s*[-•]\s+/, '') + '</li>' : l)).join('\n');
+  h = h.replace(/(?:<li>.*?<\/li>\n?)+/g, (m) => '<ul>' + m.replace(/\n/g, '') + '</ul>');
+  return h.replace(/\n/g, '<br>');
+}
+
+/* ---------- Tema ---------- */
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  const b = el('themeToggle');
+  if (b) { b.textContent = t === 'dark' ? '☀️' : '🌙'; b.title = t === 'dark' ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'; }
+  try { localStorage.setItem(THEME_KEY, t); } catch {}
+}
+applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+
+/* ---------- Pemanggilan API ---------- */
+async function api(pathname, options = {}) {
+  const res = await fetch('/api' + pathname, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: 'Bearer ' + token } : {}),
+      ...(options.headers || {}),
+    },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) { logout(); throw new Error(data.error || 'Sesi berakhir.'); }
+  /*
+   * 451 = server menolak menyimpan karena persetujuan belum/tidak lagi berlaku.
+   * Jawabannya membawa teks persetujuannya, jadi peserta dibawa ke layar itu —
+   * bukan dibiarkan menatap pesan galat tanpa satu pun jalan untuk menyetujui.
+   */
+  if (res.status === 451 && data.consent) { showConsent(data.consent); throw new Error(data.error || 'Persetujuan diperlukan.'); }
+  if (!res.ok) throw new Error(data.error || 'Permintaan gagal.');
+  return data;
+}
+
+/* ============================================================
+   Login
+============================================================ */
+el('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const code = el('codeInput').value.trim().toUpperCase();
+  const btn = el('loginBtn');
+  const errBox = el('loginError');
+  errBox.style.display = 'none';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Memeriksa…';
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Kode akses tidak dikenali.');
+    token = code;
+    localStorage.setItem(TOKEN_KEY, code);
+    // Masuk dengan kode peserta berarti keluar dari mode demo (bila sempat aktif).
+    try { localStorage.removeItem(DEMO_KEY); } catch {}
+    applySession(data);
+    // Peserta yang belum menyetujui versi teks saat ini tidak masuk dulu.
+    if (data.consent) showConsent(data.consent);
+    else enterApp();
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Masuk';
+  }
+});
+
+/**
+ * Masuk mode demo — tanpa mengetik kode apa pun.
+ *
+ * Server memilihkan salah satu dari lima usaha contoh yang telah terisi
+ * ±3 bulan pembukuan. Jawabannya bentuknya sama dengan /api/login plus
+ * `code`, jadi jalur sesi sesudahnya tidak berbeda sedikit pun.
+ */
+el('demoBtn').addEventListener('click', async () => {
+  const btn = el('demoBtn');
+  const errBox = el('loginError');
+  errBox.style.display = 'none';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Menyiapkan usaha contoh…';
+  try {
+    const res = await fetch('/api/demo', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Akun demo belum siap. Coba beberapa saat lagi.');
+    token = data.code;
+    localStorage.setItem(TOKEN_KEY, data.code);
+    try { localStorage.setItem(DEMO_KEY, '1'); } catch {}
+    applySession(data);
+    if (data.consent) showConsent(data.consent);
+    else enterApp();
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Coba tanpa kode — Mode Demo';
+  }
+});
+
+function logout() {
+  token = '';
+  localStorage.removeItem(TOKEN_KEY);
+  try { localStorage.removeItem(DEMO_KEY); localStorage.removeItem(TOUR_TUTUP_KEY); } catch {}
+  state = { user: null, metrics: null, aiConfigured: false, chatBusy: false };
+  el('app').style.display = 'none';
+  el('consentScreen').style.display = 'none';
+  el('authScreen').style.display = 'grid';
+  el('codeInput').value = '';
+  tutupTurDemo(true);
+}
+
+/* ============================================================
+   Persetujuan peserta
+
+   Layar ini bukan formalitas. Aplikasi ini mengumpulkan pembukuan
+   keuangan pemilik usaha kecil dan mengirim sebagiannya ke layanan AI
+   pihak ketiga — dan itu tidak boleh dianggap disetujui hanya karena
+   seseorang diberi kode akses. Server juga menolak menyimpan data dari
+   peserta yang belum menyetujui, jadi layar ini bukan satu-satunya pagar.
+============================================================ */
+function showConsent(consent, { bacaSaja = false, disetujuiPada = null } = {}) {
+  el('authScreen').style.display = 'none';
+  el('app').style.display = 'none';
+  el('consentScreen').style.display = 'grid';
+  el('consentError').style.display = 'none';
+  el('consentTitle').textContent = consent.judul;
+  el('consentLead').textContent = consent.ringkas;
+  el('consentOutro').textContent = bacaSaja && disetujuiPada
+    ? `Kamu menyetujui teks ini pada ${disetujuiPada}.`
+    : consent.penutup;
+  el('consentPoints').innerHTML = consent.poin
+    .map(
+      (p) => `<div style="margin-bottom:14px">
+        <div style="font-weight:700;font-size:.92rem;margin-bottom:3px">${escapeHtml(p.judul)}</div>
+        <div style="font-size:.88rem;color:var(--ink-soft);line-height:1.55">${escapeHtml(p.isi)}</div>
+      </div>`,
+    )
+    .join('');
+  el('consentAgree').dataset.versi = consent.versi;
+
+  // Mode baca-ulang: satu tombol "Tutup", tanpa meminta persetujuan lagi.
+  el('consentAgree').style.display = bacaSaja ? 'none' : '';
+  el('consentDecline').textContent = bacaSaja ? 'Tutup' : 'Belum, keluar dulu';
+  el('consentDecline').dataset.mode = bacaSaja ? 'tutup' : 'keluar';
+}
+
+el('consentAgree').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  const errBox = el('consentError');
+  errBox.style.display = 'none';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Menyimpan…';
+  try {
+    await api('/consent', { method: 'POST', body: JSON.stringify({ versi: Number(btn.dataset.versi) }) });
+    el('consentScreen').style.display = 'none';
+    const data = await api('/me');
+    applySession(data);
+    btn.style.display = '';
+    enterApp();
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Saya mengerti dan setuju';
+  }
+});
+
+el('consentDecline').addEventListener('click', (e) => {
+  // Dalam mode baca-ulang tombol ini hanya menutup — peserta yang sedang membaca
+  // ulang persetujuannya tidak boleh tiba-tiba terlempar keluar.
+  if (e.currentTarget.dataset.mode === 'tutup') {
+    el('consentScreen').style.display = 'none';
+    el('app').style.display = 'block';
+    return;
+  }
+  logout();
+  toast('Kamu bisa masuk lagi kapan saja dengan kode aksesmu.');
+});
+
+/* ============================================================
+   Data milik peserta — unduh & hapus
+============================================================ */
+async function unduhDataSaya() {
+  try {
+    const res = await fetch('/api/my-data', { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Gagal menyiapkan data.');
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = `nova-explorer-data-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Dibebaskan belakangan: mencabut alamat blob pada detik yang sama dengan
+    // klik membatalkan unduhannya di sebagian peramban ponsel.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    toast('Data kamu sudah diunduh');
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+/**
+ * Menampilkan ulang teks persetujuan — peserta harus bisa membacanya kapan saja.
+ *
+ * Memakai layar persetujuan yang sama, bukan `alert()`. Kotak alert di ponsel
+ * tidak bisa digulir dan memotong teks panjang, jadi dokumen yang justru paling
+ * berhak dibaca utuh adalah satu-satunya yang tidak bisa dibaca utuh.
+ */
+async function lihatPersetujuan() {
+  try {
+    const { consent, tercatat } = await api('/consent');
+    const tgl = tercatat?.agreedAt
+      ? new Date(tercatat.agreedAt).toLocaleDateString('id-ID', { dateStyle: 'long' })
+      : null;
+    showConsent(consent, { bacaSaja: true, disetujuiPada: tgl });
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+async function hapusDataSaya() {
+  const pesan =
+    'Ini akan MENGHAPUS SELURUH datamu: profil usaha, semua catatan buku kas, dan riwayat percakapan.\n\n' +
+    'Data yang dihapus tidak bisa dikembalikan. Kalau kamu ingin menyimpan pembukuanmu, batalkan dulu lalu pilih "Unduh data saya".\n\n' +
+    'Ketik HAPUS untuk melanjutkan:';
+  const jawab = prompt(pesan);
+  if (jawab === null) return;
+  if (jawab.trim().toUpperCase() !== 'HAPUS') return toast('Dibatalkan — data kamu masih utuh.');
+
+  try {
+    await api('/my-account', { method: 'DELETE', body: JSON.stringify({ konfirmasi: 'HAPUS' }) });
+    alert('Datamu sudah dihapus dan kamu keluar dari program. Terima kasih sudah ikut serta.');
+    logout();
+  } catch (err) {
+    toast(err.message);
+  }
+}
+el('logoutBtn').addEventListener('click', () => { logout(); toast('Kamu sudah keluar'); });
+el('themeToggle').addEventListener('click', () =>
+  applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
+
+function applySession(data) {
+  state.user = data.user;
+  state.metrics = data.metrics;
+  state.aiConfigured = data.aiConfigured;
+  // Jadwal belajar: dipakai untuk tahu sesi mana yang sudah boleh dibuka.
+  // Server tetap yang menegakkan; ini hanya supaya layarnya jujur lebih dulu.
+  if (data.belajar) state.belajar = data.belajar;
+  if (data.anggaran) setAnggaran(data.anggaran);
+}
+
+/**
+ * Menunjukkan sisa jatah tanya-AI.
+ *
+ * Ditampilkan dalam "kira-kira berapa pertanyaan lagi", bukan dalam token.
+ * Pemilik warung tidak punya alasan untuk tahu apa itu token; yang dia perlu
+ * tahu adalah masih bisa bertanya berapa kali hari ini. Angkanya baru muncul
+ * ketika jatahnya mulai menipis — pemberitahuan yang selalu tampil akan
+ * berhenti dibaca justru sebelum saat ia benar-benar berguna.
+ */
+const KIRA_PER_TANYA = 3500;
+function setAnggaran(a) {
+  state.anggaran = a;
+  const box = el('anggaranNote');
+  if (!box) return;
+  const kirim = el('chatSend');
+  const sisaTanya = Math.floor(a.sisa / KIRA_PER_TANYA);
+  // Yang lebih dulu habis: jatah hari ini, atau jatah minggu ini.
+  const harian = a.harian.sisa <= a.mingguan.sisa;
+  const periode = harian ? 'hari ini' : 'minggu ini';
+  const kembali = harian ? 'besok pagi' : 'Senin depan';
+
+  if (sisaTanya < 1) {
+    box.innerHTML = `<b>Jatah tanya-AI ${periode} sudah habis.</b> Jatahnya penuh lagi ${kembali}. ` +
+      'Buku kas, laporan, dan modul tetap bisa dipakai seperti biasa.';
+    box.style.color = 'var(--red)';
+    if (kirim) kirim.disabled = true;
+    return;
+  }
+
+  box.textContent = `Sisa jatah tanya-AI: sekitar ${sisaTanya} pertanyaan lagi ${periode}.`;
+  /*
+   * Warnanya hanya berubah pada pertanyaan TERAKHIR. Dengan jatah harian yang
+   * cukup untuk dua pertanyaan, peringatan berwarna yang menyala sejak pagi akan
+   * menyala setiap hari — dan peringatan yang selalu ada berhenti dibaca justru
+   * sebelum saat ia benar-benar berguna.
+   */
+  box.style.color = sisaTanya <= 1 ? 'var(--gold)' : 'var(--ink-soft)';
+  if (kirim) kirim.disabled = false;
+}
+
+function enterApp() {
+  el('authScreen').style.display = 'none';
+  el('app').style.display = 'block';
+  const modeDemo = cekDemo();
+  // Sapaan membawa lencana demo — pengguna tahu datanya contoh, bukan miliknya.
+  el('greeting').innerHTML =
+    `Halo, ${escapeHtml(state.user.name)}!` + (modeDemo ? ' <span class="demo-badge">Mode Demo</span>' : '');
+  el('dashSub').textContent = state.user.profile
+    ? `Ringkasan kondisi keuangan ${state.user.profile.namaUsaha}.`
+    : 'Lengkapi profil usaha dulu supaya semua saran bisa disesuaikan denganmu.';
+  fillProfileForm();
+  renderDashboard();
+  renderRecommendations();
+  renderModules();
+  setChatStatus();
+  loadChat();
+  // Satu permintaan saja: menyiapkan kategori, pilihan bulan, DAN grafik dasbor.
+  loadCashbook().catch(() => {});
+  // Scan nota butuh layanan AI — tombolnya hanya tampil bila AI siap.
+  el('scanNotaBtn').hidden = !state.aiConfigured;
+  // Kartu kesehatan butuh profil usaha — tanpa itu belum ada yang bisa dibagikan.
+  el('kartuAksi').style.display = state.user.profile ? '' : 'none';
+  // Check-up AI butuh profil DAN layanan AI aktif.
+  el('checkupCard').style.display = (state.user.profile && state.aiConfigured) ? '' : 'none';
+  // Garis waktu skor per bulan — ringan, satu permintaan, gagal diam saja.
+  loadTimeline().catch(() => {});
+  // Perbandingan bulan ini vs bulan lalu — deterministik, tanpa AI.
+  loadPerubahan().catch(() => {});
+  goTo(state.user.profile ? 'dasbor' : 'profil');
+  if (modeDemo) tampilkanTurDemo();
+}
+
+/* ---------- Navigasi ---------- */
+// Halaman yang tidak punya tombolnya sendiri di menu — menyorot tombol induknya,
+// supaya menu tidak pernah tampak "tidak sedang di mana pun".
+const INDUK_HALAMAN = { laporan: 'kas', profil: 'profil' };
+
+function goTo(page) {
+  const tujuan = el('page-' + page);
+  if (!tujuan) return;
+  document.querySelectorAll('.page').forEach((p) => p.classList.remove('active'));
+  tujuan.classList.add('active');
+  const sorot = INDUK_HALAMAN[page] ?? page;
+  document.querySelectorAll('#navLinks button, #tabbar button').forEach((b) => {
+    const aktif = b.dataset.page === sorot;
+    b.classList.toggle('active', aktif);
+    if (aktif) b.setAttribute('aria-current', 'page');
+    else b.removeAttribute('aria-current');
+  });
+  window.scrollTo({ top: 0 });
+
+  // Halaman yang datanya diambil saat dibuka.
+  if (page === 'kas') loadCashbook(kas.month);
+  if (page === 'laporan') loadReport();
+}
+document.querySelectorAll('#navLinks button, #tabbar button').forEach((b) =>
+  b.addEventListener('click', () => goTo(b.dataset.page)));
+
+/* ============================================================
+   Tur mode demo
+============================================================
+ *
+ * Jalan pintas berpandu untuk yang baru pertama kali membuka aplikasi —
+ * juri kontes, calon pendamping, atau peserta yang penasaran. Tiap langkah
+ * langsung membawa pengguna ke halamannya, jadi "fitur apa saja yang ada"
+ * tidak perlu ditebak dari nama menu.
+ *
+ * Hanya tampil pada perangkat yang masuk lewat tombol demo. Peserta
+ * penelitian tidak pernah melihat kartu ini.
+ */
+function cekDemo() {
+  try { return localStorage.getItem(DEMO_KEY) === '1'; } catch { return false; }
+}
+
+const LANGKAH_TUR = [
+  { halaman: 'dasbor', judul: 'Dasbor & skor kesehatan', ringkas: 'Angka omzet, laba, dan skor 0–100 dari pembukuan sendiri.' },
+  { halaman: 'kas', judul: 'Buku Kas', ringkas: 'Grafik surplus per hari — coba catat satu transaksi, grafiknya langsung bergerak.' },
+  { halaman: 'rekomendasi', judul: 'Rekomendasi AI', ringkas: 'Saran perbaikan yang menyebut angka usaha ini, bukan nasihat umum.' },
+  { halaman: 'konsultasi', judul: 'Tanya AI', ringkas: 'Konsultan yang membaca buku kasmu. Coba: "labaku sebulan berapa?"' },
+  { halaman: 'laporan', judul: 'Laporan KUR', ringkas: 'Rekap 3–12 bulan siap cetak PDF untuk lampiran pengajuan bank.' },
+  { halaman: 'modul', judul: 'Kelas 14 sesi', ringkas: 'Micro-learning 10 menit/hari, satu sesi terbuka tiap hari.' },
+];
+
+function tampilkanTurDemo() {
+  tutupTurDemo(true);
+  let ditutup = false;
+  try { ditutup = localStorage.getItem(TOUR_TUTUP_KEY) === '1'; } catch {}
+
+  const kartu = document.createElement('div');
+  kartu.className = 'tour-card';
+  kartu.id = 'tourCard';
+  kartu.innerHTML = `
+    <h4>📍 Jelajahi dalam 2 menit <button class="tour-close" id="tourClose" aria-label="Tutup tur">✕</button></h4>
+    <p class="tour-sub">Enam hal yang bisa langsung dicoba di akun demo ini.</p>
+    <ul class="tour-list">
+      ${LANGKAH_TUR.map((l, i) => `
+        <li><button data-tur="${l.halaman}">
+          <span class="no">${i + 1}</span>
+          <span><b>${l.judul}</b><small>${l.ringkas}</small></span>
+        </button></li>`).join('')}
+    </ul>`;
+  document.body.appendChild(kartu);
+
+  kartu.querySelectorAll('[data-tur]').forEach((b) =>
+    b.addEventListener('click', () => {
+      goTo(b.dataset.tur);
+      kartu.remove();
+      pasangTombolTur();
+    }));
+  el('tourClose').addEventListener('click', () => {
+    try { localStorage.setItem(TOUR_TUTUP_KEY, '1'); } catch {}
+    tutupTurDemo();
+  });
+
+  if (ditutup) { kartu.remove(); pasangTombolTur(); }
+}
+
+function pasangTombolTur() {
+  if (document.getElementById('tourOpen')) return;
+  const btn = document.createElement('button');
+  btn.className = 'tour-open';
+  btn.id = 'tourOpen';
+  btn.textContent = '📍 Tur demo';
+  btn.addEventListener('click', () => {
+    try { localStorage.removeItem(TOUR_TUTUP_KEY); } catch {}
+    tampilkanTurDemo();
+    btn.remove();
+  });
+  document.body.appendChild(btn);
+}
+
+/** Melepas kartu dan tombol tur dari halaman — dipakai logout dan cetak laporan. */
+function tutupTurDemo(sembunyikanSemua = false) {
+  document.getElementById('tourCard')?.remove();
+  if (sembunyikanSemua) document.getElementById('tourOpen')?.remove();
+}
+
+/*
+ * Laporan KUR dicetak lewat dialog cetak peramban — kartu tur yang
+ * melayang tidak boleh ikut tercetak di lembar yang dibawa ke bank.
+ */
+window.addEventListener('beforeprint', () => {
+  tutupTurDemo(true);
+  tutupModalNota();
+});
+// Kelas cetak kartu dilepas setelah dialog cetak ditutup, apa pun hasilnya.
+window.addEventListener('afterprint', () => document.body.classList.remove('cetak-kartu'));
+
+/* ============================================================
+   Bagikan rekap ke WhatsApp
+============================================================
+ *
+ * Pemilik UMKM tidak mengirim laporan formal ke pendamping atau keluarga —
+ * mereka menempelkan potongan teks di chat. Rekap 7 hari yang sudah
+ * terformat WhatsApp (bold, emoji, angka ringkas) menjembatani keduanya:
+ * satu tombol, tanpa ekspor berkas, tanpa login apa pun.
+ *
+ * Dibangun sepenuhnya di peramban dari data yang sudah dimuat — tidak ada
+ * permintaan server baru, dan teksnya tidak pernah melewati server pihak
+ * ketiga mana pun: pembukaan wa.me hanya berisi teks hasil encode.
+ */
+async function bagikanWa() {
+  const btn = el('waShareBtn');
+  btn.disabled = true;
+  try {
+    const data = await api('/cashbook');
+    const hariIni = new Date();
+    const mulai = new Date(hariIni);
+    mulai.setDate(mulai.getDate() - 6);
+    const iso = (d) => d.toISOString().slice(0, 10);
+    const awal = iso(mulai), akhir = iso(hariIni);
+
+    const trx7 = data.transactions.filter((t) => t.tanggal >= awal && t.tanggal <= akhir);
+    if (!trx7.length) { toast('Belum ada catatan dalam 7 hari terakhir.'); return; }
+
+    const masuk = trx7.filter((t) => t.jenis === 'masuk').reduce((a, t) => a + t.jumlah, 0);
+    const kel = trx7.filter((t) => t.jenis === 'keluar');
+    const perKategori = {};
+    for (const t of kel) perKategori[t.kategori] = (perKategori[t.kategori] ?? 0) + t.jumlah;
+    const keluar = kel.reduce((a, t) => a + t.jumlah, 0);
+    const biayaUsaha = (perKategori['belanja-bahan'] ?? 0) + (perKategori.operasional ?? 0) + (perKategori['lain-keluar'] ?? 0);
+    const laba = masuk - biayaUsaha;
+
+    const nama = state.user?.profile?.namaUsaha || state.user?.name || 'Usaha saya';
+    const tglID = (s) => new Date(s + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    const garis = '───────────────';
+    const teks =
+`📊 *Rekap Kas 7 Hari* — ${nama}
+${tglID(awal)} – ${tglID(akhir)}
+
+*Masuk:* ${fmtRp(masuk)} (${trx7.filter((t) => t.jenis === 'masuk').length} catatan)
+*Keluar:* ${fmtRp(keluar)}
+${garis}
+• Bahan/barang: ${fmtRp(perKategori['belanja-bahan'] ?? 0)}
+• Operasional: ${fmtRp(perKategori.operasional ?? 0)}
+• Prive: ${fmtRp(perKategori.prive ?? 0)}${perKategori.cicilan ? `\n• Cicilan: ${fmtRp(perKategori.cicilan)}` : ''}
+${garis}
+*Estimasi laba minggu ini:* ${fmtRp(laba)}
+
+_Dicatat dengan Nova Explorer_`;
+
+    // wa.me membuka pemilih kontak di aplikasi WhatsApp; teks hanya di perangkat.
+    window.open('https://wa.me/?text=' + encodeURIComponent(teks), '_blank', 'noopener');
+  } catch (err) {
+    toast(err.message || 'Gagal menyiapkan rekap.');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ============================================================
+   Dasbor
+============================================================ */
+function renderDashboard() {
+  const box = el('dashBody');
+  const m = state.metrics;
+  if (!state.user.profile || !m) {
+    box.innerHTML = `<div class="card empty">
+      <span class="big">🏪</span>
+      <h3>Profil usaha belum diisi</h3>
+      <p style="margin:8px auto 0;max-width:420px">Isi data usahamu sekali saja. Setelah itu kamu langsung dapat skor kesehatan keuangan, rekomendasi personal, dan konsultasi AI yang memakai angka usahamu sendiri.</p>
+      <div class="actions" style="justify-content:center"><button class="btn btn-primary" onclick="goTo('profil')">Isi profil usaha →</button></div>
+    </div>`;
+    return;
+  }
+
+  const r = 52, circumference = 2 * Math.PI * r;
+  const filled = (m.skorKesehatan / 100) * circumference;
+  const pillClass = m.skorKesehatan >= 60 ? '' : m.skorKesehatan >= 40 ? 'warn' : 'bad';
+
+  const cicilanRow = m.cicilanSaatIni > 0
+    ? `<div class="stat-row"><span>Beban cicilan berjalan</span><b class="${m.statusCicilan === 'aman' ? 'pos' : 'neg'}">${m.bebanCicilan}% dari laba</b></div>` +
+      // Cicilan yang diakui di profil tapi belum pernah muncul di buku kas.
+      // Tanpa baris ini, angsuran yang dibayar lewat rekening tidak terlihat
+      // di mana pun — dan saldo kas tampak lebih besar dari kenyataannya.
+      (m.cicilanBelumTercatat
+        ? `<div class="bar-note" style="padding:0 0 8px">Angka cicilan diambil dari profilmu; di buku kas bulan ini baru tercatat ${fmtRp(m.cicilanDicatat)}. Catat juga angsurannya (kategori “Bayar cicilan pinjaman”) agar saldo kas ikut benar.</div>`
+        : '')
+    : '';
+
+  /*
+   * Angka "per bulan" di kartu ini adalah setara sebulan penuh. Selama bulannya
+   * belum habis, uang yang benar-benar sudah tercatat ditampilkan terpisah di
+   * bawahnya — dua angka dengan periode yang jelas, bukan satu angka yang
+   * berpura-pura sebulan.
+   */
+  const b = m.berjalan;
+  const periodeNote = m.sumber === 'catatan' && m.disetarakan
+    ? `<p class="sub" style="font-size:.82rem;margin:-4px 0 10px">Bulan ini baru berjalan <b>${m.hariBerjalan} dari ${m.hariBulan} hari</b>. Angka di bawah adalah <b>setara sebulan penuh</b>, dihitung dari laju harianmu — supaya bisa dibandingkan dengan bulan lain.</p>`
+    : m.sumber === 'catatan'
+      ? `<p class="sub" style="font-size:.82rem;margin:-4px 0 10px">Bulan penuh ${m.hariBulan} hari — ini angka sebulan yang sesungguhnya.</p>`
+      : m.catatanBelumCukup
+        ? `<p class="sub" style="font-size:.82rem;margin:-4px 0 10px">Catatanmu bulan ini baru <b>${m.hariTercatat} dari ${m.hariBerjalan} hari</b> yang sudah lewat — belum cukup rapat untuk dipakai sebagai angka sebulan, jadi yang dipakai masih perkiraanmu. Catat lebih rutin dan angka ini otomatis berganti ke angka nyata.</p>`
+        : '';
+
+  // Baris ini hanya muncul kalau angkanya berasal dari buku kas nyata.
+  const kasRows = m.sumber === 'catatan'
+    ? `<div class="stat-row"><span>Saldo kas${m.disetarakan ? ' (setara sebulan)' : ' bulan ini'}</span><b class="${m.saldoKas >= 0 ? 'pos' : 'neg'}">${m.saldoKas < 0 ? '− ' : ''}${fmtRp(Math.abs(m.saldoKas))}</b></div>` +
+      (m.prive > 0 ? `<div class="stat-row"><span>Prive (dipakai pribadi)</span><b>${fmtRp(m.prive)}</b></div>` : '')
+    : '';
+
+  const berjalanBlock = m.sumber === 'catatan' && m.disetarakan && b
+    ? `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)">
+         <div style="font-size:.8rem;font-weight:700;color:var(--ink-soft);margin-bottom:6px">Yang benar-benar sudah tercatat (${m.hariBerjalan} dari ${m.hariBulan} hari)</div>
+         <div class="stat-list">
+           <div class="stat-row"><span>Omzet sejauh ini</span><b>${fmtRp(b.omzet)}</b></div>
+           <div class="stat-row"><span>Laba bersih sejauh ini</span><b class="${b.labaBersih >= 0 ? 'pos' : 'neg'}">${b.labaBersih < 0 ? '− ' : ''}${fmtRp(Math.abs(b.labaBersih))}</b></div>
+           <div class="stat-row"><span>Saldo kas sejauh ini</span><b class="${b.saldoKas >= 0 ? 'pos' : 'neg'}">${b.saldoKas < 0 ? '− ' : ''}${fmtRp(Math.abs(b.saldoKas))}</b></div>
+         </div>
+       </div>`
+    : '';
+
+  box.innerHTML = `
+    <div class="hero-row">
+      <div class="score-card">
+        <div class="dial">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="dial-track" cx="60" cy="60" r="${r}"></circle>
+            <circle class="dial-fill" cx="60" cy="60" r="${r}" stroke-dasharray="${filled} ${circumference}"></circle>
+          </svg>
+          <div class="dial-num">${m.skorKesehatan}<small>dari 100</small></div>
+        </div>
+        <div class="score-body">
+          <h2>Kesehatan keuangan</h2>
+          <p>Dihitung dari margin laba, kebiasaan mencatat, pemisahan uang usaha, legalitas, dan lama usaha berjalan.</p>
+          <span class="pill ${pillClass}">${m.statusKesehatan}</span>
+          <br>
+          <span class="source-badge ${m.sumber === 'catatan' ? 'real' : ''}">
+            ${m.sumber === 'catatan'
+              ? `✓ Dari buku kas — ${m.hariTercatat} hari tercatat bulan ini`
+              : m.catatanBelumCukup
+                ? `≈ Masih dari perkiraanmu — catatanmu baru ${m.hariTercatat} dari ${m.hariBerjalan} hari berjalan`
+                : '≈ Dari perkiraanmu — catat di Buku Kas agar akurat'}
+          </span>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:10px">Ringkasan bulanan</h3>
+        ${periodeNote}
+        <div class="stat-list">
+          <div class="stat-row"><span>Omzet per bulan</span><b>${fmtRp(m.omzet)}</b></div>
+          <div class="stat-row"><span>Belanja barang (HPP)</span><b>− ${fmtRp(m.hpp)}</b></div>
+          <div class="stat-row"><span>Biaya operasional</span><b>− ${fmtRp(m.biaya)}</b></div>
+          <div class="stat-row"><span>Laba bersih</span><b class="${m.labaBersih >= 0 ? 'pos' : 'neg'}">${m.labaBersih < 0 ? '− ' : ''}${fmtRp(Math.abs(m.labaBersih))}</b></div>
+          <div class="stat-row"><span>Margin bersih</span><b class="${m.marginBersih >= 10 ? 'pos' : m.marginBersih >= 0 ? '' : 'neg'}">${m.marginBersih}%</b></div>
+          <div class="stat-row"><span>Batas cicilan sehat</span><b>${fmtRp(m.maxCicilanSehat)}/bulan</b></div>
+          ${cicilanRow}
+          ${kasRows}
+        </div>
+        ${berjalanBlock}
+      </div>
+    </div>
+
+    <div class="chart-card viz" id="dashChartCard" style="margin-top:16px;display:none">
+      <div class="chart-head">
+        <div>
+          <h3>Sisa uang per hari — bulan ini</h3>
+          <p>Hari mana usahamu nombok, dan hari mana yang paling ramai.</p>
+        </div>
+        <button class="btn btn-ghost" style="padding:7px 13px;font-size:.82rem" onclick="goTo('kas')">Buka buku kas →</button>
+      </div>
+      <div class="chart-wrap" id="dashChart"></div>
+      <div class="chart-legend">
+        <span><i style="background:var(--surplus)"></i> Hari surplus</span>
+        <span><i style="background:var(--defisit)"></i> Hari defisit (nombok)</span>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3 style="margin-bottom:6px">Rincian skor</h3>
+      <p class="sub" style="font-size:.86rem;margin-bottom:8px">Bagian dengan batang paling pendek adalah peluang perbaikan terbesar.</p>
+      ${m.komponenSkor.map((k) => `
+        <div class="bar-row">
+          <div class="bar-top"><span>${escapeHtml(k.aspek)}</span><b>${k.poin}/${k.maks}</b></div>
+          <div class="bar-track"><div class="bar-fill" style="width:${(k.poin / k.maks) * 100}%"></div></div>
+          <div class="bar-note">${escapeHtml(k.catatan)}</div>
+        </div>`).join('')}
+      <div class="actions">
+        <button class="btn btn-primary" onclick="goTo('kas')">🧾 Catat transaksi</button>
+        <button class="btn btn-ghost" onclick="goTo('rekomendasi')">Lihat rekomendasi →</button>
+        <button class="btn btn-ghost" onclick="goTo('konsultasi')">💬 Tanya konsultan AI</button>
+        <button class="btn btn-ghost" onclick="goTo('profil')">Ubah profil</button>
+      </div>
+    </div>`;
+}
+
+/* ============================================================
+   Profil usaha
+============================================================ */
+function fillProfileForm() {
+  const p = state.user.profile;
+  if (!p) return;
+  const f = el('profileForm');
+  for (const [key, value] of Object.entries(p)) {
+    const input = f.elements[key];
+    if (!input) continue;
+    if (input.type === 'checkbox') input.checked = Boolean(value);
+    else input.value = value ?? '';
+  }
+}
+
+el('profileForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  const btn = el('saveProfileBtn');
+  const errBox = el('profileError');
+  errBox.style.display = 'none';
+
+  const payload = {};
+  for (const field of ['namaUsaha','jenisUsaha','lokasi','produkUtama','pencatatan','tujuan','tantangan']) {
+    payload[field] = f.elements[field].value;
+  }
+  for (const field of ['lamaUsahaBulan','jumlahKaryawan','omzetBulanan','belanjaBulanan','biayaOperasional','cicilanBulanan']) {
+    payload[field] = Number(f.elements[field].value) || 0;
+  }
+  payload.rekeningTerpisah = f.elements.rekeningTerpisah.checked;
+  payload.punyaNib = f.elements.punyaNib.checked;
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Menyimpan…';
+  try {
+    const data = await api('/profile', { method: 'PUT', body: JSON.stringify(payload) });
+    state.user.profile = data.profile;
+    state.user.recommendations = null;
+    state.metrics = data.metrics;
+    el('dashSub').textContent = `Ringkasan kondisi keuangan ${data.profile.namaUsaha}.`;
+    renderDashboard();
+    renderRecommendations();
+    loadChat(); // sapaan konsultan ikut menyesuaikan nama usaha yang baru
+    toast('✅ Profil usaha tersimpan');
+    goTo('dasbor');
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Simpan profil';
+  }
+});
+
+/* ============================================================
+   Rekomendasi personal
+============================================================ */
+function renderRecommendations() {
+  const box = el('recBody');
+  if (!state.user.profile) {
+    box.innerHTML = `<div class="card empty">
+      <span class="big">📝</span>
+      <h3>Isi profil usaha dulu</h3>
+      <p style="margin:8px auto 0;max-width:420px">Rekomendasi disusun dari angka dan kondisi usahamu, jadi profilnya perlu diisi lebih dulu.</p>
+      <div class="actions" style="justify-content:center"><button class="btn btn-primary" onclick="goTo('profil')">Isi profil usaha →</button></div>
+    </div>`;
+    return;
+  }
+
+  const rec = state.user.recommendations;
+  if (!rec) {
+    box.innerHTML = `<div class="card empty">
+      <span class="big">✨</span>
+      <h3>Belum ada rekomendasi</h3>
+      <p style="margin:8px auto 0;max-width:460px">Konsultan AI akan membaca profil dan angka usahamu, lalu menyusun rencana perbaikan yang spesifik untuk ${escapeHtml(state.user.profile.namaUsaha)}.</p>
+      <div class="actions" style="justify-content:center"><button class="btn btn-primary" id="genRecBtn">Buat rekomendasi saya</button></div>
+      ${state.aiConfigured ? '' : '<p class="stamp">Catatan: fitur AI belum aktif di server ini.</p>'}
+    </div>`;
+    el('genRecBtn').addEventListener('click', generateRecommendations);
+    return;
+  }
+
+  const prioRank = { tinggi: 0, sedang: 1, rendah: 2 };
+  const list = [...(rec.rekomendasi ?? [])].sort((a, b) => (prioRank[a.prioritas] ?? 9) - (prioRank[b.prioritas] ?? 9));
+
+  box.innerHTML = `
+    <div class="card" style="margin-bottom:14px">
+      <h3 style="margin-bottom:6px">Ringkasan kondisi</h3>
+      <p style="font-size:.94rem">${escapeHtml(rec.ringkasan ?? '')}</p>
+    </div>
+
+    ${(rec.peringatan ?? []).length ? `<div class="callout warn"><b>⚠️ Perlu perhatian</b><ul>${rec.peringatan.map((w) => `<li>${escapeHtml(w)}</li>`).join('')}</ul></div>` : ''}
+
+    ${list.map((r) => `
+      <div class="rec ${escapeHtml(r.prioritas)}">
+        <div class="rec-top">
+          <h3>${escapeHtml(r.judul)}</h3>
+          <span class="rec-prio ${escapeHtml(r.prioritas)}">${escapeHtml(r.prioritas)}</span>
+        </div>
+        <p>${escapeHtml(r.alasan)}</p>
+        <ol>${(r.langkah ?? []).map((s) => `<li>${escapeHtml(s)}</li>`).join('')}</ol>
+        <div class="rec-foot">
+          ${labelModul(r.modulTerkait)}
+          <span>${escapeHtml(r.dampak)}</span>
+        </div>
+      </div>`).join('')}
+
+    <div class="card" style="margin-top:14px">
+      <h3>🎯 Target 30 hari ke depan</h3>
+      <div class="target-list">
+        ${(rec.targetBulanIni ?? []).map((t, i) => `<div class="target"><span class="no">${i + 1}</span><span>${escapeHtml(t)}</span></div>`).join('')}
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" id="regenRecBtn">🔄 Perbarui rekomendasi</button>
+        <button class="btn btn-ghost" onclick="goTo('konsultasi')">💬 Diskusikan dengan AI</button>
+      </div>
+      <p class="stamp">Dibuat ${new Date(rec.generatedAt).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })} oleh AI Gemini 2.5 · berdasarkan profil usaha terbaru.</p>
+    </div>`;
+  el('regenRecBtn').addEventListener('click', generateRecommendations);
+  box.querySelectorAll('[data-modul]').forEach((b) =>
+    b.addEventListener('click', () => { goTo('modul'); bacaModul(Number(b.dataset.modul)); }));
+}
+
+async function generateRecommendations() {
+  const btns = document.querySelectorAll('#genRecBtn, #regenRecBtn');
+  btns.forEach((b) => { b.disabled = true; b.innerHTML = '<span class="spin"></span> Menyusun rekomendasi…'; });
+  try {
+    const data = await api('/recommendations', { method: 'POST' });
+    state.user.recommendations = data.recommendations;
+    state.metrics = data.metrics;
+    if (data.anggaran) setAnggaran(data.anggaran);
+    renderRecommendations();
+    renderDashboard();
+    toast('✨ Rekomendasi personal siap');
+  } catch (err) {
+    toast(err.message);
+    btns.forEach((b) => { b.disabled = false; b.textContent = 'Coba lagi'; });
+  }
+}
+
+/* ============================================================
+   Konsultasi AI (streaming)
+============================================================ */
+const CHIPS = [
+  'Apa langkah pertama yang harus saya lakukan?',
+  'Bagaimana cara menaikkan laba usaha saya?',
+  'Apakah usaha saya sudah layak mengajukan KUR?',
+  'Bagaimana cara mulai mencatat keuangan harian?',
+];
+
+function setChatStatus() {
+  const sub = el('chatSub');
+  const txt = el('chatStatus');
+  if (state.aiConfigured) {
+    sub.classList.add('online'); sub.classList.remove('offline');
+    txt.textContent = 'Online · AI Gemini 2.5';
+  } else {
+    sub.classList.add('offline'); sub.classList.remove('online');
+    txt.textContent = 'AI belum aktif di server ini';
+  }
+  el('chatChips').innerHTML = CHIPS.map((c) => `<button class="chip" type="button">${escapeHtml(c)}</button>`).join('');
+  el('chatChips').querySelectorAll('.chip').forEach((b) =>
+    b.addEventListener('click', () => { el('chatInput').value = b.textContent; el('chatForm').requestSubmit(); }));
+}
+
+function addMsg(text, who, meta) {
+  const log = el('chatLog');
+  const d = document.createElement('div');
+  d.className = 'msg ' + who;
+  if (who === 'user') d.textContent = text; else d.innerHTML = mdLite(text);
+  if (meta) {
+    const m = document.createElement('span');
+    m.className = 'msg-meta';
+    m.textContent = meta;
+    d.appendChild(m);
+  }
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+  return d;
+}
+
+function welcomeMessage() {
+  const nama = state.user.profile?.namaUsaha;
+  return nama
+    ? `Halo! 👋 Saya konsultan keuangan **${nama}**. Saya sudah membaca profil dan angka usahamu, jadi langsung saja — mau tanya apa hari ini?`
+    : 'Halo! 👋 Saya konsultan keuangan Nova Explorer. Isi **Profil Usaha** dulu supaya jawaban saya bisa memakai angka usahamu sendiri, tapi silakan tanya apa saja sekarang.';
+}
+
+async function loadChat() {
+  const log = el('chatLog');
+  log.innerHTML = '';
+  addMsg(welcomeMessage(), 'ai', 'Konsultan Nova');
+  try {
+    const { messages } = await api('/chat');
+    for (const m of messages) {
+      addMsg(m.content, m.role === 'user' ? 'user' : 'ai',
+        m.role === 'user' ? null : 'AI Gemini 2.5 · ' + new Date(m.ts).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
+    }
+  } catch { /* riwayat gagal dimuat — tidak fatal */ }
+}
+
+el('clearChatBtn').addEventListener('click', async () => {
+  try {
+    await api('/chat', { method: 'DELETE' });
+    el('chatLog').innerHTML = '';
+    addMsg(welcomeMessage(), 'ai', 'Konsultan Nova');
+    toast('🗑 Percakapan dihapus');
+  } catch (err) { toast(err.message); }
+});
+
+el('chatForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (state.chatBusy) return;
+  const input = el('chatInput');
+  const message = input.value.trim();
+  if (!message) return;
+  input.value = '';
+  addMsg(message, 'user');
+
+  state.chatBusy = true;
+  el('chatSend').disabled = true;
+  const bubble = addMsg('', 'ai');
+  bubble.innerHTML = '<span class="dots"><span></span><span></span><span></span></span>';
+  const log = el('chatLog');
+
+  /*
+   * Jawaban yang SUDAH sampai di layar tidak boleh hilang karena kegagalan.
+   *
+   * Dulu setiap galat — termasuk satu bingkai SSE yang cacat — mengganti
+   * seluruh isi gelembung dengan pesan galat. Peserta yang sudah membaca
+   * separuh nasihat keuangan kehilangan semuanya, dan yang tersisa cuma kalimat
+   * teknis berbahasa Inggris yang tidak bisa dia tindaklanjuti.
+   *
+   * Sekarang: bila ada jawaban parsial, ia dipertahankan dan galatnya
+   * ditempelkan DI BAWAHNYA sebagai catatan.
+   */
+  let answer = '';
+  const tampilkanGalat = (pesan) => {
+    if (!answer) {
+      bubble.className = 'msg ai err';
+      bubble.textContent = pesan;
+      return;
+    }
+    bubble.innerHTML = mdLite(answer);
+    const nota = document.createElement('div');
+    // Gaya yang sama dengan penanda "jawaban terpotong" di bawah — keduanya
+    // menyampaikan hal yang sejenis: ada bagian yang tidak jadi sampai.
+    nota.style.cssText = 'margin-top:10px;padding-top:8px;border-top:1px dashed var(--line);font-size:.82rem;color:var(--red);font-weight:600';
+    nota.textContent = `⚠️ Jawaban terhenti: ${pesan}`;
+    bubble.appendChild(nota);
+  };
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      /*
+       * `modul` menyertakan materi modul yang sedang dibuka peserta ke dalam
+       * prompt, supaya penjelasan AI sama dengan yang barusan dibacanya —
+       * bukan versi lain dari pengetahuan modelnya sendiri.
+       *
+       * Dikirim sekali saja lalu dilepas: percakapan lanjutannya sudah punya
+       * jawaban pertama sebagai konteks, dan mengirim ulang materi yang sama
+       * pada tiap giliran menghabiskan anggaran token peserta tanpa menambah
+       * apa pun.
+       */
+      body: JSON.stringify(modulKonteks ? { message, modul: modulKonteks.no } : { message }),
+    });
+    lepasKonteksModul();
+
+    if (!res.ok || !res.body) {
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) logout();
+      if (res.status === 451 && data.consent) showConsent(data.consent);
+      throw new Error(data.error || 'Gagal menghubungi konsultan AI.');
+    }
+
+    // Membaca aliran Server-Sent Events dari server.
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let failed = null;
+    let terpotong = false;
+
+    /*
+     * Satu bingkai SSE. Bingkai yang tidak bisa dibaca DILEWATI, tidak dilempar.
+     *
+     * `JSON.parse` di sini dulu telanjang, sehingga satu bingkai cacat —
+     * proxy yang menyisipkan sesuatu, sambungan yang putus di tengah bingkai —
+     * melompat ke penangkap terluar dan MENGHAPUS seluruh jawaban yang sudah
+     * dibaca peserta, menggantinya dengan pesan galat teknis berbahasa Inggris.
+     * Kehilangan satu bingkai jauh lebih ringan daripada kehilangan jawaban
+     * yang sudah sampai di layar.
+     */
+    const prosesBingkai = (chunk) => {
+      const baris = chunk.split('\n');
+      const evLine = baris.find((l) => l.startsWith('event: '));
+      const dataLine = baris.find((l) => l.startsWith('data: '));
+      if (!evLine || !dataLine) return;
+      const event = evLine.slice(7).trim();
+      let payload;
+      try {
+        payload = JSON.parse(dataLine.slice(6));
+      } catch {
+        return; // bingkai cacat — lewati, jangan jatuhkan seluruh jawaban
+      }
+      if (event === 'delta') {
+        answer += payload.text ?? '';
+        bubble.innerHTML = mdLite(answer);
+        log.scrollTop = log.scrollHeight;
+      } else if (event === 'done') {
+        if (payload.anggaran) setAnggaran(payload.anggaran);
+        // Jawaban yang berhenti di tengah kalimat harus terlihat sebagai
+        // terpotong SEKARANG, bukan hanya setelah halaman dimuat ulang.
+        if (payload.terpotong) terpotong = true;
+      } else if (event === 'error') {
+        failed = payload.error;
+      }
+    };
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const chunks = buffer.split('\n\n');
+      buffer = chunks.pop() ?? '';
+      for (const chunk of chunks) prosesBingkai(chunk);
+    }
+
+    /*
+     * Sisa penyangga ikut diproses. Aliran yang berakhir tanpa `\n\n` penutup —
+     * server mati di tengah bingkai terakhir — dulu membuat bingkai itu dibuang
+     * diam-diam, termasuk bila ia berisi peristiwa `error` yang menjelaskan
+     * kenapa alirannya berhenti.
+     */
+    buffer += decoder.decode();
+    if (buffer.trim()) prosesBingkai(buffer);
+
+    if (failed) {
+      tampilkanGalat(failed);
+    } else {
+      bubble.innerHTML = mdLite(answer);
+      if (terpotong) {
+        const potong = document.createElement('div');
+        potong.style.cssText = 'margin-top:10px;padding-top:8px;border-top:1px dashed var(--line);font-size:.82rem;color:var(--gold);font-weight:600';
+        potong.textContent = '⚠️ Jawaban ini terpotong karena kepanjangan. Coba tanya lagi dengan pertanyaan yang lebih fokus.';
+        bubble.appendChild(potong);
+      }
+      const meta = document.createElement('span');
+      meta.className = 'msg-meta';
+      meta.textContent = 'AI Gemini 2.5 · ' + new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      bubble.appendChild(meta);
+    }
+  } catch (err) {
+    tampilkanGalat(err.message);
+  } finally {
+    state.chatBusy = false;
+    // Tombol dinyalakan lewat setAnggaran, supaya jatah yang habis tetap
+    // menonaktifkannya — bukan dinyalakan begitu saja di sini.
+    if (state.anggaran) setAnggaran(state.anggaran);
+    else el('chatSend').disabled = false;
+    log.scrollTop = log.scrollHeight;
+    input.focus();
+  }
+});
+
+/* ============================================================
+   Grafik (SVG murni — tanpa pustaka luar)
+============================================================ */
+
+/**
+ * Batang harian surplus/defisit.
+ *
+ * Bentuk dipilih sesuai pekerjaan datanya: yang ingin dilihat pemilik warung
+ * adalah "hari mana saya nombok" — itu polaritas terhadap garis nol, jadi
+ * batang divergen. Arah batang sudah membawa maknanya sendiri sehingga warna
+ * hanya menegaskan, bukan satu-satunya penanda.
+ */
+function renderDailyChart(container, harian) {
+  // Hari-hari kosong SEBELUM catatan pertama dibuang: menampilkannya hanya
+  // membuat grafik terlihat melompong padahal pengguna memang belum memakai
+  // aplikasi ini. Hari kosong DI TENGAH tetap ditampilkan — itu informasi nyata.
+  const semua = harian ?? [];
+  const mulai = semua.findIndex((d) => d.adaCatatan);
+  const data = (mulai === -1 ? semua : semua.slice(mulai)).slice(-30);
+  const punyaData = data.some((d) => d.adaCatatan);
+  if (!punyaData) {
+    container.innerHTML = '<div class="chart-empty">Grafik akan muncul setelah kamu mencatat transaksi pertama.</div>';
+    return;
+  }
+
+  const W = 720, H = 190, padT = 16, padB = 22, padX = 4;
+  const maxAbs = Math.max(...data.map((d) => Math.abs(d.net)), 1);
+  const plotH = H - padT - padB;
+  const zeroY = padT + plotH / 2;
+  const slot = (W - padX * 2) / data.length;
+  /*
+   * Lebar batang dibatasi. Di awal bulan `data` bisa berisi satu hari saja, dan
+   * tanpa batas ini satu hari digambar selebar 710px — satu balok merah raksasa
+   * memenuhi dasbor, yang terbaca sebagai bencana keuangan padahal artinya cuma
+   * "hari ini belanja lebih besar dari jualan".
+   */
+  const barW = Math.max(3, Math.min(26, slot - 2)); // sela 2px antar batang
+  const scale = (v) => (Math.abs(v) / maxAbs) * (plotH / 2 - 4);
+
+  // Hari terbaik & terburuk diberi label langsung — bukan semua titik diberi angka.
+  const tercatat = data.filter((d) => d.adaCatatan);
+  const best = tercatat.reduce((a, b) => (b.net > a.net ? b : a), tercatat[0]);
+  const worst = tercatat.reduce((a, b) => (b.net < a.net ? b : a), tercatat[0]);
+
+  const bars = data.map((d, i) => {
+    const x = padX + i * slot + (slot - barW) / 2;
+    const h = Math.max(d.adaCatatan ? 2 : 0, scale(d.net));
+    const y = d.net >= 0 ? zeroY - h : zeroY;
+    const fill = d.net >= 0 ? 'var(--surplus)' : 'var(--defisit)';
+    const r = Math.min(4, barW / 2);
+    return `<rect class="bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="${r}" fill="${fill}"></rect>
+      <rect class="bar-hit" x="${x.toFixed(1)}" y="${padT}" width="${barW.toFixed(1)}" height="${plotH}"
+        data-i="${i}" data-tgl="${d.tanggal}" data-net="${d.net}" data-masuk="${d.masuk}" data-keluar="${d.keluar}" data-ada="${d.adaCatatan ? 1 : 0}"></rect>`;
+  }).join('');
+
+  const tickX = (d) => padX + data.indexOf(d) * slot + slot / 2;
+  const labels = [data[0], data[data.length - 1]]
+    .map((d) => `<text class="axis-label" x="${tickX(d).toFixed(1)}" y="${H - 6}" text-anchor="middle">${Number(d.tanggal.slice(8))}</text>`)
+    .join('');
+
+  container.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik surplus dan defisit harian">
+      <line x1="0" y1="${padT}" x2="${W}" y2="${padT}" stroke="var(--grid)" stroke-width="1"></line>
+      <line x1="0" y1="${padT + plotH}" x2="${W}" y2="${padT + plotH}" stroke="var(--grid)" stroke-width="1"></line>
+      ${bars}
+      <line x1="0" y1="${zeroY}" x2="${W}" y2="${zeroY}" stroke="var(--zero)" stroke-width="1.5"></line>
+      ${labels}
+    </svg>
+    <div class="chart-tip" id="dailyTip"></div>`;
+
+  pasangTooltip(container, container.querySelector('#dailyTip'), (d) => {
+    const tgl = new Date(d.tgl + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
+    if (d.ada !== '1') return `${tgl}<b>Tidak ada catatan</b>`;
+    const net = Number(d.net);
+    return `${tgl}
+      <b>${net < 0 ? '− ' : '+ '}${fmtRp(Math.abs(net))}</b>
+      masuk ${fmtRp(d.masuk)} · keluar ${fmtRp(d.keluar)}`;
+  }, zeroY / H);
+
+  return { best, worst };
+}
+
+/** Batang laba bersih per bulan — satu seri, satu warna. */
+function renderMonthlyChart(container, summaries) {
+  const data = summaries.filter((s) => s.jumlahTransaksi > 0);
+  if (!data.length) {
+    container.innerHTML = '<div class="chart-empty">Belum ada bulan dengan catatan.</div>';
+    return;
+  }
+  const W = 720, H = 170, padT = 14, padB = 26, padX = 6;
+  const maxAbs = Math.max(...data.map((s) => Math.abs(s.labaBersih)), 1);
+  const plotH = H - padT - padB;
+  const adaNegatif = data.some((s) => s.labaBersih < 0);
+  const zeroY = adaNegatif ? padT + plotH / 2 : padT + plotH;
+  const span = adaNegatif ? plotH / 2 - 4 : plotH - 4;
+  const slot = (W - padX * 2) / data.length;
+  const barW = Math.min(64, slot - 12);
+
+  /*
+   * Bulan yang belum utuh — masih berjalan ATAU sudah lewat tapi catatannya
+   * bolong — digambar bergaris, bukan blok penuh. Batang pendek di ujung kanan
+   * tanpa penanda apa pun terbaca sebagai usaha yang sedang jatuh, padahal yang
+   * pendek cuma catatannya; dan grafik ini justru ada untuk menunjukkan
+   * KESTABILAN kepada bank.
+   */
+  const bars = data.map((s, i) => {
+    const x = padX + i * slot + (slot - barW) / 2;
+    const h = Math.max(2, (Math.abs(s.labaBersih) / maxAbs) * span);
+    const y = s.labaBersih >= 0 ? zeroY - h : zeroY;
+    const warna = s.labaBersih >= 0 ? 'var(--seri)' : 'var(--defisit)';
+    const berjalan = s.layakRataRata === false;
+    const fill = berjalan ? 'url(#hatchBerjalan)' : warna;
+    const [yy, mm] = s.month.split('-');
+    const nama = new Date(Number(yy), Number(mm) - 1, 1).toLocaleDateString('id-ID', { month: 'short' });
+    return `<rect class="bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="${fill}"${berjalan ? ` stroke="${warna}" stroke-width="1.5"` : ''}></rect>
+      <rect class="bar-hit" x="${x.toFixed(1)}" y="${padT}" width="${barW.toFixed(1)}" height="${plotH}"
+        data-bulan="${escapeHtml(namaBulan(s.month))}" data-laba="${s.labaBersih}" data-jual="${s.penjualan + s.lainMasuk}"
+        data-hari="${s.hariTercatat}" data-dari="${s.hariBerjalan}" data-utuh="${s.layakRataRata === false ? 0 : 1}"></rect>
+      <text class="axis-label" x="${(x + barW / 2).toFixed(1)}" y="${H - 12}" text-anchor="middle">${nama}${berjalan ? ' •' : ''}</text>
+      <text class="axis-label" x="${(x + barW / 2).toFixed(1)}" y="${(s.labaBersih >= 0 ? y - 5 : y + h + 11).toFixed(1)}" text-anchor="middle" style="font-weight:800">${ringkasRp(s.labaBersih)}</text>`;
+  }).join('');
+
+  const adaBerjalan = data.some((s) => s.layakRataRata === false);
+
+  container.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik laba bersih per bulan">
+      <defs>
+        <pattern id="hatchBerjalan" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+          <rect width="7" height="7" fill="var(--card)"></rect>
+          <line x1="0" y1="0" x2="0" y2="7" stroke="var(--seri)" stroke-width="4"></line>
+        </pattern>
+      </defs>
+      ${bars}
+      <line x1="0" y1="${zeroY}" x2="${W}" y2="${zeroY}" stroke="var(--zero)" stroke-width="1.5"></line>
+    </svg>
+    <div class="chart-tip" id="bulanTip"></div>
+    ${adaBerjalan ? '<p style="font-size:.78rem;color:var(--ink-soft);margin-top:4px">Batang bergaris (•) = bulan yang belum tercatat utuh — masih berjalan atau catatannya bolong. Angkanya bukan gambaran sebulan penuh.</p>' : ''}`;
+
+  // Lapisan hover, sama seperti grafik harian — grafik yang bisa disentuh
+  // seharusnya menjawab "bulan ini angkanya berapa", bukan hanya bentuknya.
+  pasangTooltip(container, container.querySelector('#bulanTip'), (d) => {
+    const laba = Number(d.laba);
+    return `${d.bulan}
+      <b>${laba < 0 ? '− ' : ''}${fmtRp(Math.abs(laba))}</b>
+      omzet ${fmtRp(d.jual)} · ${d.hari} dari ${d.dari} hari tercatat${d.utuh === '0' ? ' (belum utuh)' : ''}`;
+  }, zeroY / H);
+}
+
+/**
+ * Memasang tooltip pada setiap `.bar-hit` di dalam sebuah grafik.
+ *
+ * Dipakai bersama oleh kedua grafik supaya perilakunya tidak pernah berbeda —
+ * termasuk soal sentuhan: pendengar bersifat pasif dan TIDAK pernah membatalkan
+ * gerakan gulir bawaan.
+ */
+function pasangTooltip(container, tip, isi, posisiY) {
+  if (!tip) return;
+  container.querySelectorAll('.bar-hit').forEach((hit) => {
+    const show = () => {
+      tip.innerHTML = isi(hit.dataset);
+      const r = hit.getBoundingClientRect(), wr = container.getBoundingClientRect();
+      tip.style.left = `${r.left - wr.left + r.width / 2}px`;
+      tip.style.top = `${posisiY * wr.height}px`;
+      tip.classList.add('show');
+      hit.previousElementSibling?.classList.add('on');
+    };
+    const hide = () => { tip.classList.remove('show'); hit.previousElementSibling?.classList.remove('on'); };
+    hit.addEventListener('mouseenter', show);
+    hit.addEventListener('mouseleave', hide);
+    hit.addEventListener('touchstart', show, { passive: true });
+    hit.addEventListener('touchend', hide);
+    hit.addEventListener('touchcancel', hide);
+  });
+}
+
+/** Tabel setara grafik — untuk pembaca layar dan pengguna yang lebih suka angka. */
+function chartTable(rows, headers, mapper) {
+  return `<table class="chart-table"><thead><tr>${headers.map((h) => `<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map((r) => `<tr>${mapper(r).map((c) => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
+
+/* ============================================================
+   Buku kas
+============================================================ */
+let kas = { jenis: 'masuk', kategori: 'penjualan', kategoriDef: null, month: null, bulanIni: null };
+
+const namaBulan = (m) => {
+  const [y, mo] = m.split('-');
+  return new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+};
+const tanggalPanjang = (d) =>
+  new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
+
+/** Memformat angka dengan titik ribuan sambil diketik. */
+function formatAmountInput(raw) {
+  const digits = String(raw).replace(/\D/g, '').slice(0, 12);
+  return digits ? new Intl.NumberFormat('id-ID').format(Number(digits)) : '';
+}
+const parseAmount = (v) => Number(String(v).replace(/\D/g, '')) || 0;
+
+el('kasJumlah').addEventListener('input', (e) => {
+  const pos = e.target.selectionStart;
+  const before = e.target.value.length;
+  e.target.value = formatAmountInput(e.target.value);
+  const after = e.target.value.length;
+  e.target.setSelectionRange(Math.max(0, pos + (after - before)), Math.max(0, pos + (after - before)));
+});
+
+document.querySelectorAll('.jenis-btn').forEach((b) =>
+  b.addEventListener('click', () => {
+    kas.jenis = b.dataset.jenis;
+    document.querySelectorAll('.jenis-btn').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.jenis === kas.jenis)));
+    renderKategoriChips();
+  }));
+
+function renderKategoriChips() {
+  const defs = kas.kategoriDef?.[kas.jenis] ?? {};
+  const keys = Object.keys(defs);
+  if (!keys.includes(kas.kategori)) kas.kategori = keys[0];
+  el('katChips').innerHTML = keys
+    .map((k) => `<button type="button" class="kat-chip ${k === 'prive' ? 'warn' : ''}" data-kat="${k}" aria-pressed="${k === kas.kategori}">${escapeHtml(defs[k].label)}</button>`)
+    .join('');
+  el('katChips').querySelectorAll('.kat-chip').forEach((c) =>
+    c.addEventListener('click', () => {
+      kas.kategori = c.dataset.kat;
+      renderKategoriChips();
+    }));
+  el('priveHint').classList.toggle('show', kas.kategori === 'prive');
+}
+
+async function loadCashbook(month) {
+  // Filter daftar (pencarian/jenis/kategori) ikut dikirim ke server — satu
+  // saringan, satu tempat (saringTransaksi di lib/cashbook.js). Ringkasan
+  // dan grafik tetap penuh dari server, apa pun filternya.
+  const f = kas.filter ?? { q: '', jenis: '', kategori: '' };
+  const params = new URLSearchParams();
+  if (month) params.set('month', month);
+  if (f.q) params.set('q', f.q);
+  if (f.jenis) params.set('jenis', f.jenis);
+  if (f.kategori) params.set('kategori', f.kategori);
+  const qs = params.toString();
+  const data = await api('/cashbook' + (qs ? '?' + qs : ''));
+  kas.kategoriDef = data.kategori;
+  kas.month = data.month;
+  // Bulan berjalan = bulan yang dikembalikan server saat tidak ada permintaan
+  // bulan tertentu. Dipakai untuk tahu kapan grafik dasbor perlu ikut disegarkan.
+  if (!month) kas.bulanIni = data.month;
+  if (!el('kasTanggal').value) el('kasTanggal').value = data.today;
+  el('kasTanggal').max = data.today;
+  renderKategoriChips();
+  if (typeof perbaruiOpsiKategoriFilter === 'function') perbaruiOpsiKategoriFilter();
+
+  // Pilihan bulan: bulan berjalan + semua bulan yang punya catatan.
+  const months = [...new Set([data.month, ...data.monthsAvailable])].sort().reverse();
+  el('kasMonth').innerHTML = months.map((m) => `<option value="${m}" ${m === data.month ? 'selected' : ''}>${namaBulan(m)}</option>`).join('');
+
+  renderKasSummary(data.summary);
+  renderKasList(data.transactions, data.terfilter);
+  renderKasChart(data.summary);
+
+  // Grafik dasbor ikut disegarkan dari data yang sama — bulan berjalan saja.
+  if (data.month === kas.bulanIni) renderDashChart(data.summary);
+  return data;
+}
+
+function renderKasChart(summary) {
+  const extremes = renderDailyChart(el('kasChart'), summary.harian);
+  const note = el('kasChartNote');
+  if (extremes?.best && extremes.best.net > 0) {
+    note.textContent = `Hari terbaik bulan ini: ${new Date(extremes.best.tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })} (+${fmtRp(extremes.best.net)}).` +
+      (extremes.worst && extremes.worst.net < 0
+        ? ` Hari paling berat: ${new Date(extremes.worst.tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })} (−${fmtRp(Math.abs(extremes.worst.net))}).`
+        : '');
+  } else {
+    note.textContent = 'Batang ke atas berarti hari itu uang masuk lebih besar dari uang keluar.';
+  }
+
+  // Tabel setara — identitas data tidak pernah hanya bergantung pada warna.
+  const tercatat = (summary.harian ?? []).filter((d) => d.adaCatatan);
+  el('kasTableWrap').innerHTML = chartTable(
+    tercatat,
+    ['Tanggal', 'Masuk', 'Keluar', 'Sisa'],
+    (d) => [
+      new Date(d.tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+      fmtRp(d.masuk),
+      fmtRp(d.keluar),
+      (d.net < 0 ? '− ' : '') + fmtRp(Math.abs(d.net)),
+    ],
+  );
+}
+
+el('kasTableToggle').addEventListener('click', () => {
+  const t = el('kasTableWrap').querySelector('.chart-table');
+  if (!t) return;
+  const shown = t.classList.toggle('show');
+  el('kasTableToggle').textContent = shown ? 'Sembunyikan tabel' : 'Lihat sebagai tabel angka';
+});
+
+function renderKasSummary(s) {
+  const labaClass = s.labaBersih > 0 ? 'pos' : s.labaBersih < 0 ? 'neg' : '';
+  const kasClass = s.saldoKas > 0 ? 'pos' : s.saldoKas < 0 ? 'neg' : '';
+  /*
+   * Penyebutnya HARI BERJALAN, sama dengan dasbor dan laporan KUR.
+   *
+   * Dulu kartu ini memakai `hariSejakMulai` — jendela yang sengaja memaafkan
+   * hari sebelum peserta mengenal aplikasi. Angkanya sah, tapi berlabel sama
+   * persis dengan angka di dua layar lain yang memakai penyebut berbeda, jadi
+   * satu bulan yang sama terbaca "8 dari 10" di sini dan "8 / 31" di laporan.
+   * Sekarang penyebutnya seragam, dan tanggal mulai disebut terpisah.
+   */
+  const mulai = s.tanggalMulai && s.hariSejakMulai && s.hariSejakMulai !== s.hariBerjalan
+    ? ` · mulai catat tgl ${Number(s.tanggalMulai.slice(8))}`
+    : '';
+  el('kasSummary').innerHTML = `
+    <div class="kas-stat"><span>Uang masuk</span><b class="pos">${fmtRp(s.totalMasuk)}</b></div>
+    <div class="kas-stat"><span>Uang keluar</span><b class="neg">${fmtRp(s.totalKeluar)}</b></div>
+    <div class="kas-stat"><span>Laba bersih</span><b class="${labaClass}">${s.labaBersih < 0 ? '− ' : ''}${fmtRp(Math.abs(s.labaBersih))}</b><div class="sub">tanpa prive &amp; cicilan</div></div>
+    <div class="kas-stat"><span>Saldo kas</span><b class="${kasClass}">${s.saldoKas < 0 ? '− ' : ''}${fmtRp(Math.abs(s.saldoKas))}</b><div class="sub">${s.hariTercatat} dari ${s.hariBerjalan} hari tercatat${mulai}</div></div>`;
+}
+
+function renderKasList(rows, terfilter = false) {
+  const box = el('kasList');
+  if (!rows.length) {
+    box.innerHTML = terfilter
+      ? `<div class="card empty">
+          <span class="big">🔍</span>
+          <h3>Tidak ada yang cocok</h3>
+          <p style="margin:8px auto 0;max-width:380px">Tidak ada transaksi yang cocok dengan pencarian atau filter ini di bulan ini.</p>
+          <div class="actions" style="justify-content:center"><button class="btn btn-ghost" onclick="resetFilterKas()">Hapus filter</button></div>
+        </div>`
+      : `<div class="card empty">
+          <span class="big">🧾</span>
+          <h3>Belum ada catatan bulan ini</h3>
+          <p style="margin:8px auto 0;max-width:380px">Mulai dari transaksi pertama hari ini — penjualan pertama, atau belanja bahan tadi pagi.</p>
+        </div>`;
+    return;
+  }
+  const defs = kas.kategoriDef ?? {};
+  const perHari = {};
+  for (const t of rows) (perHari[t.tanggal] ??= []).push(t);
+
+  box.innerHTML = Object.keys(perHari)
+    .sort()
+    .reverse()
+    .map((tgl) => {
+      const items = perHari[tgl];
+      const masuk = items.filter((t) => t.jenis === 'masuk').reduce((s, t) => s + t.jumlah, 0);
+      const keluar = items.filter((t) => t.jenis === 'keluar').reduce((s, t) => s + t.jumlah, 0);
+      return `<div class="trx-day">${tanggalPanjang(tgl)} · sisa ${masuk - keluar < 0 ? '−' : ''}${fmtRp(Math.abs(masuk - keluar))}</div>` +
+        items
+          .map((t) => {
+            const def = defs[t.jenis]?.[t.kategori];
+            const label = def?.short ?? def?.label ?? t.kategori;
+            return `<div class="trx">
+              <span class="trx-icon ${t.jenis}">${t.jenis === 'masuk' ? '↓' : '↑'}</span>
+              <span class="trx-body"><b>${escapeHtml(t.keterangan || label)}</b><span>${escapeHtml(label)}</span></span>
+              <span class="trx-amt ${t.jenis}">${t.jenis === 'masuk' ? '+' : '−'} ${fmtRp(t.jumlah)}</span>
+              <button class="trx-del" data-del="${t.id}" title="Hapus" aria-label="Hapus transaksi">✕</button>
+            </div>`;
+          })
+          .join('');
+    })
+    .join('');
+
+  box.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => deleteTransaction(b.dataset.del)));
+}
+
+/**
+ * Grafik ringkas di dasbor.
+ *
+ * Menerima ringkasan yang SUDAH diambil bila ada. Dulu fungsi ini selalu
+ * memanggil /api/cashbook sendiri, padahal loadCashbook baru saja mengambil data
+ * yang sama — dua permintaan identik setiap kali masuk aplikasi dan setiap kali
+ * satu transaksi disimpan, di ponsel dengan sinyal seadanya.
+ */
+async function renderDashChart(summary) {
+  const card = el('dashChartCard');
+  if (!card || !state.user.profile) return;
+  try {
+    const s = summary ?? (await api('/cashbook')).summary;
+    const ada = (s.harian ?? []).some((d) => d.adaCatatan);
+    card.style.display = ada ? '' : 'none';
+    if (ada) renderDailyChart(el('dashChart'), s.harian);
+  } catch { card.style.display = 'none'; }
+}
+
+el('kasMonth').addEventListener('change', (e) => loadCashbook(e.target.value));
+el('waShareBtn').addEventListener('click', bagikanWa);
+
+/* ============================================================
+   Pencarian & filter daftar buku kas
+============================================================
+ * Saringannya SATU dan hidup di server (saringTransaksi di lib/cashbook.js):
+ * dasbor, laporan, dan grafik tidak pernah ikut tersaring — yang berubah
+ * hanya daftar di bawah. Ketikan ditaleni 250 ms supaya tidak menembak
+ * server tiap huruf.
+ */
+kas.filter = { q: '', jenis: '', kategori: '' };
+let kasCariTimer = null;
+
+function perbaruiOpsiKategoriFilter() {
+  const defs = kas.kategoriDef ?? {};
+  const jenisAktif = kas.filter.jenis;
+  const kelompok = jenisAktif ? [jenisAktif] : ['masuk', 'keluar'];
+  el('kasKategoriFilter').innerHTML = '<option value="">Semua kategori</option>' + kelompok.map((j) =>
+    `<optgroup label="${j === 'masuk' ? 'Pemasukan' : 'Pengeluaran'}">` +
+    Object.entries(defs[j] ?? {}).map(([k, d]) => `<option value="${escapeHtml(k)}" ${k === kas.filter.kategori ? 'selected' : ''}>${escapeHtml(d.label)}</option>`).join('') +
+    '</optgroup>').join('');
+}
+
+function resetFilterKas() {
+  kas.filter = { q: '', jenis: '', kategori: '' };
+  el('kasCari').value = '';
+  document.querySelectorAll('[data-jf]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.jf === '')));
+  perbaruiOpsiKategoriFilter();
+  loadCashbook(kas.month).catch(() => {});
+}
+window.resetFilterKas = resetFilterKas; // dipanggil dari tombol di kartu kosong
+
+el('kasCari').addEventListener('input', (e) => {
+  kas.filter.q = e.target.value;
+  clearTimeout(kasCariTimer);
+  kasCariTimer = setTimeout(() => loadCashbook(kas.month).catch(() => {}), 250);
+});
+
+document.querySelectorAll('[data-jf]').forEach((b) =>
+  b.addEventListener('click', () => {
+    kas.filter.jenis = b.dataset.jf;
+    if (!kas.filter.jenis) kas.filter.kategori = ''; // ganti jenis → kategori lama tak berlaku
+    document.querySelectorAll('[data-jf]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.jf === kas.filter.jenis)));
+    perbaruiOpsiKategoriFilter();
+    loadCashbook(kas.month).catch(() => {});
+  }));
+
+el('kasKategoriFilter').addEventListener('change', (e) => {
+  kas.filter.kategori = e.target.value;
+  loadCashbook(kas.month).catch(() => {});
+});
+perbaruiOpsiKategoriFilter();
+
+/* ============================================================
+   Scan nota — foto → AI → KONFIRMASI → simpan
+============================================================
+ *
+ * Tidak ada jalur simpan di berkas ini. Tombol "Simpan Transaksi"
+ * memanggil rute /api/cashbook yang sama persis dengan formulir manual —
+ * satu aturan validasi, satu sumber angka, satu bentuk data. Yang di sini
+ * hanya: ambil foto, kirim, tampilkan usulan, biarkan peserta mengoreksi.
+ */
+
+const SCAN_MIME_SAH = ['image/jpeg', 'image/png', 'image/webp'];
+const SCAN_MAKS_ASAL = 8 * 1024 * 1024; // batas BERKAS ASLI, sebelum dikompres
+
+let notaHasil = null;
+let notaJenisAktif = 'keluar';
+
+el('scanNotaBtn').addEventListener('click', () => el('scanNotaFile').click());
+
+el('scanNotaFile').addEventListener('change', () => {
+  const file = el('scanNotaFile').files?.[0];
+  el('scanNotaFile').value = ''; // memilih berkas yang sama dua kali tetap terpicu
+  if (file) prosesFileNota(file);
+});
+
+async function prosesFileNota(file) {
+  el('kasError').style.display = 'none';
+
+  if (!SCAN_MIME_SAH.includes(file.type)) {
+    tampilkanGalatKas('Gunakan foto berformat JPG, PNG, atau WebP.');
+    return;
+  }
+  if (file.size > SCAN_MAKS_ASAL) {
+    tampilkanGalatKas('Fotonya kebesaran (maksimal 8 MB). Coba yang lebih kecil.');
+    return;
+  }
+
+  const btn = el('scanNotaBtn');
+  btn.disabled = true;
+  const labelAsli = btn.innerHTML;
+  btn.innerHTML = '<span class="sc-ic"><span class="spin"></span></span><span><b>Sedang membaca nota...</b><small>Beberapa detik, ya.</small></span>';
+  try {
+    const blob = await kompresNota(file);
+    const res = await fetch('/api/scan-nota', {
+      method: 'POST',
+      headers: { 'Content-Type': blob.type, Authorization: 'Bearer ' + token },
+      body: blob,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Gagal membaca nota. Coba lagi.');
+    bukaModalNota(data.hasil);
+  } catch (err) {
+    tampilkanGalatKas(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = labelAsli;
+  }
+}
+
+function tampilkanGalatKas(pesan) {
+  const errBox = el('kasError');
+  errBox.textContent = pesan;
+  errBox.style.display = 'block';
+  errBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+/*
+ * Foto kamera ponsel bisa 3–8 MB — terlalu besar untuk diunggah cepat.
+ * Peramban mengecilkan ke sisi 1600px lalu mengencod ulang ke JPEG 0.85:
+ * masih cukup tajam untuk teks nota, tapi hanya ±200–400 KB untuk dikirim.
+ */
+async function kompresNota(file) {
+  const SISI_MAKS = 1600;
+  let gambar, lebar, tinggi;
+  try {
+    gambar = await createImageBitmap(file);
+    lebar = gambar.width;
+    tinggi = gambar.height;
+  } catch {
+    gambar = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Foto tidak bisa dibuka. Coba berkas lain.'));
+      img.src = URL.createObjectURL(file);
+    });
+    lebar = gambar.naturalWidth;
+    tinggi = gambar.naturalHeight;
+  }
+  const skala = Math.min(1, SISI_MAKS / Math.max(lebar, tinggi));
+  const kanvas = document.createElement('canvas');
+  kanvas.width = Math.max(1, Math.round(lebar * skala));
+  kanvas.height = Math.max(1, Math.round(tinggi * skala));
+  kanvas.getContext('2d').drawImage(gambar, 0, 0, kanvas.width, kanvas.height);
+  const blob = await new Promise((resolve, reject) =>
+    kanvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Foto tidak bisa diproses peramban ini.'))), 'image/jpeg', 0.85));
+  if (gambar.close) gambar.close();
+  return blob;
+}
+
+function bukaModalNota(hasil) {
+  if (!hasil) return;
+  notaHasil = hasil;
+  notaJenisAktif = hasil.jenis === 'masuk' ? 'masuk' : 'keluar';
+
+  el('notaMerchant').textContent = hasil.merchant ? `Toko: ${hasil.merchant}` : '';
+
+  // Keyakinan rendah: jangan pura-pura hasilnya bisa dipercaya. Tanpa
+  // tombol simpan — hanya jalan keluar ke formulir manual atau coba lagi.
+  const low = hasil.tingkat === 'low';
+  el('notaWarn').style.display = hasil.tingkat === 'warning' ? '' : 'none';
+  el('notaLow').style.display = low ? '' : 'none';
+  el('notaForm').style.display = low ? 'none' : '';
+  el('notaSimpan').style.display = low ? 'none' : '';
+  el('notaError').style.display = 'none';
+
+  if (!low) {
+    el('notaJumlah').value = hasil.jumlah ? formatAmountInput(String(hasil.jumlah)) : '';
+    el('notaKet').value = hasil.keterangan || hasil.merchant || '';
+    el('notaTanggal').value = hasil.tanggal || new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+    perbaruiToggleJenis();
+  }
+  el('notaBackdrop').style.display = 'grid';
+}
+
+function perbaruiToggleJenis() {
+  document.querySelectorAll('[data-nota-jenis]').forEach((b) =>
+    b.setAttribute('aria-pressed', String(b.dataset.notaJenis === notaJenisAktif)));
+  const defs = kas.kategoriDef?.[notaJenisAktif] ?? {};
+  const keys = Object.keys(defs);
+  const pilih = keys.includes(notaHasil?.kategori) ? notaHasil.kategori : keys[0];
+  el('notaKat').innerHTML = keys
+    .map((k) => `<option value="${escapeHtml(k)}" ${k === pilih ? 'selected' : ''}>${escapeHtml(defs[k].label)}</option>`)
+    .join('');
+}
+
+document.querySelectorAll('[data-nota-jenis]').forEach((b) =>
+  b.addEventListener('click', () => {
+    notaJenisAktif = b.dataset.notaJenis;
+    perbaruiToggleJenis();
+  }));
+
+function tutupModalNota() {
+  el('notaBackdrop').style.display = 'none';
+}
+
+el('notaClose').addEventListener('click', tutupModalNota);
+el('notaBatal').addEventListener('click', tutupModalNota);
+el('notaBackdrop').addEventListener('click', (e) => {
+  if (e.target === el('notaBackdrop')) tutupModalNota();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && el('notaBackdrop').style.display !== 'none') tutupModalNota();
+});
+
+// Keyakinan rendah: isi formulir utama dengan yang terbaca, peserta
+// melengkapi sisanya — lebih jujur daripada tombol simpan yang berani.
+el('notaIsiManual').addEventListener('click', () => {
+  tutupModalNota();
+  if (!notaHasil) return;
+  kas.jenis = notaHasil.jenis;
+  document.querySelectorAll('.jenis-btn').forEach((x) =>
+    x.setAttribute('aria-pressed', String(x.dataset.jenis === kas.jenis)));
+  kas.kategori = notaHasil.kategori || kas.kategori;
+  renderKategoriChips();
+  if (notaHasil.jumlah) el('kasJumlah').value = formatAmountInput(String(notaHasil.jumlah));
+  el('kasKeterangan').value = notaHasil.keterangan || notaHasil.merchant || '';
+  if (notaHasil.tanggal) el('kasTanggal').value = notaHasil.tanggal;
+  el('kasJumlah').focus();
+  toast('Lengkapi datanya lalu simpan ya.');
+});
+
+el('notaSimpan').addEventListener('click', async () => {
+  const jumlah = parseAmount(el('notaJumlah').value);
+  const errBox = el('notaError');
+  errBox.style.display = 'none';
+  if (jumlah <= 0) {
+    errBox.textContent = 'Isi jumlah rupiahnya dulu ya.';
+    errBox.style.display = 'block';
+    return;
+  }
+  const btn = el('notaSimpan');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Menyimpan…';
+  try {
+    // Jalur simpan YANG SAMA dengan formulir manual — bukan jalur kedua.
+    const data = await api('/cashbook', {
+      method: 'POST',
+      body: JSON.stringify({
+        jenis: notaJenisAktif,
+        kategori: el('notaKat').value,
+        jumlah,
+        keterangan: el('notaKet').value,
+        tanggal: el('notaTanggal').value,
+      }),
+    });
+    tutupModalNota();
+    state.metrics = data.metrics;
+    renderDashboard();
+    await loadCashbook(el('kasMonth').value); // grafik + daftar ikut segar
+    toast('✅ Transaksi berhasil disimpan');
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Simpan Transaksi';
+  }
+});
+
+el('kasForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const jumlah = parseAmount(el('kasJumlah').value);
+  const errBox = el('kasError');
+  errBox.style.display = 'none';
+  if (jumlah <= 0) {
+    errBox.textContent = 'Isi jumlah rupiahnya dulu ya.';
+    errBox.style.display = 'block';
+    return;
+  }
+  const btn = el('kasSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Menyimpan…';
+  try {
+    const data = await api('/cashbook', {
+      method: 'POST',
+      body: JSON.stringify({
+        jenis: kas.jenis,
+        kategori: kas.kategori,
+        jumlah,
+        keterangan: el('kasKeterangan').value,
+        tanggal: el('kasTanggal').value,
+      }),
+    });
+    el('kasJumlah').value = '';
+    el('kasKeterangan').value = '';
+    state.metrics = data.metrics;
+    renderDashboard();
+    await loadCashbook(el('kasMonth').value); // grafik dasbor ikut disegarkan di sini
+    toast('✅ Tercatat');
+    el('kasJumlah').focus();
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Simpan transaksi';
+  }
+});
+
+async function deleteTransaction(id) {
+  if (!confirm('Hapus transaksi ini?')) return;
+  try {
+    const data = await api('/cashbook/' + id, { method: 'DELETE' });
+    state.metrics = data.metrics;
+    renderDashboard();
+    await loadCashbook(el('kasMonth').value);
+    toast('Transaksi dihapus');
+  } catch (err) { toast(err.message); }
+}
+
+/* ============================================================
+   Laporan KUR
+============================================================ */
+async function loadReport() {
+  const months = el('reportMonths').value;
+  const box = el('reportBody');
+  box.innerHTML = '<div class="card empty"><span class="spin"></span></div>';
+  try {
+    const r = await api('/report?months=' + months);
+    const p = r.profile ?? {};
+    const t = r.total;
+    // Angka yang dipakai Simulasi KUR — semuanya sudah ada di jawaban laporan:
+    // rata-rata laba bulanan (buku kas nyata) dan cicilan berjalan dari profil.
+    simKonteks = {
+      laba: r.bulanLengkap ? Number(r.rataLabaBulanan) || 0 : 0,
+      adaLaba: Boolean(r.bulanLengkap),
+      cicilan: Math.max(Number(p.cicilanBulanan) || 0, 0),
+    };
+
+    /*
+     * Hanya bulan yang punya catatan yang masuk tabel — sama seperti grafiknya.
+     * Sebelum ini tabel menampilkan bulan kosong sebagai "Rp 0", dan di mata
+     * petugas bank baris itu terbaca sebagai "usaha ini tidak berpenghasilan
+     * bulan Januari", bukan "belum ada catatan untuk Januari". Dua hal yang
+     * sangat berbeda, di atas kertas yang ikut ditandatangani.
+     */
+    const barisBulan = r.summaries.filter((s) => s.jumlahTransaksi > 0);
+    const bj = r.bulanBerjalan;
+    const catatanBerjalan = [
+      bj
+        ? `Bulan berjalan (${namaBulan(bj.month)}) baru terisi ${bj.hariBerjalan} dari ${bj.hariBulan} hari, jadi tidak ikut dirata-rata. Laba tercatat sejauh ini ${fmtRp(bj.labaBersih)}.`
+        : '',
+      (r.bulanBolong ?? []).length
+        ? `Bulan yang catatannya masih bolong juga tidak ikut dirata-rata: ${r.bulanBolong.map((x) => `${namaBulan(x.month)} (${x.hariTercatat} dari ${x.hariBulan} hari)`).join(', ')}. Lengkapi catatannya agar bulan itu bisa dihitung.`
+        : '',
+    ].filter(Boolean).map((s) => `<p style="font-size:.82rem;color:var(--ink-soft);margin-top:6px">${s}</p>`).join('');
+
+    if (!barisBulan.length) {
+      el('simulasiCard').style.display = 'none';
+      box.innerHTML = `<div class="card empty"><h3>Belum ada bulan dengan catatan</h3><p>Mulai isi Buku Kas dulu. Setelah satu bulan penuh tercatat, laporan ini bisa langsung dipakai untuk mengajukan KUR.</p><button class="btn btn-primary" onclick="goTo('kas')">🧾 Buka buku kas</button></div>`;
+      return;
+    }
+
+    box.innerHTML = `
+      <div class="report-sheet">
+        <div class="report-head">
+          <h2>Laporan Keuangan Usaha</h2>
+          <p><b>${escapeHtml(p.namaUsaha || state.user.name)}</b>${p.lokasi ? ' · ' + escapeHtml(p.lokasi) : ''}${p.jenisUsaha ? ' · ' + escapeHtml(LABEL_JENIS[p.jenisUsaha] ?? p.jenisUsaha) : ''}</p>
+          <p>Pemilik: ${escapeHtml(state.user.name)} · Dicetak ${new Date(r.dibuatPada).toLocaleDateString('id-ID', { dateStyle: 'long' })}</p>
+        </div>
+
+        <div class="viz no-print" style="margin-bottom:22px">
+          <h3 style="margin-bottom:2px">Laba bersih per bulan</h3>
+          <p style="font-size:.82rem;color:var(--ink-soft)">Bank melihat kestabilan, bukan hanya besarnya angka.</p>
+          <div class="chart-wrap" id="reportChart"></div>
+        </div>
+
+        <h3 style="margin-bottom:8px">Ringkasan per bulan</h3>
+        <div style="overflow-x:auto">
+        <table class="report-table">
+          <thead><tr>
+            <th>Bulan</th><th>Penjualan</th><th>Belanja barang</th><th>Biaya operasional</th><th>Laba bersih</th><th>Hari tercatat</th>
+          </tr></thead>
+          <tbody>
+            ${barisBulan.map((s) => `<tr>
+              <td>${namaBulan(s.month)}${s.layakRataRata ? '' : ` <span style="font-weight:600;font-size:.78rem;color:var(--ink-soft)">(${s.lengkap ? 'belum lengkap' : 'berjalan'})</span>`}</td>
+              <td class="num">${fmtRp(s.penjualan + s.lainMasuk)}</td>
+              <td class="num">${fmtRp(s.belanjaBahan)}</td>
+              <td class="num">${fmtRp(s.operasional + s.lainKeluar)}</td>
+              <td class="num">${s.labaBersih < 0 ? '−' : ''}${fmtRp(Math.abs(s.labaBersih))}</td>
+              <td class="num">${s.hariTercatat} / ${s.hariBerjalan}</td>
+            </tr>`).join('')}
+          </tbody>
+          <tfoot><tr>
+            <td>Total</td>
+            <td class="num">${fmtRp(t.penjualan + t.lainMasuk)}</td>
+            <td class="num">${fmtRp(t.belanjaBahan)}</td>
+            <td class="num">${fmtRp(t.operasional + t.lainKeluar)}</td>
+            <td class="num">${t.labaBersih < 0 ? '−' : ''}${fmtRp(Math.abs(t.labaBersih))}</td>
+            <td class="num">${t.jumlahTransaksi} trx</td>
+          </tr></tfoot>
+        </table>
+        </div>
+
+        <h3 style="margin-bottom:8px">Kesimpulan</h3>
+        <table class="report-table">
+          <tbody>
+            <tr><td>Bulan dengan catatan</td><td class="num">${r.bulanTerisi} bulan</td></tr>
+            <tr><td>Bulan penuh yang dirata-rata</td><td class="num">${r.bulanLengkap} bulan</td></tr>
+            <tr><td>Rata-rata laba bersih per bulan penuh</td><td class="num"><b>${r.bulanLengkap ? fmtRp(r.rataLabaBulanan) : '—'}</b></td></tr>
+            <tr><td>Kemampuan cicilan sehat (30% laba)</td><td class="num"><b>${r.bulanLengkap ? fmtRp(Math.round(r.rataLabaBulanan * 0.3)) : '—'}</b></td></tr>
+            <tr><td>Pengambilan pribadi (prive) total</td><td class="num">${fmtRp(t.prive)}</td></tr>
+            <tr><td>Cicilan berjalan total</td><td class="num">${fmtRp(t.cicilan)}</td></tr>
+          </tbody>
+        </table>
+        ${r.bulanLengkap ? '' : '<p style="font-size:.82rem;color:var(--ink-soft);margin-top:6px">Belum ada satu pun bulan penuh yang tercatat cukup rapat, jadi rata-rata belum bisa dihitung. Catat rutin sampai satu bulan berjalan habis, dan angka ini muncul sendiri.</p>'}
+        ${catatanBerjalan}
+
+        <p style="font-size:.8rem;color:var(--ink-soft);margin-top:14px">Laporan ini disusun dari catatan buku kas harian pemilik usaha. Rata-rata laba dihitung hanya dari bulan yang sudah berjalan penuh dan tercatat cukup rapat; bulan yang masih berjalan atau yang catatannya bolong tetap ditampilkan, tapi dilaporkan terpisah agar tidak menurunkan rata-rata. Prive (pengambilan pribadi) tidak diperhitungkan sebagai biaya usaha sehingga tidak mengurangi laba.</p>
+
+        <div class="report-sign">
+          <div><span>Mengetahui,</span><div class="line">Pendamping UMKM</div></div>
+          <div><span>Pemilik usaha,</span><div class="line">${escapeHtml(state.user.name)}</div></div>
+        </div>
+      </div>`;
+    renderMonthlyChart(el('reportChart'), r.summaries);
+    // Simulasi KUR muncul bersama laporannya — angkanya dari laporan yang sama.
+    el('simulasiCard').style.display = '';
+    renderSimulasiKur();
+  } catch (err) {
+    el('simulasiCard').style.display = 'none';
+    box.innerHTML = `<div class="card empty"><p>${escapeHtml(err.message)}</p></div>`;
+  }
+}
+
+/* ============================================================
+   Simulasi KUR — penggeser jumlah & tenor
+============================================================
+ *
+ * Angka yang disimulasikan tidak punya hitungan kedua: rumus cicilan,
+ * ambang 30%/50%, dan statusnya hidup di lib/simulasi-kur.js — berkas yang
+ * sama diimpor uji server dan dimuat peramban di sini (window.NOVA_SIMULASI).
+ * Penggeser hanya membaca dan menampilkan; tidak ada satu pun panggilan API
+ * saat digeser, jadi hasilnya terasa seketika.
+ */
+let simKonteks = { laba: 0, adaLaba: false, cicilan: 0 };
+
+function renderSimulasiKur() {
+  const sim = window.NOVA_SIMULASI;
+  if (!sim) return; // modulnya belum termuat — kartu menunggu laporan berikutnya
+
+  const jumlah = Number(el('simJumlah').value);
+  const tenor = Number(el('simTenor').value);
+  el('simJumlahOut').textContent = fmtRp(jumlah);
+  el('simTenorOut').textContent = tenor + ' bulan';
+
+  const hasil = sim.simulasiKur({
+    jumlah,
+    tenorBulan: tenor,
+    labaBulanan: simKonteks.adaLaba ? simKonteks.laba : 0,
+    cicilanBerjalan: simKonteks.cicilan,
+  });
+  if (!hasil) return;
+
+  const LABEL = {
+    aman: ['🟢 AMAN', 'aman'],
+    'hati-hati': ['🟡 KETAT', 'hati-hati'],
+    berisiko: ['🔴 TERLALU BERAT', 'berisiko'],
+  };
+  const [teks, kelas] = LABEL[hasil.status] ?? LABEL.berisiko;
+
+  const totalBeban = hasil.cicilan + hasil.cicilanLama;
+  const barisCicilanLama = hasil.cicilanLama > 0
+    ? `<div class="sim-baris"><span>Cicilan berjalan saat ini</span><b>${fmtRp(hasil.cicilanLama)}</b></div>`
+    : '';
+
+  let alasan;
+  if (!simKonteks.adaLaba) {
+    alasan = 'Rata-rata laba belum bisa dihitung karena belum ada satu bulan penuh yang tercatat cukup rapat. Catat kas rutin dulu — simulasi ini akan jujur sendiri setelah angkanya ada.';
+  } else if (hasil.status === 'aman') {
+    alasan = `Total beban cicilan ${fmtRp(totalBeban)} = ${hasil.rasioPorsen}% dari laba rata-rata ${fmtRp(simKonteks.laba)} — masih di bawah ambang sehat 30% yang dipakai aplikasi ini.`;
+  } else if (hasil.status === 'hati-hati') {
+    alasan = `Total beban cicilan ${fmtRp(totalBeban)} = ${hasil.rasioPorsen}% dari laba rata-rata — di atas ambang sehat 30%, tapi belum melewati 50%. Ketat: satu bulan sepi bisa membuat cicilan menabrak kebutuhan rumah.`;
+  } else if (!simKonteks.laba || simKonteks.laba <= 0) {
+    alasan = 'Laba rata-rata usaha saat ini nol atau negatif, jadi beban cicilan apa pun terlalu berat. Benahi dulu margin dan kebiasaan mencatat sebelum mempertimbangkan pinjaman.';
+  } else {
+    alasan = `Total beban cicilan ${fmtRp(totalBeban)} = ${hasil.rasioPorsen}% dari laba rata-rata — di atas 50%. Dengan pola laba seperti sekarang, cicilan ini berpotensi memaksa ambil prive tambahan atau menunggak.`;
+  }
+
+  el('simHasil').innerHTML = `
+    <div class="sim-baris"><span>Estimasi cicilan per bulan</span><b>${fmtRp(hasil.cicilan)}</b></div>
+    ${barisCicilanLama}
+    <div class="sim-baris"><span>Laba bersih rata-rata (buku kas)</span><b>${simKonteks.adaLaba ? fmtRp(simKonteks.laba) : '—'}</b></div>
+    <div class="sim-baris"><span>Beban cicilan terhadap laba</span><b>${hasil.rasioPorsen >= 999 ? '≥ 999%' : hasil.rasioPorsen + '%'}</b></div>
+    <div class="sim-baris"><span>Total dibayar selama ${tenor} bulan</span><b>${fmtRp(hasil.totalBayar)}</b></div>
+    <div class="sim-status ${kelas}">${teks}</div>
+    <p class="sim-alasan">${alasan}</p>`;
+
+  el('simCatatan').textContent =
+    `Estimasi memakai bunga flat 6% per tahun (tarif KUR Mikro) dan rata-rata laba dari buku kas Anda. Simulasi berdasarkan data usaha Anda — bukan jaminan, bukan keputusan kredit. Keputusan KUR sepenuhnya ada di bank.`;
+}
+
+el('simJumlah').addEventListener('input', renderSimulasiKur);
+el('simTenor').addEventListener('input', renderSimulasiKur);
+
+/* ============================================================
+   Garis waktu kesehatan usaha
+============================================================
+ * Skor per bulan dihitung server dengan metricsFor yang sama dengan
+ * dasbor — hanya bulan yang benar-benar ada catatannya yang muncul.
+ */
+const BULAN_PENDEK = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+async function loadTimeline() {
+  const data = await api('/timeline');
+  const kartu = el('timelineCard');
+  if (!data.titik?.length) {
+    kartu.style.display = 'none';
+    return;
+  }
+  kartu.style.display = '';
+  const tertinggi = Math.max(...data.titik.map((t) => t.skor), 1);
+  el('timelineBody').innerHTML = `
+    <div class="garis-waktu">
+      ${data.titik.map((t, i) => {
+        const [, mo] = t.bulan.split('-');
+        return `<div class="gt-titik ${i === data.titik.length - 1 ? 'terakhir' : ''}">
+          <div class="gt-skor">${t.skor}</div>
+          <div class="gt-batang" style="height:${Math.max(6, Math.round((t.skor / tertinggi) * 64))}px" title="${t.status}"></div>
+          <div class="gt-bulan">${BULAN_PENDEK[Number(mo) - 1]}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    ${data.tren === null ? '' : `<div class="gt-tren ${data.tren < 0 ? 'turun' : ''}">${data.tren >= 0 ? '↑' : '↓'} ${Math.abs(data.tren)} poin sejak ${BULAN_PENDEK[Number(data.titik[0].bulan.split('-')[1]) - 1]}</div>`}`;
+}
+
+/* ============================================================
+   Apa yang berubah? — bulan ini vs bulan lalu
+============================================================
+ * Semua persentase dihitung server (perubahanPersen) — null berarti
+ * "tidak bisa dibandingkan dengan jujur" (bulan lalu kosong), dan tampilan
+ * tidak pernah menampilkan Infinity atau NaN.
+ */
+async function loadPerubahan() {
+  const data = await api('/perubahan');
+  const kartu = el('perubahanCard');
+  el('perubahanPeriode').textContent =
+    'Bulan ini (' + namaBulan(data.kini.bulan) + ') dibanding ' + namaBulan(data.lalu.bulan) + '.';
+
+  const baris = [
+    { kunci: 'omzet', label: 'Omzet' },
+    { kunci: 'pengeluaran', label: 'Pengeluaran usaha' },
+    { kunci: 'labaBersih', label: 'Laba bersih' },
+    { kunci: 'pencatatan', label: 'Catatan dibuat' },
+  ];
+  const panah = (p) => p == null ? '·' : p > 0 ? '↑' : p < 0 ? '↓' : '→';
+  const warna = (p) => p == null ? 'var(--ink-soft)' : p > 0 ? 'var(--green)' : p < 0 ? 'var(--red)' : 'var(--ink-soft)';
+  const teksPersen = (p) => p == null ? '—' : (p > 0 ? '+' : '') + p + '%';
+
+  el('perubahanBody').innerHTML = baris.map((b) => {
+    const p = data.ubah[b.kunci];
+    const kini = data.kini[b.kunci];
+    const isi = b.kunci === 'pencatatan' ? `${kini} catatan` : fmtRp(kini);
+    return `<div class="pb-baris">
+      <span class="pb-panah" style="color:${warna(p)}">${panah(p)}</span>
+      <span class="pb-label">${b.label}</span>
+      <b class="pb-nilai">${isi}</b>
+      <b class="pb-persen" style="color:${warna(p)}">${teksPersen(p)}</b>
+    </div>`;
+  }).join('')
+  + `<div class="perubahan-kalimat">${data.kalimat.map((s) => `<p>${escapeHtml(s)}</p>`).join('')}</div>`;
+  kartu.style.display = '';
+}
+
+/* ============================================================
+   Check-up keuangan — AI menilai status, angka tetap dari server
+============================================================
+ * HANYA berjalan saat pengguna menekan tombolnya: tidak ada panggilan
+ * otomatis saat halaman dibuka. Status loading/galat jujur ditampilkan,
+ * dan hasilnya selalu disertai penegasan bahwa ini analisis edukatif.
+ */
+el('checkupBtn').addEventListener('click', async () => {
+  const btn = el('checkupBtn');
+  const errBox = el('checkupError');
+  errBox.style.display = 'none';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Memeriksa usaha…';
+  el('checkupHasil').innerHTML = '';
+  try {
+    const data = await api('/checkup', { method: 'POST' });
+    const ikon = { ok: '✓', perhatian: '⚠' };
+    el('checkupHasil').innerHTML = `
+      <div>${(data.hasil.item ?? []).map((i) => `
+        <div class="ck-item">
+          <span class="ck-tanda ${escapeHtml(i.tipe)}">${ikon[i.tipe] ?? '⚠'}</span>
+          <span>${escapeHtml(i.teks)}</span>
+        </div>`).join('')}
+      </div>
+      <div class="ck-insight"><b>Insight:</b> ${escapeHtml(data.hasil.insight)}</div>
+      <p style="font-size:.76rem;color:var(--ink-soft);margin-top:10px">Analisis edukatif berdasarkan catatan kas Anda — bukan jaminan, bukan keputusan kredit, bukan nasihat keuangan profesional.</p>`;
+    if (data.anggaran) setAnggaran(data.anggaran);
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🩺 Periksa Sekarang';
+  }
+});
+
+/* ============================================================
+   Kartu Kesehatan Usaha — pratinjau + tautan publik
+============================================================
+ *
+ * Tautannya membuka halaman /kartu/<token> yang baca-saja: tanpa login,
+ * tanpa pembukuan, tanpa id internal — hanya ringkasan kartu. Token diundi
+ * server (144-bit), disimpan sekali, dan dipakai ulang supaya tautan lama
+ * tidak mati. Pratinjau di sini dan halaman publiknya dibangun dari payload
+ * server yang SAMA, jadi yang dibagikan persis yang dilihat pemiliknya.
+ */
+let kartuTautan = '';
+
+el('kartuBtn').addEventListener('click', async () => {
+  const btn = el('kartuBtn');
+  const errBox = el('kartuError');
+  errBox.style.display = 'none';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Menyiapkan kartu…';
+  try {
+    const data = await api('/kartu', { method: 'POST' });
+    kartuTautan = location.origin + data.jalur;
+    renderKartuPratinjau(data.kartu);
+    el('kartuTautan').textContent = kartuTautan;
+    el('kartuBackdrop').style.display = 'grid';
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.style.display = 'block';
+    errBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🪪 Bagikan Kartu Kesehatan Usaha';
+  }
+});
+
+function renderKartuPratinjau(k) {
+  const skor = k.skorKesehatan ?? 0;
+  const panjang = 2 * Math.PI * 32;
+  const terisi = (skor / 100) * panjang;
+  el('kartuPratinjau').innerHTML = `
+    <div class="kartu-preview">
+      <div class="kp-usaha">${escapeHtml(k.namaUsaha)}</div>
+      <div class="kp-jenis">${escapeHtml(k.jenisUsaha ?? '')}</div>
+      <div class="kp-skor">
+        <div class="kp-dial">
+          <svg viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(43,108,176,.18)" stroke-width="7"></circle>
+            <circle cx="40" cy="40" r="32" fill="none" stroke="var(--blue)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${terisi} ${panjang}" style="transform:rotate(-90deg);transform-origin:center"></circle>
+          </svg>
+          <div class="kp-dial-num">${skor}</div>
+        </div>
+        <div>
+          <div class="kp-label">Skor Kesehatan</div>
+          <div class="kp-status">${escapeHtml(k.statusKesehatan ?? '—')}</div>
+        </div>
+      </div>
+      <div class="sim-baris"><span>Omzet setara bulanan</span><b>${k.omzet == null ? '—' : fmtRp(k.omzet)}</b></div>
+      <div class="sim-baris"><span>Laba bersih setara bulanan</span><b>${k.labaBersih == null ? '—' : fmtRp(k.labaBersih)}</b></div>
+      <div class="sim-baris"><span>Konsistensi pencatatan</span><b>${k.konsistensi.hariBulan ? k.konsistensi.hariTercatat + '/' + k.konsistensi.hariBulan + ' hari' : '—'}</b></div>
+      ${(k.insight ?? []).map((i) => `<div class="sim-baris"><span>Catatan</span><b style="font-weight:600;text-align:right">${escapeHtml(i.judul)}</b></div>`).join('')}
+      <div class="kp-foot">Ringkasan dari <b>Nova Explorer</b> · dibagikan sebagai tautan baca-saja · ${k.sumberAngka === 'catatan' ? 'angka dari buku kas' : 'angka masih perkiraan profil'}</div>
+    </div>`;
+}
+
+function tutupModalKartu() {
+  el('kartuBackdrop').style.display = 'none';
+}
+el('kartuClose').addEventListener('click', tutupModalKartu);
+el('kartuBackdrop').addEventListener('click', (e) => {
+  if (e.target === el('kartuBackdrop')) tutupModalKartu();
+});
+
+async function salinTautanKartu() {
+  try {
+    await navigator.clipboard.writeText(kartuTautan);
+    toast('🔗 Tautan disalin — tempel di chat mana pun');
+  } catch {
+    // Fallback peramban lama / konteks non-aman: textarea tersembunyi + perintah salin.
+    const ta = document.createElement('textarea');
+    ta.value = kartuTautan;
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      toast('🔗 Tautan disalin');
+    } catch {
+      toast('Salin manual dari tautan di bawah ya.');
+    }
+    ta.remove();
+  }
+}
+el('kartuSalin').addEventListener('click', salinTautanKartu);
+
+el('kartuBagikan').addEventListener('click', async () => {
+  // Web Share API kalau ada (ponsel: sheet berbagi bawaan); kalau tidak, salin.
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: 'Kartu Kesehatan Usaha — Nova Explorer',
+        text: 'Lihat ringkasan kesehatan usahaku:',
+        url: kartuTautan,
+      });
+      return;
+    } catch (err) {
+      if (err?.name === 'AbortError') return; // pengguna membatalkan sheet — bukan galat
+    }
+  }
+  await salinTautanKartu();
+});
+
+el('kartuCetak').addEventListener('click', () => {
+  document.body.classList.add('cetak-kartu');
+  window.print();
+});
+el('reportMonths').addEventListener('change', loadReport);
+
+/* ============================================================
+   Modul
+============================================================ */
+const selesaiPeserta = () => state.user.progress?.done ?? {};
+
+/**
+ * Label modul untuk kartu rekomendasi AI.
+ *
+ * Dulu isinya "Modul 7" saja — nomor telanjang yang tidak berarti apa-apa
+ * sebelum peserta membuka halaman Modul dan mencarinya. Sekarang judulnya ikut
+ * disebut, dan mengkliknya langsung membuka modulnya.
+ *
+ * Nomor yang tidak dikenal tidak dirender sama sekali. Rentang modul disebut ke
+ * model lewat deskripsi skema, bukan lewat `minimum`/`maximum` — jadi tidak ada
+ * yang menjamin angkanya masuk akal, dan "Modul 47" di layar peserta jauh lebih
+ * buruk daripada satu label yang hilang.
+ */
+function labelModul(no) {
+  const m = MODULES.find((x) => x.no === Number(no));
+  if (!m) return '';
+  const label = m.sesi != null ? `Sesi ${m.sesi}` : `Modul ${m.no}`;
+  return `<button class="tag" data-modul="${m.no}" style="cursor:pointer;border:none">${label}: ${escapeHtml(m.judul)}</button>`;
+}
+
+/* ---------- Jadwal: sesi mana yang sudah boleh dibuka ----------
+
+   Gerbangnya MAJU saja. Sesi esok belum terbuka; sesi kemarin tidak pernah
+   menutup lagi. Praktik sesi 1 menyuruh peserta membandingkan tebakannya di
+   sesi 4, dan modul 2 mengajarkan bahwa catatan cloud "bisa dibuka kapan saja"
+   — menutup sesi kemarin akan membuat aplikasi membantah materinya sendiri.
+
+   Yang di bawah ini hanya untuk tampilan. Penegakan sesungguhnya ada di server
+   (/api/sesi/:no, /api/progress, dan konteks modul untuk AI), karena apa pun
+   yang hanya dijaga layar depan bukan penjagaan.                              */
+
+const jadwalSaya = () => state.belajar ?? { dimulai: false, sesiTerbuka: 0, mulaiPada: null };
+const sesiTerkunci = (m) => m.sesi != null && m.sesi > jadwalSaya().sesiTerbuka;
+
+function tanggalBukaSesi(sesi) {
+  const { mulaiPada } = jadwalSaya();
+  if (!mulaiPada || !sesi) return null;
+  return new Date(Date.parse(mulaiPada + 'T00:00:00Z') + (sesi - 1) * 86400000).toISOString().slice(0, 10);
+}
+
+/**
+ * Sesi berikutnya yang belum dikerjakan di jalur dasar.
+ *
+ * Sengaja sesi terkecil yang belum selesai, bukan "jumlah selesai + 1": peserta
+ * yang melompat ke sesi 5 lebih dulu tetap diantar kembali ke sesi yang dia
+ * lewati, bukan didorong maju ke sesi 6.
+ */
+function sesiBerikutnya() {
+  const done = selesaiPeserta();
+  return SESI.find((m) => !done[m.no]) ?? null;
+}
+
+/**
+ * Kartu "sesi hari ini" — satu modul, sendirian, di atas segalanya.
+ *
+ * Inilah bentuk micro-learning yang diuji penelitian ini: satu sesi 10 menit
+ * per hari, bukan katalog. Menyodorkan 32 kartu sekaligus pada hari pertama
+ * adalah bentuk baru dari information overload yang justru jadi alasan
+ * pelatihan konvensional gagal — persoalan yang program ini coba jawab.
+ */
+function renderSesiHariIni() {
+  const kotak = el('modHariIni');
+  const m = sesiBerikutnya();
+  const j = jadwalSaya();
+
+  /*
+   * Jadwal belum ditetapkan pendamping. Ini bukan galat, dan tidak boleh
+   * terlihat seperti galat — peserta memang belum sampai pada pendampingannya.
+   */
+  if (m && !j.dimulai) {
+    kotak.innerHTML = `
+      <div class="sesi-kini">
+        <div class="eyebrow">Jalur belajar belum dimulai</div>
+        <h3>Tujuh sesi harianmu dibuka saat pendampingan</h3>
+        <p>Pendamping akan memulainya bersamamu, lalu satu sesi terbuka setiap hari selama seminggu.
+        Sementara itu kamu sudah bisa mengisi profil usaha dan mencatat di Buku Kas.</p>
+        <div class="actions"><button class="btn btn-primary" onclick="goTo('kas')">🧾 Buka buku kas</button></div>
+      </div>`;
+    return;
+  }
+
+  /* Sesi berikutnya ada, tapi harinya belum tiba. */
+  if (m && sesiTerkunci(m)) {
+    const buka = tanggalBukaSesi(m.sesi);
+    kotak.innerHTML = `
+      <div class="sesi-kini">
+        <div class="eyebrow">Hari ke-${j.hariKe} · sesi ${j.sesiTerbuka} dari ${SESI.length} sudah terbuka</div>
+        <h3>Sesi hari ini sudah kamu selesaikan</h3>
+        <p>Sesi ${m.sesi} — ${escapeHtml(m.judul)} — terbuka <b>${tanggalPanjang(buka)}</b>.
+        Sepuluh menit sehari, bukan tujuh jam sekali; jeda satu harinya bagian dari cara belajarnya.</p>
+        <p style="margin-top:10px">Hari ini pakai untuk mengerjakan praktiknya: catat transaksi hari ini di Buku Kas.</p>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="goTo('kas')">🧾 Catat transaksi</button>
+          <button class="btn btn-ghost" id="ulangSesi">Baca ulang sesi ${j.sesiTerbuka}</button>
+        </div>
+      </div>`;
+    const ulang = el('ulangSesi');
+    if (ulang) ulang.addEventListener('click', () => bacaModul(SESI[j.sesiTerbuka - 1].no));
+    return;
+  }
+
+  if (!m) {
+    const sisa = PUSTAKA.filter((p) => !selesaiPeserta()[p.no]).length;
+    kotak.innerHTML = `
+      <div class="sesi-kini">
+        <div class="eyebrow">✓ Jalur dasar selesai</div>
+        <h3>${SESI.length} sesi harian sudah kamu tuntaskan</h3>
+        <p>Kebiasaan mencatatnya sudah terbentuk — itu bagian yang paling sulit. ${sisa
+          ? `Masih ada <b>${sisa} modul</b> di pustaka lanjutan: untung per menu, titik impas, jualan online, sampai berkas pengajuan KUR.`
+          : 'Seluruh modul sudah kamu baca.'}</p>
+        ${sisa ? `<div class="actions"><button class="btn btn-primary" id="keLanjutan">Lihat pustaka lanjutan →</button></div>` : ''}
+      </div>`;
+    if (sisa) el('keLanjutan').addEventListener('click', () => pilihJalur('lanjutan'));
+    return;
+  }
+
+  kotak.innerHTML = `
+    <div class="sesi-kini">
+      <div class="eyebrow">Sesi ${m.sesi} dari ${SESI.length} · ± ${m.menit} menit</div>
+      <h3>${m.icon} ${escapeHtml(m.judul)}</h3>
+      <p>${escapeHtml(m.ringkas)}</p>
+      <div class="actions"><button class="btn btn-primary" id="mulaiSesi">Mulai sesi ini →</button></div>
+    </div>`;
+  el('mulaiSesi').addEventListener('click', () => bacaModul(m.no));
+}
+
+function renderJalurBar() {
+  el('jalurBar').innerHTML = Object.values(JALUR).map((j) => {
+    const total = MODULES.filter((m) => m.jalur === j.kunci).length;
+    return `<button class="chip ${j.kunci === jalurAktif ? 'aktif' : ''}" data-jalur="${j.kunci}">
+      ${escapeHtml(j.nama.split('—')[0].trim())} (${total})
+    </button>`;
+  }).join('');
+  el('jalurBar').querySelectorAll('[data-jalur]').forEach((b) =>
+    b.addEventListener('click', () => pilihJalur(b.dataset.jalur)));
+  el('jalurKet').textContent = JALUR[jalurAktif]?.ringkas ?? '';
+}
+
+function pilihJalur(kunci) {
+  jalurAktif = kunci;
+  renderModules();
+  el('jalurBar').scrollIntoView({ block: 'start' });
+}
+
+function renderModules() {
+  if (!MODULES.length) {
+    el('modGrid').innerHTML = `<div class="card empty"><p>Daftar modul gagal dimuat. Coba muat ulang halaman.</p></div>`;
+    return;
+  }
+  const done = selesaiPeserta();
+
+  renderSesiHariIni();
+  renderJalurBar();
+
+  /*
+   * Sesi yang belum terbuka tetap DITAMPILKAN, lengkap dengan judul dan
+   * ringkasannya — yang ditahan hanya isinya. Peta tujuh hari yang terlihat
+   * sejak hari pertama justru memotivasi; daftar yang disembunyikan hanya
+   * membuat peserta mengira aplikasinya belum selesai dibuat.
+   */
+  el('modGrid').innerHTML = MODULES.filter((m) => m.jalur === jalurAktif).map((m) => {
+    const kunci = sesiTerkunci(m);
+    const buka = kunci ? tanggalBukaSesi(m.sesi) : null;
+    return `
+    <button class="mod ${done[m.no] ? 'selesai' : ''} ${kunci ? 'terkunci' : ''}" data-buka="${m.no}">
+      <span class="mod-no">
+        <span>${m.sesi != null ? `SESI ${String(m.sesi).padStart(2, '0')}` : `MODUL ${String(m.no).padStart(2, '0')}`}</span>
+        <span class="mod-menit">± ${m.menit} mnt</span>
+      </span>
+      <h3>${m.icon} ${escapeHtml(m.judul)}</h3>
+      <p>${escapeHtml(m.ringkas)}</p>
+      <div class="mod-foot">
+        <span class="mod-cek${kunci ? ' kunci' : ''}">${
+          done[m.no] ? '✓ Selesai'
+          : kunci ? (buka ? `🔒 Terbuka ${tanggalPanjang(buka)}` : '🔒 Dibuka pendamping')
+          : 'Baca →'
+        }</span>
+      </div>
+    </button>`;
+  }).join('');
+
+  el('modGrid').querySelectorAll('[data-buka]').forEach((b) =>
+    b.addEventListener('click', () => bacaModul(Number(b.dataset.buka))));
+  updateProgress();
+}
+
+/** Membuka satu modul untuk dibaca, menggantikan daftar. */
+/**
+ * Membuka satu modul.
+ *
+ * Isi tujuh sesi harian tidak ikut di /modul.js — ia diambil sekali per sesi
+ * lewat /api/sesi/:no, yang tahu peserta mana yang sedang meminta dan menolak
+ * sesi yang harinya belum tiba. Hasilnya disimpan ke obyek modulnya sendiri,
+ * jadi membaca ulang sesi yang sama tidak memanggil server lagi.
+ */
+async function bacaModul(no) {
+  const m = MODULES.find((x) => x.no === no);
+  if (!m) return;
+
+  if (m.isiTerpisah && !m.isi) {
+    try {
+      const data = await api('/sesi/' + m.no);
+      m.isi = data.isi;
+      m.praktik = data.praktik;
+      if (data.jadwal) state.belajar = data.jadwal;
+    } catch (err) {
+      /*
+       * Sesi terkunci dijawab dengan kalimat yang menyebut tanggalnya, bukan
+       * dengan pesan galat. Pemilik warung yang mengira alatnya rusak tidak
+       * membukanya lagi besok — dan intervensi tujuh hari tidak selamat dari itu.
+       */
+      const buka = tanggalBukaSesi(m.sesi);
+      el('modBaca').innerHTML = `
+        <div class="baca-atas">
+          <button class="btn btn-ghost" style="padding:7px 13px;font-size:.82rem" id="bacaKembali">← Daftar modul</button>
+        </div>
+        <div class="eyebrow" style="margin-top:10px">🔒 Belum terbuka</div>
+        <h2>${m.icon} ${escapeHtml(m.judul)}</h2>
+        <p class="baca-meta">${escapeHtml(m.ringkas)}</p>
+        <div class="praktik" style="margin-top:16px">
+          <b>${buka ? `Terbuka ${tanggalPanjang(buka)}` : 'Dibuka oleh pendamping'}</b>
+          <p>${escapeHtml(err.message)}</p>
+        </div>
+        <div class="baca-bawah">
+          <button class="btn btn-primary" onclick="goTo('kas')">🧾 Catat transaksi hari ini</button>
+        </div>`;
+      el('modDaftar').hidden = true;
+      el('modBaca').hidden = false;
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      el('bacaKembali').addEventListener('click', tutupModul);
+      return;
+    }
+  }
+
+  const done = selesaiPeserta();
+  const label = m.sesi != null ? `Sesi ${m.sesi} dari ${SESI.length}` : `Modul ${m.no}`;
+
+  el('modBaca').innerHTML = `
+    <div class="baca-atas">
+      <button class="btn btn-ghost" style="padding:7px 13px;font-size:.82rem" id="bacaKembali">← Daftar modul</button>
+      <span class="tag">${escapeHtml(JALUR[m.jalur]?.nama.split('—')[0].trim() ?? '')}</span>
+    </div>
+    <div class="eyebrow" style="margin-top:10px">${label} · ± ${m.menit} menit</div>
+    <h2>${m.icon} ${escapeHtml(m.judul)}</h2>
+    <p class="baca-meta">${escapeHtml(m.ringkas)}</p>
+
+    <div class="baca-isi">
+      ${(m.isi ?? []).map((s) => `
+        <section>
+          <h3>${escapeHtml(s.h)}</h3>
+          ${s.p ? `<p>${escapeHtml(s.p)}</p>` : ''}
+          ${s.li ? `<ul>${s.li.map((x) => `<li>${escapeHtml(x)}</li>`).join('')}</ul>` : ''}
+        </section>`).join('')}
+    </div>
+
+    ${m.praktik ? `<div class="praktik"><b>Praktik hari ini</b><p>${escapeHtml(m.praktik)}</p></div>` : ''}
+
+    <div class="baca-bawah">
+      <button class="btn ${done[m.no] ? 'btn-ghost' : 'btn-primary'}" id="bacaTandai">
+        ${done[m.no] ? '✓ Sudah selesai — batalkan' : 'Tandai selesai'}
+      </button>
+      ${/*
+           Tautan video hanya dirender kalau modulnya memang punya video
+           pendamping yang sudah dipastikan ada. Tautan mati yang berakhir di
+           "Video unavailable" lebih buruk daripada tidak ada tautan sama
+           sekali — apalagi di alat yang dipakai penelitian, karena peserta
+           akan mengira aplikasinya yang rusak lalu berhenti memakainya.
+        */''}
+      ${m.video ? `<a href="https://www.youtube.com/watch?v=${encodeURIComponent(m.video)}" target="_blank" rel="noopener">Video pendamping ↗</a>` : ''}
+      <button class="btn btn-ghost" id="bacaTanya">💬 Tanya AI soal ini</button>
+    </div>`;
+
+  el('modDaftar').hidden = true;
+  el('modBaca').hidden = false;
+  window.scrollTo({ top: 0, behavior: 'instant' });
+
+  el('bacaKembali').addEventListener('click', tutupModul);
+  el('bacaTandai').addEventListener('click', () => toggleModule(m.no, true));
+  el('bacaTanya').addEventListener('click', () => {
+    pasangKonteksModul(m);
+    goTo('konsultasi');
+    const kotak = el('chatInput');
+    if (kotak) { kotak.value = `Jelaskan materi ini pakai angka usaha saya.`; kotak.focus(); }
+  });
+}
+
+/* ---------- Konteks modul untuk percakapan ----------
+   Inilah titik temu modul dan AI: pertanyaan yang diajukan dari dalam sebuah
+   modul dikirim bersama materi modulnya, sehingga jawabannya menjelaskan
+   materi yang SAMA memakai angka usaha peserta sendiri. Tanpa ini, model
+   menjawab dari pengetahuannya sendiri dan bisa memberi versi lain dari apa
+   yang barusan dibaca peserta di layar yang sama. */
+let modulKonteks = null;
+
+function pasangKonteksModul(m) {
+  modulKonteks = m;
+  const bar = el('modulKonteksBar');
+  const label = m.sesi != null ? `Sesi ${m.sesi}` : `Modul ${m.no}`;
+  bar.innerHTML = `
+    <div class="modul-konteks">
+      <span>📖 ${escapeHtml(label)}: ${escapeHtml(m.judul)}</span>
+      <button type="button" id="lepasModul" title="Jangan sertakan materi ini" aria-label="Lepas konteks modul">×</button>
+    </div>`;
+  el('lepasModul').addEventListener('click', lepasKonteksModul);
+}
+
+function lepasKonteksModul() {
+  modulKonteks = null;
+  const bar = el('modulKonteksBar');
+  if (bar) bar.innerHTML = '';
+}
+
+function tutupModul() {
+  el('modBaca').hidden = true;
+  el('modDaftar').hidden = false;
+  renderModules();
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
+async function toggleModule(no, dariPembaca = false) {
+  const progress = state.user.progress ?? { done: {} };
+  progress.done = progress.done ?? {};
+  progress.done[no] = !progress.done[no];
+  if (!progress.done[no]) delete progress.done[no];
+  state.user.progress = progress;
+
+  if (dariPembaca && progress.done[no]) {
+    /*
+     * Selesai dari dalam pembaca langsung kembali ke daftar, dan kartu "sesi
+     * hari ini" sudah berganti ke sesi berikutnya saat peserta tiba di sana.
+     * Itu satu-satunya isyarat kemajuan yang dilihat peserta setiap hari.
+     */
+    tutupModul();
+    const lanjut = sesiBerikutnya();
+    toast(lanjut && MODULES.find((m) => m.no === no)?.sesi != null
+      ? `Sesi selesai. Besok: ${lanjut.judul}`
+      : 'Modul ditandai selesai');
+  } else {
+    if (dariPembaca) tutupModul(); else renderModules();
+  }
+
+  try { await api('/progress', { method: 'PUT', body: JSON.stringify({ done: progress.done }) }); }
+  catch { toast('Progres belum tersimpan ke server'); }
+}
+
+function updateProgress() {
+  const done = selesaiPeserta();
+  const hitung = (daftar) => daftar.filter((m) => done[m.no]).length;
+
+  /*
+   * Dua batang, bukan satu.
+   *
+   * Dengan satu batang atas 32 modul, peserta yang baru menuntaskan seluruh
+   * dua minggu intervensi — yaitu peserta yang BERHASIL — melihat "14 dari 32"
+   * dan menyimpulkan dirinya baru setengah jalan. Jalur dasar adalah
+   * programnya; sisanya pustaka. Keduanya diukur terpisah supaya angkanya
+   * mengatakan hal yang benar.
+   */
+  const nSesi = hitung(SESI);
+  el('progressText').textContent = `${nSesi} dari ${SESI.length} selesai`;
+  el('progressBar').style.width = (SESI.length ? nSesi / SESI.length : 0) * 100 + '%';
+
+  const nPustaka = hitung(PUSTAKA);
+  el('progressPustakaText').textContent = `${nPustaka} dari ${PUSTAKA.length} selesai`;
+  el('progressPustakaBar').style.width = (PUSTAKA.length ? nPustaka / PUSTAKA.length : 0) * 100 + '%';
+}
+
+/* ============================================================
+   Mulai
+============================================================ */
+(async function init() {
+  if (!token) return;
+  try {
+    const data = await api('/me');
+    applySession(data);
+    /*
+     * Persetujuan diperiksa DI SINI juga, bukan hanya di jalur login.
+     *
+     * Dulu jalur muat-ulang langsung masuk aplikasi. Begitu teks persetujuan
+     * dinaikkan versinya — satu-satunya alasan versi itu ada — setiap peserta
+     * yang menyegarkan halaman melewati layar persetujuan, lalu ditolak server
+     * pada setiap penyimpanan tanpa pernah diberi kesempatan menyetujui.
+     */
+    if (data.consent) showConsent(data.consent);
+    else enterApp();
+  } catch {
+    logout(); // kode sudah tidak berlaku
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1891 @@
+/**
+ * Nova Explorer — server aplikasi.
+ *
+ * Menyajikan aplikasi web dan menjadi perantara aman ke Claude Sonnet 5.
+ * Kunci API hanya ada di server; browser tidak pernah melihatnya.
+ */
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import 'dotenv/config';
+import express from 'express';
+
+import {
+  JENIS,
+  KATEGORI,
+  currentMonth,
+  jamWIB,
+  isMonthComplete,
+  isMonthReliable,
+  isValidKategori,
+  lastMonths,
+  monthsWithData,
+  perubahanPersen,
+  saringTransaksi,
+  summarizeMonth,
+  summarizeRange,
+  todayISO,
+  transactionsForMonth,
+} from './lib/cashbook.js';
+import { PERKIRAAN, cekAnggaran, ringkasAnggaran } from './lib/anggaran.js';
+import { scheduleBackups } from './lib/backup.js';
+import { analyzeNota, backendAI, describeError, generateRecommendations, isConfigured, modelAktif, streamChat } from './lib/ai.js';
+import { CONSENT_TEXT, CONSENT_VERSION, hasConsented } from './lib/consent.js';
+import { asetDariBerkas, asetDariNilai, sajikanAset } from './lib/aset.js';
+import { forceHttps, periksaKodeAkses, punyaPublicHost, securityHeaders } from './lib/guard.js';
+import { periksaPenyimpanan, wajibBisaMenyimpan } from './lib/kesehatan.js';
+import { log } from './lib/log.js';
+import { jadwalUntukAI, modulTerbuka, ringkasJadwal, tanggalSesiTerbuka } from './lib/jadwal.js';
+import { JALUR, KURIKULUM, materiModul, nomorModulSah, ringkasKemajuan } from './lib/kurikulum.js';
+import { PROFIL_FIELDS, computeMetrics, metricsToText } from './lib/metrics.js';
+import { cashbookContext, LABEL } from './lib/prompts.js';
+import { store } from './lib/store.js';
+import { KODE_DEMO, isiDemoPenuh, lanjutkanDemo, personaDemo, PERSONA_DEMO } from './lib/demo-data.js';
+import { kenaliGambar, sanitasiHasilNota } from './lib/nota.js';
+import { sanitasiCheckup } from './lib/checkup.js';
+import { hitungHasil, instrumen, periksaPengiriman, rekapValidasi } from './lib/validasi.js';
+import { hitungHasilIT, instrumenIT, periksaPengirimanIT, rekapValidasiIT } from './lib/validasi-it.js';
+import { validasiStore } from './lib/validasi-store.js';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const PORT = Number(process.env.PORT) || 3000;
+const RATE_LIMIT = Number(process.env.RATE_LIMIT_PER_HOUR) || 40;
+
+const app = express();
+app.disable('x-powered-by');
+
+/*
+ * Di belakang Nginx, alamat IP asli ada di X-Forwarded-For. Tanpa ini semua
+ * permintaan terlihat datang dari 127.0.0.1 — dan satu penyerang akan mengunci
+ * pembatas login untuk SEMUA peserta sekaligus.
+ *
+ * Sengaja tidak dinyalakan secara default: kalau aplikasi ini terbuka langsung
+ * ke internet tanpa proxy, mempercayai header itu justru membuat pembatasnya
+ * bisa dilewati dengan memalsukan X-Forwarded-For.
+ */
+if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || 1);
+
+if (process.env.FORCE_HTTPS === '1') app.use(forceHttps);
+app.use(securityHeaders);
+
+/* ------------------------------------------------------- Scan nota (foto) */
+
+/*
+ * Batas ukuran foto nota. 4 MB jauh melampaui foto hasil kompres peramban
+ * (klien mengecilkan ke sisi 1600px sebelum mengirim) — batas ini untuk
+ * berkas yang dipaksakan lewat curl, bukan untuk kamera sungguhan.
+ */
+const NOTA_MAKS_BYTE = 4 * 1024 * 1024;
+
+/**
+ * Membaca foto nota → USULAN transaksi. Tidak pernah menyimpan.
+ *
+ * Rute ini didaftar SEBELUM `express.json` global di bawah, dan membawa
+ * parser tubuhnya sendiri: foto adalah biner (bukan JSON) dan batas 256 kb
+ * milik API teks tidak masuk akal untuk gambar. Parser `express.raw` hanya
+ * aktif untuk content-type gambar yang dikenali — payload lain tiba di
+ * handler sebagai tubuh kosong dan ditolak di pemeriksaan pertama.
+ *
+ * Alur keamanannya berlapis:
+ *   1. autentikasi + persetujuan + anggaran + batas laju (sama dengan AI lain),
+ *   2. jenis berkas disimpulkan dari ISI byte (magic number) — header
+ *      Content-Type dari klien tidak pernah dipercaya,
+ *   3. hasil AI dibersihkan `sanitasiHasilNota` sebelum dikirim ke layar,
+ *   4. dan yang paling penting: rute ini tidak punya akses penyimpanan sama
+ *      sekali. Simpan hanya lewat /api/cashbook yang sama dengan input
+ *      manual, setelah peserta menekan tombolnya sendiri.
+ *
+ * Foto tidak pernah ditulis ke disk dan isinya tidak pernah dicatat ke log —
+ * yang dicatat hanya panjang berkas dan status akhirnya.
+ */
+app.post(
+  '/api/scan-nota',
+  authenticate,
+  requireConsent,
+  anggaranToken('nota'),
+  rateLimit,
+  express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: NOTA_MAKS_BYTE }),
+  async (req, res) => {
+    const gambar = req.body;
+    if (!Buffer.isBuffer(gambar) || gambar.length === 0) {
+      return res.status(400).json({ error: 'Berkas nota tidak terkirim. Coba pilih atau foto ulang gambarnya.' });
+    }
+
+    // Jenis berkas dari byte, bukan dari header — header bisa apa saja.
+    const mime = kenaliGambar(gambar);
+    if (!mime) {
+      return res.status(400).json({ error: 'Berkas ini bukan gambar yang dikenali. Gunakan JPG, PNG, atau WebP.' });
+    }
+
+    if (!isConfigured()) {
+      return res.status(503).json({ error: 'Layanan AI belum diatur di server ini, jadi scan nota belum bisa dipakai.' });
+    }
+
+    const controller = new AbortController();
+    res.on('close', () => {
+      if (!res.writableEnded) controller.abort();
+    });
+
+    try {
+      const { data: mentah, usage } = await analyzeNota({
+        imageBase64: gambar.toString('base64'),
+        mimeType: mime,
+        signal: controller.signal,
+      });
+      const hasil = sanitasiHasilNota(mentah);
+      await store.recordUsage(req.user.id, usage);
+      log.info('nota', 'nota selesai dibaca', { userId: req.user.id, bytes: gambar.length, tingkat: hasil.tingkat });
+      res.json({ hasil });
+    } catch (err) {
+      if (controller.signal.aborted) {
+        log.info('nota', 'dibatalkan peserta sebelum selesai', { userId: req.user.id });
+        return;
+      }
+      // describeError menangani galat SDK; galat bawaan lib/nota.js (status
+      // 502 hasil format tidak terbaca) dilewatkan apa adanya.
+      const { status, message } = describeError(err);
+      if (isServiceFailure(status)) req.refundRateLimit?.();
+      log.error('nota', 'analisis nota gagal', { userId: req.user.id, status, bytes: gambar.length, sebab: err?.message ?? String(err) });
+      res.status(status).json({ error: message });
+    }
+  },
+);
+
+app.use(express.json({ limit: '256kb' }));
+
+/* ---------------------------------------------------------------- Autentikasi */
+
+/**
+ * Membaca kode akses dari header Authorization: Bearer <kode>.
+ *
+ * Pemeriksaan ini ikut dibatasi dan ikut dicatat, sama seperti rute login.
+ * Sebelumnya hanya `/api/login` yang dijaga — sehingga menebak kode lewat
+ * `GET /api/me` bisa dilakukan tanpa batas dan tanpa meninggalkan satu baris pun
+ * di log, membuat pembatasnya bisa dilewati hanya dengan memilih rute lain.
+ */
+async function authenticate(req, res, next) {
+  const header = req.get('authorization') ?? '';
+  const code = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+  const hasil = await periksaKodeAkses(req.ip ?? 'tak-dikenal', code, (c) => store.findByAccessCode(c), req.path);
+  if (!hasil.user) {
+    return res
+      .status(hasil.status)
+      .json({ error: hasil.error ?? 'Kode akses tidak dikenali. Minta kode baru ke pengelola.' });
+  }
+  req.user = hasil.user;
+  next();
+}
+
+/* --------------------------------------------------- Pembatas pemakaian AI */
+
+const hits = new Map(); // userId -> timestamp[]
+
+function rateLimit(req, res, next) {
+  const now = Date.now();
+  const windowStart = now - 60 * 60 * 1000;
+  const recent = (hits.get(req.user.id) ?? []).filter((t) => t > windowStart);
+  if (recent.length >= RATE_LIMIT) {
+    const nextSlot = new Date(recent[0] + 60 * 60 * 1000);
+    return res.status(429).json({
+      error: `Batas pemakaian AI tercapai (${RATE_LIMIT} permintaan per jam). Coba lagi setelah ${jamWIB(nextSlot)}.`,
+    });
+  }
+  recent.push(now);
+  hits.set(req.user.id, recent);
+
+  /*
+   * Jatah dipesan di depan supaya dua permintaan bersamaan tidak sama-sama lolos.
+   * Kalau ternyata AI-nya memang tidak bisa dipakai (kunci API belum diatur,
+   * layanan sedang penuh), jatahnya dikembalikan — pengguna tidak boleh kehilangan
+   * kuota untuk kegagalan yang bukan salahnya.
+   */
+  req.refundRateLimit = () => {
+    const list = hits.get(req.user.id);
+    const i = list ? list.lastIndexOf(now) : -1;
+    if (i >= 0) list.splice(i, 1);
+  };
+  next();
+}
+
+/** Kegagalan di sisi layanan, bukan akibat permintaan pengguna. */
+const isServiceFailure = (status) => status === 503 || status === 429 || status === 502;
+
+/** Ditempelkan ke jawaban yang berhenti karena kepanjangan, dan ikut tersimpan. */
+const POTONG = 'Maaf, jawaban ini terpotong karena kepanjangan. Coba tanya lagi dengan pertanyaan yang lebih fokus untuk mendapat lanjutannya.';
+
+/* ------------------------------------------------------- Anggaran token */
+
+/**
+ * Menjaga TAGIHAN, bukan ledakan permintaan.
+ *
+ * `rateLimit` di atas membatasi berapa sering; ini membatasi berapa mahal.
+ * Keduanya perlu: menekan "Perbarui rekomendasi" dua belas kali dalam semalam
+ * tidak melanggar batas per jam mana pun, tapi bisa menghabiskan biaya program
+ * sebulan. Jatahnya diperiksa SEBELUM permintaan dikirim, memakai perkiraan
+ * biaya — batas yang baru diperiksa sesudahnya bukan batas, melainkan laporan.
+ */
+function anggaranToken(jenis) {
+  return async (req, res, next) => {
+    const jejakToken = await store.getTokenLog(req.user.id);
+    /*
+     * `jenis` boleh berupa fungsi supaya rute chat bisa memilih perkiraan yang
+     * lebih besar saat materi modul ikut terkirim. Anggaran yang diperiksa
+     * dengan angka yang terlalu kecil sama saja dengan tidak diperiksa.
+     */
+    const kunci = typeof jenis === 'function' ? jenis(req) : jenis;
+    const tolak = cekAnggaran(jejakToken, PERKIRAAN[kunci] ?? PERKIRAAN.chat);
+    if (!tolak) return next();
+    await store.logEvent(req.user.id, 'anggaran_habis', { jenis: tolak.jenis }, { jedaMs: 60 * 60 * 1000 });
+    return res.status(429).json({ error: tolak.pesan, anggaranHabis: tolak.jenis });
+  };
+}
+
+/** Sisa jatah peserta, ikut dikirim agar tampilan bisa menunjukkannya lebih dulu. */
+async function anggaranUntuk(user) {
+  return ringkasAnggaran(await store.getTokenLog(user.id));
+}
+
+/* ------------------------------------------------------------- Persetujuan */
+
+/**
+ * Menolak penulisan data dari peserta yang belum menyetujui versi teks saat ini.
+ *
+ * Dipasang di server, bukan hanya di tampilan. Persetujuan yang hanya dijaga
+ * oleh layar depan bukan persetujuan — ia cuma tombol yang bisa dilewati.
+ * Rute baca tetap terbuka supaya aplikasi bisa memuat dan menampilkan teksnya.
+ */
+function requireConsent(req, res, next) {
+  if (hasConsented(req.user)) return next();
+  return res.status(451).json({
+    error: 'Persetujuan peserta diperlukan sebelum data bisa disimpan.',
+    consentRequired: true,
+    consent: CONSENT_TEXT,
+  });
+}
+
+/* -------------------------------------------------- Angka nyata vs perkiraan */
+
+/**
+ * Menghitung indikator keuangan pengguna.
+ *
+ * Kalau buku kas bulan berjalan sudah cukup terisi, angka nyata dipakai dan
+ * perkiraan di profil diabaikan. Kalau belum, perkiraan yang dipakai. Sumbernya
+ * selalu ikut dikembalikan supaya pengguna tahu angka itu datang dari mana.
+ */
+async function metricsFor(user) {
+  const transactions = await store.getTransactions(user.id);
+  const month = currentMonth();
+  const summary = summarizeMonth(transactions, month);
+  const real = isMonthReliable(summary) ? summary : null;
+  return {
+    metrics: computeMetrics(user.profile ?? {}, real, summary),
+    transactions,
+    summary,
+  };
+}
+
+/**
+ * Metrik untuk bulan TERTENTU dari transaksi yang sudah dimuat — aturan
+ * sumber angka yang sama dengan metricsFor (bulan yang tercatat cukup rapat
+ * memakai catatan nyata, sisanya perkiraan profil). Dipakai garis waktu
+ * kesehatan; transaksinya sengaja diterima dari pemanggil supaya enam bulan
+ * tidak membaca berkas data enam kali.
+ */
+function metricsForBulan(user, transactions, ringkasan) {
+  const real = isMonthReliable(ringkasan) ? ringkasan : null;
+  return { metrics: computeMetrics(user.profile ?? {}, real, ringkasan) };
+}
+
+/* ------------------------------------------------------------------ Validasi */
+
+const asNumber = (v, max) => {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(n, max);
+};
+
+/*
+ * Batas bawah tanggal transaksi.
+ *
+ * Batas atas sudah ada (tidak boleh di masa depan), tapi tanpa batas bawah satu
+ * salah ketik tahun — "2016" alih-alih "2026" — menyelipkan bulan asing ke
+ * daftar pilihan bulan dan ke riwayat yang dibaca AI, dan peserta tidak punya
+ * cara mudah menyadarinya. Lima tahun jauh melampaui kebutuhan KUR (3–6 bulan).
+ */
+const TAHUN_TERLAMA = 5;
+const tanggalTerlama = () => {
+  const [y, m, d] = todayISO().split('-').map(Number);
+  return `${y - TAHUN_TERLAMA}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+};
+const BULAN_TERLAMA = tanggalTerlama().slice(0, 7);
+
+function sanitizeProfile(body = {}) {
+  const errors = [];
+  const text = (v, maxLen) => String(v ?? '').trim().slice(0, maxLen);
+
+  const profile = {
+    namaUsaha: text(body.namaUsaha, 80),
+    jenisUsaha: PROFIL_FIELDS.jenisUsaha.includes(body.jenisUsaha) ? body.jenisUsaha : '',
+    lokasi: text(body.lokasi, 80),
+    lamaUsahaBulan: asNumber(body.lamaUsahaBulan, 1200),
+    jumlahKaryawan: asNumber(body.jumlahKaryawan, 1000),
+    produkUtama: text(body.produkUtama, 120),
+    omzetBulanan: asNumber(body.omzetBulanan, 1e12),
+    belanjaBulanan: asNumber(body.belanjaBulanan, 1e12),
+    biayaOperasional: asNumber(body.biayaOperasional, 1e12),
+    cicilanBulanan: asNumber(body.cicilanBulanan, 1e12),
+    pencatatan: PROFIL_FIELDS.pencatatan.includes(body.pencatatan) ? body.pencatatan : '',
+    rekeningTerpisah: Boolean(body.rekeningTerpisah),
+    punyaNib: Boolean(body.punyaNib),
+    tujuan: PROFIL_FIELDS.tujuan.includes(body.tujuan) ? body.tujuan : '',
+    tantangan: text(body.tantangan, 500),
+  };
+
+  if (!profile.namaUsaha) errors.push('Nama usaha wajib diisi.');
+  if (!profile.jenisUsaha) errors.push('Jenis usaha wajib dipilih.');
+  if (!profile.pencatatan) errors.push('Cara pencatatan saat ini wajib dipilih.');
+  if (!profile.tujuan) errors.push('Tujuan utama wajib dipilih.');
+  if (profile.omzetBulanan <= 0) errors.push('Omzet bulanan wajib diisi dengan angka lebih dari 0.');
+
+  return { profile, errors };
+}
+
+/* -------------------------------------------------------------------- Rute */
+
+/**
+ * Probe kesehatan — benar-benar menyentuh penyimpanan.
+ *
+ * Menjawab 503 bila folder data tidak bisa dibaca atau ditulis, supaya Load
+ * Balancer menarik instance ini keluar. Jawaban `{ok:true}` yang tidak pernah
+ * memeriksa apa pun justru berbahaya: instance yang disknya gagal ter-mount
+ * akan dinyatakan sehat dan terus menerima catatan peserta yang akan lenyap.
+ *
+ * Tidak menyebut jalur folder apa pun — probe ini terbuka tanpa kode akses.
+ */
+app.get('/api/health', async (req, res) => {
+  const penyimpanan = await periksaPenyimpanan();
+  res.status(penyimpanan.sehat ? 200 : 503).json({
+    ok: penyimpanan.sehat,
+    model: modelAktif(),
+    aiConfigured: isConfigured(),
+    penyimpanan: { baca: penyimpanan.baca, tulis: penyimpanan.tulis, peserta: penyimpanan.peserta },
+  });
+});
+
+app.post('/api/login', async (req, res) => {
+  const hasil = await periksaKodeAkses(
+    req.ip ?? 'tak-dikenal',
+    req.body?.code,
+    (c) => store.findByAccessCode(c),
+    '/api/login',
+  );
+  if (!hasil.user) {
+    return res
+      .status(hasil.status)
+      .json({ error: hasil.error ?? 'Kode akses tidak dikenali. Periksa kembali penulisannya.' });
+  }
+  const user = hasil.user;
+  const { metrics } = await metricsFor(user);
+  await store.logEvent(user.id, 'login');
+  res.json({
+    user: store.publicUser(user),
+    metrics: user.profile ? metrics : null,
+    aiConfigured: isConfigured(),
+    consent: hasConsented(user) ? null : CONSENT_TEXT,
+    anggaran: await anggaranUntuk(user),
+    belajar: ringkasJadwal(user),
+  });
+});
+
+/* ------------------------------------------------------------- Masuk demo */
+
+/*
+ * Juru putar akun demo: tiap permintaan mendapat akun berikutnya.
+ *
+ * Rotasi, bukan acak: lima akun yang dipakai bergantian membagi beban
+ * cache dan membuat "peserta demo" tampak hidup bergiliran, bukan satu
+ * akun yang dipakati seribu tangan. Dengan max-instances=1, penghitung
+ * dalam proses cukup — dua instance pun akan tetap membagi lima akun
+ * yang sama, hanya urutannya yang bisa saling menyisipkan.
+ */
+let giliranDemo = 0;
+
+/*
+ * Pembatas khusus rute demo. `periksaKodeAkses` menjaga penebakan KODE;
+ * rute ini justru memberikan kode secara sah, jadi yang perlu dijaga
+ * berbeda: permintaan tanpa henti yang membebani server. Seseorang yang
+ * bermaksud buruk bisa memutar demo ribuan kali per menit untuk menulis
+ * kejadian login ke lima akun sekaligus.
+ */
+const demoJendelaMs = 10 * 60 * 1000;
+const demoBatas = 20;
+const demoHits = new Map(); // ip -> timestamp[]
+
+function batasiDemo(req, res, next) {
+  const ip = req.ip ?? 'tak-dikenal';
+  const kini = Date.now();
+  const segar = (demoHits.get(ip) ?? []).filter((t) => t > kini - demoJendelaMs);
+  if (segar.length >= demoBatas) {
+    return res.status(429).json({ error: 'Terlalu banyak permintaan demo. Tunggu beberapa menit.' });
+  }
+  segar.push(kini);
+  demoHits.set(ip, segar);
+  next();
+}
+
+/**
+ * Masuk tanpa kode: server memilih salah satu akun DEMO yang siap.
+ *
+ * Jawabannya bentuknya sama persis dengan /api/login — plus `code` dan
+ * `demo: true` — supaya layar depan memakai jalur masuk yang sama sekali,
+ * bukan menyalin logikanya. Kode tetap perlu dikirim balik sebagai Bearer
+ * pada tiap permintaan berikutnya, karena autentikasi aplikasi ini memang
+ * berbasis kode akses.
+ *
+ * Akun B1/B2 (peserta penelitian) TIDAK PERNAH terpilih di sini: kandidat
+ * hanya kode yang tercatat di KODE_DEMO, dan tiap-tiapnya diverifikasi
+ * batch-nya DEMO sebelum dipakai.
+ */
+app.post('/api/demo', batasiDemo, async (req, res) => {
+  const siap = [];
+  for (const kode of KODE_DEMO) {
+    const u = await store.findByAccessCode(kode);
+    if (u?.batch === 'DEMO' && u.profile) siap.push({ kode, user: u });
+  }
+  if (!siap.length) {
+    return res.status(503).json({ error: 'Akun demo belum siap. Coba beberapa saat lagi.' });
+  }
+
+  const { kode, user } = siap[giliranDemo++ % siap.length];
+  const { metrics } = await metricsFor(user);
+  await store.logEvent(user.id, 'demo_login');
+  res.json({
+    demo: true,
+    code: kode,
+    user: store.publicUser(user),
+    metrics: user.profile ? metrics : null,
+    aiConfigured: isConfigured(),
+    // Akun demo telah menyetujui teks yang sama — jangan minta lagi.
+    consent: hasConsented(user) ? null : CONSENT_TEXT,
+    anggaran: await anggaranUntuk(user),
+    belajar: ringkasJadwal(user),
+  });
+});
+
+
+/* ------------------------------------------------- Kartu kesehatan usaha */
+
+/*
+ * Satu-satunya bentuk data yang boleh keluar lewat kartu yang dibagikan.
+ *
+ * Dibangun sebagai DAFTAR PUTIH eksplisit — bukan daftar hitam medan yang
+ * dibuang. Bedanya nyata saat suatu hari ada medan baru di pengguna: dengan
+ * daftar putih, medan itu TIDAK ikut bocor ke halaman publik sampai seseorang
+ * sengaja menambahkannya di sini.
+ *
+ * Yang sengaja TIDAK ADA di sini dan tidak boleh ditambahkan: id internal,
+ * tokenKartu (ia kunci halamannya — tertukar dengan isinya adalah kebocoran),
+ * codeHash/kode akses, transaksi satu per satu, riwayat chat, jejak penelitian.
+ */
+function susunKartuPublik(user, metrics) {
+  const p = user.profile ?? {};
+  const m = metrics ?? {};
+
+  const rekomendasi = (user.recommendations?.rekomendasi ?? []).slice(0, 2).map((r) => ({
+    judul: String(r.judul ?? '').slice(0, 120),
+    prioritas: r.prioritas === 'tinggi' || r.prioritas === 'sedang' ? r.prioritas : 'sedang',
+  }));
+  /*
+   * Peserta yang belum pernah menyusun rekomendasi tetap layak punya kartu —
+   * insight penggantinya disarikan dari metrik yang SUDAH dihitung sistem,
+   * bukan angka karangan.
+   */
+  const insight = rekomendasi.length
+    ? rekomendasi
+    : [{
+        judul: m.statusCicilan === 'aman'
+          ? 'Beban cicilan usaha dalam batas sehat'
+          : 'Tinjau kembali beban cicilan terhadap laba usaha',
+        prioritas: m.statusCicilan === 'aman' ? 'rendah' : 'tinggi',
+      }];
+
+  return {
+    aplikasi: 'Nova Explorer',
+    namaUsaha: String(p.namaUsaha || user.business || 'Usaha saya').slice(0, 80),
+    jenisUsaha: LABEL.jenisUsaha[p.jenisUsaha] ?? null,
+    periode: {
+      hariSejakMulai: Number(m.hariSejakMulai) || 0,
+      hariTercatatBulanIni: Number(m.hariTercatat) || 0,
+      hariBulan: Number(m.hariBulan) || 0,
+      bulanLengkap: Boolean(m.bulanLengkap),
+    },
+    skorKesehatan: Number.isFinite(m.skorKesehatan) ? m.skorKesehatan : null,
+    statusKesehatan: m.statusKesehatan ?? null,
+    omzet: Number.isFinite(m.omzet) ? Math.round(m.omzet) : null,
+    labaBersih: Number.isFinite(m.labaBersih) ? Math.round(m.labaBersih) : null,
+    sumberAngka: m.sumber === 'catatan' ? 'catatan' : 'perkiraan',
+    konsistensi: {
+      hariTercatat: Number(m.hariTercatat) || 0,
+      hariBulan: Number(m.hariBulan) || 0,
+    },
+    insight,
+    dibuatPada: new Date().toISOString(),
+  };
+}
+
+/** Token kartu: diundi, bukan diturunkan dari apa pun yang bisa ditebak. */
+const tokenKartuBaru = () => 'kartu_' + randomBytes(18).toString('base64url');
+const FORMAT_TOKEN_KARTU = /^kartu_[A-Za-z0-9_-]{20,}$/;
+
+/**
+ * Membuat / mengembalikan token kartu pengguna ini. Idempoten: kartu kedua
+ * memakai token yang sama, supaya tautan yang pernah dibagikan tidak mati.
+ */
+app.post('/api/kartu', authenticate, requireConsent, async (req, res) => {
+  let token = req.user.tokenKartu;
+  if (!token) {
+    token = tokenKartuBaru();
+    if (!(await store.aturTokenKartu(req.user.id, token))) {
+      return res.status(500).json({ error: 'Kartu belum bisa dibuat. Coba lagi.' });
+    }
+  }
+  const { metrics } = await metricsFor(req.user);
+  res.json({ token, jalur: `/kartu/${token}`, kartu: susunKartuPublik(req.user, metrics) });
+});
+
+/**
+ * Satu-satunya pintu baca publik untuk kartu: proyeksi daftar putih di atas,
+ * dicari lewat token undian — bukan lewat id, kode akses, atau jalur lain.
+ * Seluruh endpoint internal tetap di balik autentikasi.
+ */
+app.get('/api/kartu/publik/:token', async (req, res) => {
+  const token = String(req.params.token ?? '');
+  if (!FORMAT_TOKEN_KARTU.test(token)) {
+    return res.status(404).json({ error: 'Kartu tidak ditemukan.' });
+  }
+  const user = await store.cariDenganTokenKartu(token);
+  if (!user || !user.profile) {
+    return res.status(404).json({ error: 'Kartu tidak ditemukan.' });
+  }
+  const { metrics } = await metricsFor(user);
+  res.json({ kartu: susunKartuPublik(user, metrics) });
+});
+
+app.get('/api/me', authenticate, async (req, res) => {
+  const { metrics } = await metricsFor(req.user);
+  res.json({
+    user: store.publicUser(req.user),
+    metrics: req.user.profile ? metrics : null,
+    aiConfigured: isConfigured(),
+    consent: hasConsented(req.user) ? null : CONSENT_TEXT,
+    anggaran: await anggaranUntuk(req.user),
+    belajar: ringkasJadwal(req.user),
+  });
+});
+
+app.put('/api/profile', authenticate, requireConsent, async (req, res) => {
+  const { profile, errors } = sanitizeProfile(req.body);
+  if (errors.length) return res.status(400).json({ error: errors.join(' ') });
+
+  const saved = await store.saveProfile(req.user.id, profile);
+  const { metrics } = await metricsFor({ ...req.user, profile: saved });
+  res.json({ profile: saved, metrics });
+});
+
+app.get('/api/recommendations', authenticate, async (req, res) => {
+  res.json({ recommendations: req.user.recommendations ?? null });
+});
+
+app.post('/api/recommendations', authenticate, requireConsent, anggaranToken('rekomendasi'), rateLimit, async (req, res) => {
+  if (!req.user.profile) {
+    return res.status(400).json({ error: 'Isi profil usaha dulu sebelum membuat rekomendasi.' });
+  }
+  const { metrics, transactions } = await metricsFor(req.user);
+  // Seluruh riwayat, bukan 3 bulan terakhir — lihat cashbookContext.
+  const cashbook = cashbookContext(transactions);
+
+  /*
+   * Peserta yang menutup aplikasi saat menunggu menghentikan panggilannya juga.
+   *
+   * Ini panggilan termahal di seluruh aplikasi — jatahnya 32.000 token dengan
+   * penalaran adaptif, dan waktunya paling lama. Tanpa pembatalan, penyusunan
+   * yang tidak akan pernah dibaca siapa pun tetap berjalan sampai selesai dan
+   * tetap ditagih, sementara `recordUsage` tidak pernah sempat mencatatnya —
+   * jadi biayanya juga tidak muncul di jejak token peserta.
+   *
+   * `writableEnded` diperiksa karena `close` juga menyala pada penyelesaian
+   * yang normal; tanpa penjagaan itu, setiap permintaan yang BERHASIL akan
+   * memanggil abort sesudahnya.
+   */
+  const controller = new AbortController();
+  res.on('close', () => {
+    if (!res.writableEnded) controller.abort();
+  });
+
+  try {
+    const { data, usage } = await generateRecommendations({
+      profile: req.user.profile,
+      metrics,
+      cashbook,
+      // Supaya "modulTerkait" mengarah ke tempat peserta benar-benar berada,
+      // bukan ke modul yang baru akan dibukanya dua minggu lagi.
+      belajar: { kemajuan: `${ringkasKemajuan(req.user.progress?.done ?? {})}\n${jadwalUntukAI(req.user)}` },
+      signal: controller.signal,
+    });
+    // Satu penulisan, bukan dua: rekomendasi dan pemakaian tokennya mengubah
+    // pengguna yang sama pada momen yang sama.
+    const saved = await store.simpanRekomendasi(req.user.id, data, usage);
+    res.json({ recommendations: saved, metrics, anggaran: await anggaranUntuk(req.user) });
+  } catch (err) {
+    /*
+     * Peserta sudah pergi: tidak ada yang perlu diberi tahu, dan menulis ke
+     * sambungan yang sudah tertutup hanya menghasilkan galat kedua.
+     */
+    if (controller.signal.aborted) {
+      log.info('rekomendasi', 'dibatalkan peserta sebelum selesai', { userId: req.user.id });
+      return;
+    }
+    // describeError menangani keduanya: galat SDK diterjemahkan, galat yang
+    // dilempar aplikasi sendiri (status + pesannya) dilewatkan apa adanya.
+    const { status, message } = describeError(err);
+    if (isServiceFailure(status)) req.refundRateLimit?.();
+    log.error('rekomendasi', 'penyusunan gagal', { userId: req.user.id, status, sebab: err?.message ?? String(err) });
+    res.status(status).json({ error: message });
+  }
+});
+
+app.get('/api/chat', authenticate, async (req, res) => {
+  res.json({ messages: await store.getChat(req.user.id) });
+});
+
+app.delete('/api/chat', authenticate, async (req, res) => {
+  await store.clearChat(req.user.id);
+  res.json({ ok: true });
+});
+
+/** Konsultasi chat — jawaban dialirkan sebagai Server-Sent Events. */
+/**
+ * Nomor modul yang sah DAN sudah terbuka untuk peserta ini, atau null.
+ *
+ * Penjagaan jadwal ikut di sini, bukan hanya di halaman modul. Tanpa itu AI
+ * menjadi pintu bocornya: peserta hari ke-2 tinggal mengirim `modul: 6` dan
+ * seluruh isi sesi 6 disisipkan ke prompt, lengkap. Sesi yang belum terbuka
+ * diperlakukan seperti pertanyaan biasa — tanpa materi, bukan dengan penolakan,
+ * karena bertanya sendiri tidak pernah salah.
+ */
+const modulDiminta = (req) => {
+  if (!nomorModulSah(req.body?.modul)) return null;
+  const no = Number(req.body.modul);
+  return modulTerbuka(no, req.user?.mulaiPada) ? no : null;
+};
+
+app.post(
+  '/api/chat',
+  authenticate,
+  requireConsent,
+  anggaranToken((req) => (modulDiminta(req) ? 'chatModul' : 'chat')),
+  rateLimit,
+  async (req, res) => {
+  const message = String(req.body?.message ?? '').trim().slice(0, 2000);
+  if (!message) return res.status(400).json({ error: 'Pertanyaan tidak boleh kosong.' });
+
+  const history = await store.getChat(req.user.id);
+  const { metrics, transactions } = await metricsFor(req.user);
+  // Seluruh riwayat, bukan 3 bulan terakhir — lihat cashbookContext.
+  const cashbook = cashbookContext(transactions);
+
+  /*
+   * Konteks belajar — inilah yang menyatukan modul dengan AI.
+   *
+   * `kemajuan` selalu ikut (~40 token): tanpa itu model tidak tahu peserta ada
+   * di hari keberapa, lalu mengarahkan peserta hari ketiga ke modul titik impas.
+   *
+   * `materi` hanya ikut kalau pertanyaannya datang dari dalam sebuah modul
+   * (~700 token). Gunanya menjaga penjelasan AI tetap sama dengan yang sedang
+   * dibaca peserta di layar yang sama — intervensi pendidikan yang isinya
+   * berubah-ubah tidak bisa diukur.
+   */
+  const modul = modulDiminta(req);
+  const belajar = {
+    // Jadwal ikut supaya model tidak menyuruh peserta hari ke-2 "membaca sesi 5
+    // dulu" — saran yang tidak bisa dijalankan, dan yang akan dibaca peserta
+    // sebagai aplikasi rusak, bukan sebagai saran yang keliru.
+    kemajuan: `${ringkasKemajuan(req.user.progress?.done ?? {})}\n${jadwalUntukAI(req.user)}`,
+    materi: modul ? materiModul(modul) : '',
+  };
+
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+
+  const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+
+  const controller = new AbortController();
+  res.on('close', () => controller.abort());
+
+  try {
+    const { text, usage, terpotong } = await streamChat({
+      profile: req.user.profile,
+      metrics,
+      cashbook,
+      belajar,
+      history,
+      message,
+      signal: controller.signal,
+      onText: (chunk) => send('delta', { text: chunk }),
+    });
+
+    /*
+     * Jawaban yang terpotong disimpan APA ADANYA plus penandanya. Menyimpannya
+     * tanpa tanda berarti peserta membaca setengah nasihat keuangan dan
+     * mengiranya utuh; membuangnya berarti dia kehilangan bagian yang sudah
+     * benar sekaligus jatah token yang sudah terpakai.
+     */
+    const isi = terpotong ? `${text}\n\n— ${POTONG}` : text;
+
+    /*
+     * Satu penulisan untuk seluruh giliran.
+     *
+     * Dulu `appendChat` lalu `recordUsage` — dua penulisan penuh berkas basis
+     * data untuk satu giliran percakapan, pada jalur yang paling sering
+     * dipakai. Digabung juga menghapus jendela di mana percakapannya sudah
+     * tersimpan tapi tokennya belum terhitung ke anggaran peserta.
+     */
+    await store.simpanGiliranChat(
+      req.user.id,
+      [
+        { role: 'user', content: message, ts: new Date().toISOString() },
+        { role: 'assistant', content: isi, ts: new Date().toISOString() },
+      ],
+      usage,
+      { modul },
+    );
+
+    send('done', { model: modelAktif(), terpotong: Boolean(terpotong), anggaran: await anggaranUntuk(req.user) });
+  } catch (err) {
+    if (controller.signal.aborted) return res.end();
+    // Galat yang sudah membawa status & pesannya sendiri (mis. penolakan sistem
+    // keamanan AI) tetap dipakai apa adanya — describeError yang menjaganya,
+    // di cabang terakhirnya. Menyaringnya di sini justru mendahului cabang SDK
+    // dan mengirim pesan galat mentah ke layar peserta.
+    const { status, message: msg } = describeError(err);
+    if (isServiceFailure(status)) req.refundRateLimit?.();
+    log.error('chat', 'percakapan gagal', { userId: req.user.id, status, sebab: err?.message ?? String(err) });
+    send('error', { error: msg });
+  }
+  res.end();
+  },
+);
+
+/**
+ * Isi satu sesi harian — hanya bila jadwalnya sudah membukanya untuk peserta ini.
+ *
+ * Modul pustaka tidak lewat sini; isinya sudah ikut di /modul.js karena memang
+ * tidak digerbang waktu.
+ *
+ * Sesi yang belum terbuka dijawab 403 BESERTA tanggal terbukanya. Penolakan
+ * tanpa tanggal akan dibaca peserta sebagai aplikasi yang rusak, dan pemilik
+ * warung yang mengira alatnya rusak tidak membukanya lagi besok — persis
+ * kegagalan yang paling merugikan intervensi tujuh hari.
+ */
+app.get('/api/sesi/:no', authenticate, (req, res) => {
+  if (!nomorModulSah(req.params.no)) return res.status(404).json({ error: 'Modul tidak ditemukan.' });
+  const m = KURIKULUM.find((x) => x.no === Number(req.params.no));
+
+  if (m.sesi == null) {
+    return res.json({ no: m.no, isi: m.isi, praktik: m.praktik });
+  }
+
+  const jadwal = ringkasJadwal(req.user);
+  if (!modulTerbuka(m.no, req.user.mulaiPada)) {
+    return res.status(403).json({
+      error: jadwal.dimulai
+        ? `Sesi ${m.sesi} terbuka pada ${tanggalSesiTerbuka(m.sesi, jadwal.mulaiPada)}. Hari ini kamu di hari ke-${jadwal.hariKe}.`
+        : 'Jalur belajarmu belum dimulai. Pendamping akan membukanya saat pendampingan.',
+      terkunci: true,
+      jadwal,
+      terbukaPada: tanggalSesiTerbuka(m.sesi, jadwal.mulaiPada),
+    });
+  }
+
+  res.json({ no: m.no, isi: m.isi, praktik: m.praktik, jadwal });
+});
+
+/* ------------------------------------------------- Umpan balik jawaban AI */
+
+/**
+ * Mencatat apakah peserta menganggap satu jawaban AI berguna atau keliru.
+ *
+ * Ini alat ukur yang selama ini hilang. Tanpa penanda "keliru", events.csv
+ * hanya menunjukkan BERAPA BANYAK peserta bertanya, bukan apakah jawabannya
+ * layak dipakai untuk mengurus buku kas sungguhan. Satu event `ai_feedback`
+ * cukup untuk mengaitkan penilaian itu dengan modul, jumlah token, dan
+ * perubahan skor TAM peserta yang sama.
+ *
+ * Penilaiannya milik peserta sepenuhnya: yang tersimpan adalah apa yang dia
+ * tekan, bukan tafsiran sistem atas mutu jawaban. Tidak ada penyimpanan baru —
+ * hanya logEvent yang sudah ada.
+ */
+app.post('/api/feedback', authenticate, requireConsent, async (req, res) => {
+  const body = req.body ?? {};
+  const rating = body.rating;
+  if (rating !== 'up' && rating !== 'down') {
+    return res.status(400).json({ error: 'Rating harus "up" atau "down".' });
+  }
+
+  const meta = { rating };
+  if (typeof body.alasan === 'string') {
+    // Dipotong di sisi server: alasan bebas-tulis adalah satu-satunya kolom di
+    // rute ini yang panjangnya ditentukan peserta.
+    const alasan = body.alasan.trim().slice(0, 500);
+    if (alasan) meta.alasan = alasan;
+  }
+  if (body.chatIndex != null && Number.isFinite(Number(body.chatIndex))) {
+    meta.chatIndex = Number(body.chatIndex);
+  }
+
+  await store.logEvent(req.user.id, 'ai_feedback', meta);
+  res.status(201).json({ ok: true });
+});
+
+/* ------------------------------------------- Persetujuan & data milik peserta */
+
+app.get('/api/consent', authenticate, (req, res) => {
+  res.json({ consent: CONSENT_TEXT, disetujui: hasConsented(req.user), tercatat: req.user.consent ?? null });
+});
+
+app.post('/api/consent', authenticate, async (req, res) => {
+  if (Number(req.body?.versi) !== CONSENT_VERSION) {
+    return res.status(400).json({ error: 'Versi persetujuan tidak cocok. Muat ulang halaman lalu coba lagi.' });
+  }
+  res.json({ consent: await store.saveConsent(req.user.id, CONSENT_VERSION) });
+});
+
+/** Unduh seluruh data sendiri. Buku kas ini milik peserta, bukan milik program. */
+app.get('/api/my-data', authenticate, async (req, res) => {
+  const data = await store.exportUser(req.user.id);
+  if (!data) return res.status(404).json({ error: 'Data tidak ditemukan.' });
+  await store.logEvent(req.user.id, 'data_downloaded');
+  const nama = `nova-explorer-${req.user.id}-${todayISO()}.json`;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${nama}"`);
+  res.send(JSON.stringify(data, null, 2));
+});
+
+/**
+ * Berhenti dari program dan hapus seluruh data.
+ *
+ * Benar-benar dihapus, bukan ditandai nonaktif. Peserta yang menarik diri berhak
+ * datanya ikut pergi — termasuk dari ekspor penelitian berikutnya.
+ */
+app.delete('/api/my-account', authenticate, async (req, res) => {
+  if (req.body?.konfirmasi !== 'HAPUS') {
+    return res.status(400).json({ error: 'Konfirmasi tidak cocok. Ketik HAPUS untuk melanjutkan.' });
+  }
+  const ok = await store.deleteUser(req.user.id);
+  if (!ok) return res.status(404).json({ error: 'Data tidak ditemukan.' });
+  log.info('peserta', 'menarik diri, seluruh datanya dihapus', { userId: req.user.id });
+  res.json({ ok: true });
+});
+
+/* ------------------------------------------------------------------ Buku kas */
+
+/** Bulan dari query, dibatasi ke rentang yang masuk akal. */
+function bulanDiminta(raw) {
+  const ini = currentMonth();
+  if (!/^\d{4}-\d{2}$/.test(raw ?? '')) return ini;
+  // Bulan depan tidak pernah punya isi; melayaninya cuma menggambar sebulan kosong.
+  if (raw > ini) return ini;
+  return raw < BULAN_TERLAMA ? BULAN_TERLAMA : raw;
+}
+
+/* ------------------------------------------------- Garis waktu kesehatan */
+
+/**
+ * Skor kesehatan per bulan — dari catatan NYATA, bukan karangan.
+ *
+ * Hanya bulan yang benar-benar punya catatan yang muncul; bulan kosong
+ * DILEWATI, bukan diisi nol atau angka tebakan. Perhitungannya persis
+ * metricsFor: computeMetrics dengan ringkasan bulan bersangkutan, dan
+ * bulan yang belum cukup rapat tercatat tetap memakai perkiraan profil
+ * sebagai dasar — aturan yang sama dengan dasbor hari ini.
+ */
+app.get('/api/timeline', authenticate, async (req, res) => {
+  const transactions = await store.getTransactions(req.user.id);
+  const bulanList = lastMonths(6).reverse(); // terlama dulu — seperti pembukuan
+
+  const titik = [];
+  for (const bulan of bulanList) {
+    const ringkasan = summarizeMonth(transactions, bulan);
+    if (!ringkasan.jumlahTransaksi) continue; // bulan kosong tidak dikarang
+    const { metrics } = await metricsForBulan(req.user, transactions, ringkasan);
+    titik.push({
+      bulan,
+      skor: metrics.skorKesehatan,
+      status: metrics.statusKesehatan,
+    });
+  }
+
+  // Tren hanya diklaim bila ada minimal dua titik — satu titik tidak punya arah.
+  const tren = titik.length >= 2 ? titik.at(-1).skor - titik[0].skor : null;
+  res.json({ titik, tren });
+});
+
+/* ------------------------------------------------- Apa yang berubah? */
+
+/**
+ * Bandingkan bulan berjalan dengan bulan sebelumnya — deterministik, tanpa AI.
+ *
+ * Angkanya dari summarizeMonth yang sama dengan buku kas dan laporan.
+ * "Pengeluaran" yang dibandingkan adalah BIAYA USAHA (bahan + operasional +
+ * lainnya): prive dan cicilan bukan biaya, dan memasukkannya membuat
+ * perbandingan menudah pemilik yang mengambil prive lebih sering bulan ini.
+ * Dipakai dua rute — /api/perubahan dan check-up AI (sebagai konteks angka) —
+ * supaya perbandingannya tidak pernah berbeda antar halaman.
+ */
+function bandingkanBulan(transactions) {
+  const [kiniBulan, laluBulan] = lastMonths(2); // lastMonths: [berjalan, sebelumnya]
+
+  const ringkas = (bulan) => {
+    const s = summarizeMonth(transactions, bulan);
+    return {
+      bulan,
+      ada: s.jumlahTransaksi > 0,
+      omzet: s.penjualan + s.lainMasuk,
+      pengeluaran: s.belanjaBahan + s.operasional + s.lainKeluar,
+      labaBersih: s.labaBersih,
+      pencatatan: s.jumlahTransaksi,
+    };
+  };
+
+  const dulu = ringkas(laluBulan);
+  const kiniR = ringkas(kiniBulan);
+  const ubah = {};
+  for (const kunci of ['omzet', 'pengeluaran', 'labaBersih', 'pencatatan']) {
+    ubah[kunci] = perubahanPersen(dulu[kunci], kiniR[kunci]);
+  }
+
+  // Kalimat penjelasan — deterministik, dibangun dari angka yang sudah sahih.
+  const arah = (perubahan, naik, turun, datar) =>
+    perubahan === null ? datar : perubahan > 0 ? naik : perubahan < 0 ? turun : datar;
+  const kalimat = [
+    ubah.omzet !== null && kiniR.omzet > 0
+      ? arah(ubah.omzet,
+          `Omzet naik ${ubah.omzet}% dibanding bulan sebelumnya.`,
+          `Omzet turun ${Math.abs(ubah.omzet)}% dibanding bulan sebelumnya.`,
+          'Omzet tetap dibanding bulan sebelumnya.')
+      : 'Belum cukup data untuk membandingkan omzet dengan bulan sebelumnya.',
+    ubah.pengeluaran !== null && kiniR.pengeluaran > 0
+      ? arah(ubah.pengeluaran,
+          `Pengeluaran usaha naik ${ubah.pengeluaran}% — periksa pos mana yang tumbuh.`,
+          `Pengeluaran usaha turun ${Math.abs(ubah.pengeluaran)}% — pengeluaran lebih hemat dari bulan lalu.`,
+          'Pengeluaran usaha tetap dibanding bulan sebelumnya.')
+      : '',
+    ubah.labaBersih !== null && dulu.labaBersih !== 0
+      ? arah(ubah.labaBersih,
+          'Laba bersih ikut naik — omzet tumbuh lebih cepat daripada biayanya.',
+          'Laba bersih turun — biaya tumbuh lebih cepat daripada omzet.',
+          'Laba bersih tetap.')
+      : '',
+    kiniR.pencatatan > 0
+      ? arah(ubah.pencatatan,
+          `Ritme mencatat naik: ${kiniR.pencatatan} catatan bulan ini vs ${dulu.pencatatan} bulan lalu.`,
+          `Ritme mencatat menurun: ${kiniR.pencatatan} catatan bulan ini vs ${dulu.pencatatan} bulan lalu.`,
+          `Ritme mencatat konsisten: ${kiniR.pencatatan} catatan.`)
+      : 'Belum ada catatan bulan ini.',
+  ].filter(Boolean);
+
+  return { lalu: dulu, kini: kiniR, ubah, kalimat };
+}
+
+app.get('/api/perubahan', authenticate, async (req, res) => {
+  const transactions = await store.getTransactions(req.user.id);
+  res.json(bandingkanBulan(transactions));
+});
+
+/* ------------------------------------------------- Check-up keuangan (AI) */
+
+/**
+ * Check-up usaha — dipicu pengguna, bukan otomatis.
+ *
+ * AI hanya MENILAI status dari angka yang dikirim (metricsToText + hasil
+ * bandingkanBulan); keluarannya bersih dari sanitasiCheckup dan angka di
+ * halaman tetap berasal dari perhitungan server. Tagihan dijagai jatah
+ * checkup, dibatasi laju, dan dicatat — persis pola rekomendasi.
+ */
+app.post(
+  '/api/checkup',
+  authenticate,
+  requireConsent,
+  anggaranToken('checkup'),
+  rateLimit,
+  async (req, res) => {
+    if (!isConfigured()) {
+      return res.status(503).json({ error: 'Layanan AI belum diatur di server ini, jadi check-up belum bisa dipakai.' });
+    }
+
+    const controller = new AbortController();
+    res.on('close', () => {
+      if (!res.writableEnded) controller.abort();
+    });
+
+    try {
+      const { metrics, transactions } = await metricsFor(req.user);
+      const perubahan = bandingkanBulan(transactions);
+      const { data: mentah, usage } = await analyzeCheckup({
+        metricsTeks: metricsToText(metrics),
+        perubahanTeks: 'Perbandingan bulan ini vs bulan lalu:\n' + perubahan.kalimat.map((s) => '- ' + s).join('\n'),
+        signal: controller.signal,
+      });
+      const hasil = sanitasiCheckup(mentah);
+      await store.recordUsage(req.user.id, usage);
+      res.json({ hasil, anggaran: await anggaranUntuk(req.user) });
+    } catch (err) {
+      if (controller.signal.aborted) {
+        log.info('checkup', 'dibatalkan peserta sebelum selesai', { userId: req.user.id });
+        return;
+      }
+      const { status, message } = describeError(err);
+      if (isServiceFailure(status)) req.refundRateLimit?.();
+      log.error('checkup', 'check-up gagal', { userId: req.user.id, status, sebab: err?.message ?? String(err) });
+      res.status(status).json({ error: message });
+    }
+  },
+);
+
+app.get('/api/cashbook', authenticate, async (req, res) => {
+  const transactions = await store.getTransactions(req.user.id);
+  const month = bulanDiminta(req.query.month);
+
+  /*
+   * Filter daftar (pencarian/jenis/kategori) — opsional, kumulatif, dan
+   * hanya untuk DAFTAR. Ringkasan & grafik tetap dari seluruh transaksi
+   * bulan itu: mencari "gas" tidak boleh membuat saldo kas sebulan ikut
+   * berubah. Parameter asing/ tidak sah diabaikan, bukan dijadikan galat —
+   * filter yang salah ketik cukup berarti "semua".
+   */
+  const tersaring = saringTransaksi(transactionsForMonth(transactions, month), {
+    q: String(req.query.q ?? ''),
+    jenis: String(req.query.jenis ?? ''),
+    kategori: String(req.query.kategori ?? ''),
+  });
+
+  res.json({
+    month,
+    today: todayISO(),
+    kategori: KATEGORI,
+    transactions: tersaring,
+    terfilter: tersaring.length !== transactionsForMonth(transactions, month).length,
+    summary: summarizeMonth(transactions, month),
+    monthsAvailable: monthsWithData(transactions),
+  });
+});
+
+app.post('/api/cashbook', authenticate, requireConsent, async (req, res) => {
+  const body = req.body ?? {};
+  const jenis = JENIS.includes(body.jenis) ? body.jenis : null;
+  const kategori = jenis && isValidKategori(jenis, body.kategori) ? body.kategori : null;
+  const jumlah = asNumber(body.jumlah, 1e12);
+  const tanggal = /^\d{4}-\d{2}-\d{2}$/.test(body.tanggal ?? '') ? body.tanggal : todayISO();
+  const keterangan = String(body.keterangan ?? '').trim().slice(0, 120);
+
+  if (!jenis) return res.status(400).json({ error: 'Jenis transaksi harus "masuk" atau "keluar".' });
+  if (!kategori) return res.status(400).json({ error: 'Kategori transaksi tidak dikenali.' });
+  if (jumlah <= 0) return res.status(400).json({ error: 'Jumlah harus lebih dari 0.' });
+  if (tanggal > todayISO()) return res.status(400).json({ error: 'Tanggal tidak boleh di masa depan.' });
+  if (tanggal < tanggalTerlama()) {
+    return res.status(400).json({ error: `Tanggal terlalu lama. Periksa tahunnya — paling lama ${tanggalTerlama()}.` });
+  }
+
+  const row = await store.addTransaction(req.user.id, { tanggal, jenis, kategori, keterangan, jumlah });
+  const transactions = await store.getTransactions(req.user.id);
+  const month = tanggal.slice(0, 7);
+  const thisMonth = currentMonth();
+
+  // Transaksi bisa dicatat mundur ke bulan lalu; ringkasan yang dikembalikan
+  // adalah bulan transaksinya, sedangkan metrik selalu bulan berjalan.
+  const summary = summarizeMonth(transactions, month);
+  const berjalan = month === thisMonth ? summary : summarizeMonth(transactions, thisMonth);
+
+  res.status(201).json({
+    transaction: row,
+    summary,
+    metrics: computeMetrics(req.user.profile ?? {}, isMonthReliable(berjalan) ? berjalan : null, berjalan),
+  });
+});
+
+app.delete('/api/cashbook/:id', authenticate, requireConsent, async (req, res) => {
+  const ok = await store.deleteTransaction(req.user.id, req.params.id);
+  if (!ok) return res.status(404).json({ error: 'Transaksi tidak ditemukan.' });
+  const { metrics, summary } = await metricsFor(req.user);
+  res.json({ ok: true, summary, metrics });
+});
+
+/** Data laporan untuk pengajuan KUR — beberapa bulan sekaligus. */
+app.get('/api/report', authenticate, async (req, res) => {
+  const count = Math.min(Math.max(Number(req.query.months) || 6, 1), 12);
+  // Mengganti pilihan bulan tiga kali tetap satu kali "peserta membuka laporan".
+  // Tanpa jeda, tiap penggantian menulis ulang seluruh berkas data.
+  await store.logEvent(req.user.id, 'report_viewed', { bulan: count }, { jedaMs: 5 * 60 * 1000 });
+  const transactions = await store.getTransactions(req.user.id);
+  const months = lastMonths(count).reverse(); // terlama dulu, seperti pembukuan
+  const summaries = summarizeRange(transactions, months);
+  const total = summaries.reduce(
+    (acc, s) => ({
+      penjualan: acc.penjualan + s.penjualan,
+      lainMasuk: acc.lainMasuk + s.lainMasuk,
+      belanjaBahan: acc.belanjaBahan + s.belanjaBahan,
+      operasional: acc.operasional + s.operasional,
+      lainKeluar: acc.lainKeluar + s.lainKeluar,
+      cicilan: acc.cicilan + s.cicilan,
+      prive: acc.prive + s.prive,
+      labaBersih: acc.labaBersih + s.labaBersih,
+      saldoKas: acc.saldoKas + s.saldoKas,
+      jumlahTransaksi: acc.jumlahTransaksi + s.jumlahTransaksi,
+    }),
+    { penjualan: 0, lainMasuk: 0, belanjaBahan: 0, operasional: 0, lainKeluar: 0, cicilan: 0, prive: 0, labaBersih: 0, saldoKas: 0, jumlahTransaksi: 0 },
+  );
+  const terisi = summaries.filter((s) => s.jumlahTransaksi > 0);
+  /*
+   * Rata-rata laba per bulan dihitung HANYA dari bulan yang sudah habis dan
+   * terisi. Bulan berjalan yang baru jalan seminggu bukan sebuah bulan: kalau
+   * ikut dibagi, satu angka kecil menyeret turun rata-rata — dan justru angka
+   * inilah yang dibaca bank untuk menentukan plafon KUR. Bank pun memang minta
+   * bulan yang sudah selesai (3–6 bulan terakhir), bukan bulan yang sedang jalan.
+   */
+  const lengkap = summaries.filter(isMonthComplete);
+  const dasar = lengkap.length ? lengkap : [];
+  const rataLabaBulanan = dasar.length
+    ? Math.round(dasar.reduce((s, m) => s + m.labaBersih, 0) / dasar.length)
+    : 0;
+  const berjalan = summaries.find((s) => !s.lengkap && s.jumlahTransaksi > 0) ?? null;
+  // Bulan yang sudah habis dan ada catatannya, tapi terlalu bolong untuk dirata-rata.
+  const bulanBolong = terisi
+    .filter((s) => s.lengkap && !isMonthComplete(s))
+    .map((s) => ({ month: s.month, hariTercatat: s.hariTercatat, hariBulan: s.hariBulan }));
+
+  res.json({
+    profile: req.user.profile ?? null,
+    // `layakRataRata` menemani setiap bulan supaya tampilan tidak perlu menebak
+    // ulang aturannya — satu sumber kebenaran, dipakai grafik, tabel, dan rata-rata.
+    summaries: summaries.map((s) => ({ ...s, layakRataRata: isMonthComplete(s) })),
+    total,
+    bulanTerisi: terisi.length,
+    bulanLengkap: lengkap.length,
+    bulanBolong,
+    rataLabaBulanan,
+    // Bulan berjalan dilaporkan terpisah, tidak dicampur ke rata-rata.
+    /*
+     * `setaraLabaBersih` sengaja TIDAK ikut.
+     *
+     * Ia pernah dikirim di sini dan tidak pernah dipakai satu baris pun oleh
+     * tampilan — medan mati. Membiarkannya bukan sekadar bobot sia-sia,
+     * melainkan jebakan: siapa pun yang kelak memakainya akan menaruh angka
+     * PROYEKSI di halaman laporan, di sebelah bulan-bulan yang sudah benar
+     * terjadi, pada berkas yang dicetak untuk dibawa ke bank. Bulan yang baru
+     * berjalan seminggu bisa berfaktor 4x lipat. Yang boleh dilaporkan dari
+     * bulan berjalan adalah apa adanya — `labaBersih` — beserta jumlah harinya,
+     * dan itulah yang ada di bawah.
+     */
+    bulanBerjalan: berjalan
+      ? {
+          month: berjalan.month,
+          hariBerjalan: berjalan.hariBerjalan,
+          hariBulan: berjalan.hariBulan,
+          hariTercatat: berjalan.hariTercatat,
+          labaBersih: berjalan.labaBersih,
+        }
+      : null,
+    dibuatPada: new Date().toISOString(),
+  });
+});
+
+/**
+ * Menyaring `done` menjadi hanya nomor modul yang benar-benar ada.
+ *
+ * Medan ini datang mentah dari peramban dan disimpan apa adanya, lalu ikut
+ * terbaca sebagai `modulSelesai` di `users.csv` dan `module_completed` di
+ * `events.csv`. Tanpa saringan, satu permintaan boleh menitipkan kunci
+ * sembarang — termasuk ribuan kunci karangan — dan angka "modul selesai" di
+ * data penelitian menjadi tidak berarti tanpa satu pun tanda bahwa ia dikarang.
+ * Nomor yang tidak dikenal dibuang diam-diam: peramban hanya pernah mengirim
+ * nomor yang sah, jadi nomor asing berarti bukan dari halaman ini.
+ */
+function saringProgres(done, user) {
+  const bersih = {};
+  if (typeof done !== 'object' || !done) return bersih;
+  const sudah = user?.progress?.done ?? {};
+  for (const [kunci, nilai] of Object.entries(done)) {
+    if (!nilai || !nomorModulSah(kunci)) continue;
+    const no = Number(kunci);
+    /*
+     * Sesi yang sudah pernah ditandai selesai TETAP diterima walau sekarang
+     * terhitung terkunci. Itu bisa terjadi bila pendamping memperbaiki tanggal
+     * mulai ke tanggal yang lebih belakang: tanpa cabang ini, satu koreksi
+     * jadwal akan diam-diam menghapus riwayat penyelesaian peserta — dan
+     * `module_completed` di events.csv sudah terlanjur mencatat sebaliknya.
+     */
+    if (sudah[no] || modulTerbuka(no, user?.mulaiPada)) bersih[no] = true;
+  }
+  return bersih;
+}
+
+app.put('/api/progress', authenticate, requireConsent, async (req, res) => {
+  const body = req.body ?? {};
+  /*
+   * `checks` dikirim sebagai `undefined` bila peramban memang tidak mengirimnya
+   * — BUKAN sebagai `{}`.
+   *
+   * `store.saveProgress` punya penjaga `progress.checks ?? user.progress?.checks`
+   * yang dimaksudkan menjaga data lama agar tidak terhapus. Penjaga itu memakai
+   * `??`, yang hanya menangkap null/undefined — sedangkan baris ini dulu selalu
+   * mengirim `{}`, sebuah nilai yang bukan nullish. Akibatnya penjaganya menjadi
+   * kode mati, dan setiap penyimpanan progres menghapus `checks` lama secara
+   * diam-diam. Tampilan memang tidak lagi memakai medan itu, tapi data peserta
+   * lama tetap tidak boleh dihapus oleh penyimpanan yang tidak menyebutnya.
+   */
+  const checksDikirim = typeof body.checks === 'object' && body.checks ? body.checks : undefined;
+  const progress = {
+    done: saringProgres(body.done, req.user),
+    ...(checksDikirim ? { checks: checksDikirim } : {}),
+  };
+  res.json({ progress: await store.saveProgress(req.user.id, progress) });
+});
+
+/* ------------------------------------------------- Validasi materi (ahli) */
+
+/*
+ * Lembar validasi materi diisi VALIDATOR AHLI, bukan peserta.
+ *
+ * Karena itu ia tidak memakai kode akses peserta sama sekali: seorang ahli
+ * akuntansi yang menilai kelayakan materi tidak punya — dan tidak boleh punya —
+ * jalan masuk ke buku kas peserta mana pun. Yang dipakai satu kode tersendiri
+ * dari `.env` (`VALIDASI_KODE`), dibagikan pengelola kepada para validator.
+ *
+ * Dibaca setiap permintaan, bukan sekali saat start: pengelola bisa mengganti
+ * kodenya di tengah jalan tanpa menyalakan ulang server, dan uji otomatis bisa
+ * mengatur kodenya sendiri.
+ *
+ * Bila kodenya belum diatur, seluruh rute ini menjawab 503 dengan kalimat yang
+ * menyebutkan apa yang harus diisi. Membiarkannya terbuka tanpa kode akan
+ * membuat siapa pun yang menemukan alamatnya bisa menitipkan lembar validasi —
+ * dan lembar palsu di antara lembar sungguhan tidak bisa dibedakan lagi
+ * sesudahnya.
+ */
+const kodeValidasi = () => String(process.env.VALIDASI_KODE ?? '').trim();
+
+/**
+ * Membandingkan dua kode tanpa membocorkan panjang atau isi lewat lama waktu.
+ * Keduanya di-hash dulu supaya panjangnya selalu sama.
+ */
+function kodeCocok(diberikan, benar) {
+  const a = createHash('sha256').update(String(diberikan)).digest();
+  const b = createHash('sha256').update(String(benar)).digest();
+  return timingSafeEqual(a, b);
+}
+
+/**
+ * Penjaga rute validasi — memakai pembatas percobaan yang sama dengan peserta.
+ *
+ * Tanpa pembatas itu, kode validasi bisa ditebak tanpa batas dan tanpa
+ * meninggalkan satu baris pun di log. `periksaKodeAkses` sudah menangani
+ * penundaan, pencatatan, dan penguncian; yang perlu diberikan hanya cara
+ * mencocokkan kodenya.
+ */
+async function autentikasiValidator(req, res, next) {
+  const kodeBenar = kodeValidasi();
+  if (!kodeBenar) {
+    return res.status(503).json({
+      error: 'Sistem validasi materi belum diaktifkan. Isi VALIDASI_KODE di berkas .env server, lalu coba lagi.',
+      belumAktif: true,
+    });
+  }
+  const header = req.get('authorization') ?? '';
+  const dikirim = header.startsWith('Bearer ') ? header.slice(7).trim() : String(req.body?.kode ?? '').trim();
+  const hasil = await periksaKodeAkses(
+    req.ip ?? 'tak-dikenal',
+    dikirim,
+    (c) => (c && kodeCocok(c, kodeBenar) ? { rol: 'validator' } : null),
+    req.path,
+  );
+  if (!hasil.user) {
+    return res.status(hasil.status).json({ error: hasil.error ?? 'Kode validasi tidak dikenali. Minta kode ke pengelola penelitian.' });
+  }
+  next();
+}
+
+/*
+ * Kode PENGELOLA — terpisah dari kode validator, dan itu bukan kerumitan yang
+ * dicari-cari.
+ *
+ * Rute pengiriman sudah memutuskan bahwa satu validator tidak boleh melihat
+ * penilaian rekannya sebelum semuanya selesai. Kalau unduhan rekap dijaga kode
+ * yang sama, keputusan itu batal dengan sendirinya: siapa pun yang bisa mengisi
+ * lembar juga bisa membaca seluruh lembar yang sudah masuk.
+ */
+const kodePengelola = () => String(process.env.VALIDASI_PENGELOLA_KODE ?? '').trim();
+
+/**
+ * Penjaga rute pengelola.
+ *
+ * Menolak dua keadaan sebelum kodenya sempat dicocokkan sama sekali: kode yang
+ * belum diatur, dan kode yang diatur SAMA PERSIS dengan kode validator. Yang
+ * kedua kelihatannya sepele — menyalin satu kode ke dua variabel itu hal yang
+ * wajar dilakukan orang yang sedang buru-buru — tapi akibatnya persis sama
+ * dengan tidak memasang penjaga apa pun. Lebih baik layanannya menolak menyala
+ * di jalur ini daripada diam-diam membuka rekap ke semua validator.
+ */
+async function autentikasiPengelola(req, res, next) {
+  const kodeBenar = kodePengelola();
+  if (!kodeBenar) {
+    return res.status(503).json({
+      error: 'Unduhan hasil validasi belum diaktifkan. Isi VALIDASI_PENGELOLA_KODE di berkas .env server, lalu coba lagi.',
+      belumAktif: true,
+    });
+  }
+  const kodeValidator = kodeValidasi();
+  if (kodeValidator && kodeCocok(kodeBenar, kodeValidator)) {
+    log.error('validasi', 'VALIDASI_PENGELOLA_KODE sama dengan VALIDASI_KODE — unduhan rekap ditutup');
+    return res.status(503).json({
+      error: 'VALIDASI_PENGELOLA_KODE tidak boleh sama dengan VALIDASI_KODE. Pakai kode yang berbeda, lalu coba lagi.',
+      belumAktif: true,
+    });
+  }
+
+  const header = req.get('authorization') ?? '';
+  const dikirim = header.startsWith('Bearer ') ? header.slice(7).trim() : String(req.body?.kode ?? '').trim();
+  const hasil = await periksaKodeAkses(
+    req.ip ?? 'tak-dikenal',
+    dikirim,
+    (c) => (c && kodeCocok(c, kodeBenar) ? { rol: 'pengelola' } : null),
+    req.path,
+  );
+  if (!hasil.user) {
+    return res.status(hasil.status).json({ error: hasil.error ?? 'Kode pengelola tidak dikenali.' });
+  }
+  next();
+}
+
+/**
+ * Unduhan seluruh lembar validasi beserta rekapnya.
+ *
+ * Ini satu-satunya jalan mengambil hasil validasi dari mesin yang tidak bisa
+ * dimasuki lewat shell. `npm run validasi` mengandalkan akses ke berkasnya
+ * langsung; di Cloud Run akses itu tidak ada, sehingga tanpa rute ini lembar
+ * yang sudah diisi validator ahli tidak bisa dibaca oleh siapa pun — termasuk
+ * penelitinya sendiri.
+ *
+ * Kodenya sengaja HANYA dibaca dari header Authorization, tidak dari query
+ * string. Query string ikut tercatat utuh di log permintaan Cloud Run, dan
+ * kode yang tersimpan di sana bertahan jauh lebih lama daripada yang mengetik
+ * mengira. Konsekuensinya rute ini dipakai lewat curl, bukan dengan membuka
+ * alamatnya di peramban — lihat PANDUAN-VALIDASI.md.
+ */
+app.get('/api/validasi/hasil', autentikasiPengelola, async (req, res) => {
+  const daftar = await validasiStore.daftar();
+  const daftarMateri = daftar.filter((d) => d?.jenis !== 'it' && d?.jawaban?.IT01 === undefined);
+  const daftarIT = daftar.filter((d) => d?.jenis === 'it' || d?.jawaban?.IT01 !== undefined);
+
+  const rekapMateri = rekapValidasi(daftarMateri);
+  const rekapIT = rekapValidasiIT(daftarIT);
+  const rekap = rekapMateri; // backward-compatibility
+
+  log.info('validasi', 'rekap validasi diunduh', {
+    jumlah: daftar.length,
+    jumlahMateri: daftarMateri.length,
+    jumlahIT: daftarIT.length,
+  });
+  res.setHeader('Content-Disposition', `attachment; filename="nova-validasi-${todayISO()}.json"`);
+  res.json({
+    diunduhPada: new Date().toISOString(),
+    jumlah: daftar.length,
+    rekap,
+    rekapMateri,
+    rekapIT,
+    hasil: daftar,
+  });
+});
+
+/** Instrumen validasi: aspek, butir, skala, dan kriteria interpretasinya. */
+app.get('/api/validasi/instrumen', autentikasiValidator, (req, res) => {
+  const jenis = String(req.query?.jenis ?? '').toLowerCase();
+  if (jenis === 'it') {
+    return res.json({ instrumen: instrumenIT() });
+  }
+  res.json({ instrumen: instrumen(), instrumenIT: instrumenIT() });
+});
+
+app.get('/api/validasi/it/instrumen', autentikasiValidator, (req, res) => {
+  res.json({ instrumen: instrumenIT() });
+});
+
+/**
+ * Menerima satu lembar validasi yang sudah diisi (Materi atau IT).
+ *
+ * Skornya dihitung ULANG di server dari jawaban mentah, dan yang disimpan
+ * adalah hasil hitungan server — bukan angka yang dikirim halaman.
+ */
+app.post('/api/validasi/kirim', autentikasiValidator, async (req, res) => {
+  const isIT =
+    req.body?.jenis === 'it' ||
+    (req.body?.jawaban && Object.keys(req.body.jawaban).some((k) => k.startsWith('IT')));
+
+  if (isIT) {
+    const { data, errors } = periksaPengirimanIT(req.body, { hariIni: todayISO() });
+    if (errors.length) return res.status(400).json({ error: errors.join(' '), errors });
+
+    const hasil = hitungHasilIT(data.jawaban);
+    const tersimpan = await validasiStore.simpan({ ...data, jenis: 'it', hasil });
+
+    log.info('validasi', 'lembar validasi IT diterima', {
+      lembarId: tersimpan.id,
+      jenis: 'it',
+      skor: hasil.skorDiperoleh,
+      skorMaksimum: hasil.skorMaksimum,
+      persentase: hasil.persentase,
+      kategori: hasil.kategori?.label ?? '',
+      bidang: data.validator?.bidang ?? [],
+      tanggalValidasi: data.validator?.tanggalValidasi ?? null,
+      kesimpulan: data.kesimpulan,
+      jawaban: data.jawaban,
+      aspek: hasil.aspek,
+      catatanUmum: data.catatanUmum ?? '',
+      rekomendasi: data.rekomendasi ?? '',
+      materiPerluRevisi: data.materiPerluRevisi ?? [],
+    });
+
+    return res.status(201).json({ id: tersimpan.id, dikirimPada: tersimpan.dikirimPada, hasil });
+  }
+
+  const { data, errors } = periksaPengiriman(req.body, { hariIni: todayISO() });
+  if (errors.length) return res.status(400).json({ error: errors.join(' '), errors });
+
+  const hasil = hitungHasil(data.jawaban);
+  const tersimpan = await validasiStore.simpan({ ...data, jenis: 'materi', hasil });
+
+  log.info('validasi', 'lembar validasi diterima', {
+    lembarId: tersimpan.id,
+    jenis: 'materi',
+    skor: hasil.skorDiperoleh,
+    skorMaksimum: hasil.skorMaksimum,
+    persentase: hasil.persentase,
+    kategori: hasil.kategori.label,
+    bidang: data.validator?.bidang ?? [],
+    tanggalValidasi: data.validator?.tanggalValidasi ?? null,
+    kesimpulan: data.kesimpulan,
+    jawaban: data.jawaban,
+    aspek: hasil.aspek,
+    catatanUmum: data.catatanUmum ?? '',
+    rekomendasi: data.rekomendasi ?? '',
+    materiPerluRevisi: data.materiPerluRevisi ?? [],
+  });
+
+  res.status(201).json({ id: tersimpan.id, dikirimPada: tersimpan.dikirimPada, hasil });
+});
+
+app.post('/api/validasi/it/kirim', autentikasiValidator, async (req, res) => {
+  const { data, errors } = periksaPengirimanIT(req.body, { hariIni: todayISO() });
+  if (errors.length) return res.status(400).json({ error: errors.join(' '), errors });
+
+  const hasil = hitungHasilIT(data.jawaban);
+  const tersimpan = await validasiStore.simpan({ ...data, jenis: 'it', hasil });
+
+  log.info('validasi', 'lembar validasi IT diterima', {
+    lembarId: tersimpan.id,
+    jenis: 'it',
+    skor: hasil.skorDiperoleh,
+    skorMaksimum: hasil.skorMaksimum,
+    persentase: hasil.persentase,
+    kategori: hasil.kategori?.label ?? '',
+    bidang: data.validator?.bidang ?? [],
+    tanggalValidasi: data.validator?.tanggalValidasi ?? null,
+    kesimpulan: data.kesimpulan,
+    jawaban: data.jawaban,
+    aspek: hasil.aspek,
+    catatanUmum: data.catatanUmum ?? '',
+    rekomendasi: data.rekomendasi ?? '',
+    materiPerluRevisi: data.materiPerluRevisi ?? [],
+  });
+
+  res.status(201).json({ id: tersimpan.id, dikirimPada: tersimpan.dikirimPada, hasil });
+});
+
+/* --------------------------------------------------------------- Aset statis */
+
+/*
+ * Kurikulum disajikan sebagai skrip biasa, bukan lewat /api/.
+ *
+ * Isinya sama untuk semua peserta dan tidak memuat satu pun data pribadi, jadi
+ * ia tidak perlu kode akses dan JUSTRU sebaiknya boleh disimpan cache peramban:
+ * ukurannya ±54 KB, dan jalur /api/ semuanya bertanda `no-store` sehingga akan
+ * mengunduh ulang seluruhnya pada tiap kali halaman dibuka. Untuk peserta yang
+ * membuka aplikasi ini tiap hari dari ponsel dengan kuota terbatas, itu bukan
+ * biaya yang pantas dibayar berulang.
+ *
+ * Ditulis sebagai skrip klasik, bukan modul ES: skrip utama halaman ini masih
+ * memakai fungsi global (ada 16 atribut onclick di HTML-nya), jadi mengubahnya
+ * menjadi modul akan mematikan tombol-tombol itu tanpa suara.
+ *
+ * ETag dari express menangani sisanya — perubahan kurikulum langsung terkirim,
+ * yang tidak berubah dijawab 304.
+ */
+/*
+ * Isi tujuh sesi harian TIDAK ikut ke berkas ini.
+ *
+ * Berkas ini publik, boleh di-cache, dan sama untuk semua orang — itulah yang
+ * membuatnya murah. Sifat itu langsung hilang begitu isinya berbeda per peserta,
+ * dan berkas publik yang berbeda per peserta adalah kebocoran menunggu waktu
+ * bila kelak ada CDN di depannya.
+ *
+ * Karena itu isinya dibelah menurut apa yang benar-benar perlu dijaga:
+ *
+ *   22 modul pustaka  37,6 KB  tidak digerbang waktu  -> tetap di sini, di-cache
+ *    7 sesi harian    20,5 KB  digerbang jadwal       -> hanya metadatanya (1,5 KB)
+ *
+ * Metadatanya sengaja tetap dikirim seluruhnya: peserta boleh — dan sebaiknya —
+ * melihat peta tujuh harinya sejak hari pertama. Yang dijaga isinya, bukan
+ * keberadaannya. Isi satu sesi (rata-rata 2,9 KB) diambil sekali sehari lewat
+ * `GET /api/sesi/:no`, yang tahu peserta mana yang sedang bertanya.
+ */
+const tanpaIsi = ({ isi, praktik, ...meta }) => ({ ...meta, isiTerpisah: true });
+const KURIKULUM_PUBLIK = KURIKULUM.map((m) => (m.sesi == null ? m : tanpaIsi(m)));
+
+const MODUL_JS = `window.NOVA_MODUL=${JSON.stringify(KURIKULUM_PUBLIK)};window.NOVA_JALUR=${JSON.stringify(JALUR)};`;
+
+/*
+ * Ketiga aset besar dikompresi SEKALI saat start, bukan pada tiap permintaan.
+ *
+ * Middleware kompresi umum akan ikut menahan aliran Server-Sent Events di
+ * /api/chat — jawaban AI yang seharusnya menetes jadi muncul sekaligus di
+ * akhir. Dengan menyiapkan aset di depan, jalur /api/ tidak tersentuh sama
+ * sekali. Hematnya: muat pertama 164,2 KB -> 48,7 KB.
+ */
+const ASET_MODUL = asetDariNilai(MODUL_JS, 'application/javascript; charset=utf-8');
+const ASET_APLIKASI = asetDariBerkas(path.join(HERE, 'public', 'index.html'), 'text/html; charset=utf-8');
+const ASET_LANDING = asetDariBerkas(path.join(HERE, 'public', 'landing.html'), 'text/html; charset=utf-8');
+const ASET_VALIDASI = asetDariBerkas(path.join(HERE, 'public', 'validasi.html'), 'text/html; charset=utf-8');
+/*
+ * Halaman publik kartu kesehatan. Statik dan tanpa satu pun data pengguna —
+ * datanya diambil peramban dari /api/kartu/publik/:token, satu-satunya
+ * endpoint yang membaca lewat token bagikan.
+ */
+const ASET_KARTU = asetDariBerkas(path.join(HERE, 'public', 'kartu.html'), 'text/html; charset=utf-8');
+/*
+ * Rumus simulasi KUR — berkas YANG SAMA dengan yang diimpor uji node
+ * (lib/simulasi-kur.js). Satu sumber rumus: peramban menghapusnya sebagai
+ * modul lalu menempelkannya ke window.NOVA_SIMULASI, server mengujinya
+ * langsung. Sengaja bukan salinan di public/, supaya tidak ada dua berkas
+ * rumus yang bisa menyimpang diam-diam.
+ */
+const ASET_SIMULASI = asetDariBerkas(path.join(HERE, 'lib', 'simulasi-kur.js'), 'application/javascript; charset=utf-8');
+
+app.get('/modul.js', sajikanAset(ASET_MODUL, { cacheControl: 'public, max-age=300' }));
+app.get('/simulasi-kur.js', sajikanAset(ASET_SIMULASI, { cacheControl: 'public, max-age=300' }));
+
+/*
+ * Halaman kartu yang dibagikan. Jalurnya cantik (/kartu/kartu_XXXX…), halaman
+ * AMBIL sendiri token dari URL-nya lalu mengambil data lewat endpoint publik.
+ * Token asing apa pun tetap disajikan halamannya — halaman yang sama yang
+ * menampilkan "kartu tidak ditemukan" dengan rapi, bukan 404 mentah.
+ */
+app.get('/kartu/:token', sajikanAset(ASET_KARTU, { cacheControl: 'no-cache' }));
+
+/*
+ * Landing page publik
+ */
+app.get('/', sajikanAset(ASET_LANDING, { cacheControl: 'no-cache' }));
+
+/*
+ * Halaman aplikasi TIDAK boleh di-cache lama.
+ *
+ * Ia memuat seluruh skrip aplikasi; salinan lama yang bertahan di ponsel
+ * peserta berarti perbaikan yang sudah di-deploy tidak pernah sampai kepadanya,
+ * dan tidak ada satu pun tanda bahwa itu sedang terjadi. `no-cache` tetap
+ * mengizinkan 304 lewat ETag, jadi yang diunduh ulang hanya kalau memang berubah.
+ */
+for (const jalur of ['/app', '/index.html']) {
+  app.get(jalur, sajikanAset(ASET_APLIKASI, { cacheControl: 'no-cache' }));
+}
+for (const jalur of ['/validasi', '/validasi.html', '/validasi-it']) {
+  app.get(jalur, sajikanAset(ASET_VALIDASI, { cacheControl: 'no-cache' }));
+}
+
+/*
+ * Aplikasi peserta tidak boleh muncul di hasil pencarian.
+ *
+ * Alamatnya memang perlu bisa dibuka siapa pun yang memegang kodenya, tapi
+ * halaman masuk sebuah program penelitian yang terindeks mesin pencari
+ * mengundang lalu lintas yang tidak ada gunanya — dan setiap percobaan kode
+ * asing ikut memakan pembatas login peserta yang sah.
+ */
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.send('User-agent: *\nDisallow: /\n');
+});
+
+app.use(express.static(path.join(HERE, 'public'), { extensions: ['html'] }));
+
+/*
+ * Alamat yang tidak dikenal: JSON untuk /api, halaman aplikasi untuk sisanya.
+ *
+ * Sebelumnya semuanya dijawab JSON, jadi peserta yang membuka tautan lama atau
+ * salah ketik alamat melihat `{"error":"Alamat tidak ditemukan."}` mentah di
+ * layar ponselnya, bukan aplikasinya.
+ */
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Alamat tidak ditemukan.' });
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    return sajikanAset(ASET_APLIKASI, { cacheControl: 'no-cache' })(req, res, next);
+  }
+  return res.status(404).json({ error: 'Alamat tidak ditemukan.' });
+});
+
+// eslint-disable-next-line no-unused-vars -- Express mengenali error handler dari 4 argumen
+app.use((err, req, res, next) => {
+  log.error('server', 'permintaan gagal', { jalur: req.path, metode: req.method, sebab: err?.message ?? String(err) });
+  if (res.headersSent) return res.end();
+  /*
+   * Galat dari parser tubuh (body-parser) membawa status HTTP sendiri —
+   * payload 413 terlalu besar, payload 400 rusak. Menilanya 500 semuanya
+   * berarti pemilik usaha yang fotonya kebesaran diberi tahu "server rusak",
+   * padahal servernya sehat dan yang perlu dilakukan hanyalah foto ulang.
+   */
+  const status = err?.status ?? err?.statusCode ?? 500;
+  const pesan = status === 413 ? 'Fotonya kebesaran (maksimal 4 MB). Coba lagi — biasanya kamera ponsel bisa diatur.' : 'Terjadi kesalahan di server.';
+  res.status(status).json({ error: pesan });
+});
+
+/**
+ * Baris "Pengguna" saat start.
+ *
+ * Jumlah pengguna ikut dicetak dengan sengaja. Di beberapa layanan hosting,
+ * berkas yang ditulis aplikasi HILANG setiap kali di-deploy ulang — dan aplikasi
+ * ini akan diam-diam mulai dari kosong tanpa satu pun pesan galat. Baris ini
+ * membuat kehilangan itu langsung terlihat: kalau kemarin 8 dan hari ini 0,
+ * datanya hilang, bukan pesertanya yang berhenti.
+ *
+ * Kegagalan membacanya ditangani di sini, bukan dibiarkan menjadi penolakan
+ * janji yang tidak tertangkap — berkas data yang rusak dulu mematikan proses
+ * dengan jejak tumpukan mentah, tepat pada saat pengelola paling perlu membaca
+ * petunjuk yang jelas.
+ */
+async function barisPengguna() {
+  try {
+    const jumlah = (await store.listUsers()).length;
+    return `${jumlah} termuat${jumlah === 0 ? '  <-- kalau seharusnya ada isinya, DATA HILANG. Jangan tambah pengguna baru; pulihkan dari cadangan.' : ''}`;
+  } catch (err) {
+    return `GAGAL DIBACA — ${err.message}\n                <-- berkas data rusak. JANGAN tambah pengguna baru.\n                    Pulihkan dengan: npm run backup -- list`;
+  }
+}
+
+/**
+ * Memastikan seluruh kode demo 101–120 benar-benar terikat ke akun DEMO.
+ *
+ * Dua keadaan yang ditangani di sini, keduanya idempoten:
+ *
+ *   1. Kelima akun persona asli (101–105) masih memegang kode NOVA lama —
+ *      kodenya diikat ulang ke angka. Data mereka tidak tersentuh sama
+ *      sekali; yang berubah hanya hash kodenya.
+ *   2. Kode 106–120 belum punya akun — akun DEMO baru dibuat dan diberi
+ *      persona bergiliran. Isi datanya menyusul di hidrasi di bawah,
+ *      memakai mekanisme pengisian yang sama dengan akun lama.
+ *
+ * Langkah ini ADA DI SINI, bukan di users-seed.json, karena penyemaian
+ * bawaan hanya berjalan pada basis data yang MASIH KOSONG — basis data
+ * produksi yang sudah berisi peserta tidak pernah menyentuh berkas seed
+ * itu lagi. Satu-satunya tempat yang pasti jalan di setiap penyalaan,
+ * di basis data mana pun, adalah hidrasi boot ini.
+ */
+async function sediakanAkunDemo() {
+  for (let i = 0; i < KODE_DEMO.length; i += 1) {
+    const kode = KODE_DEMO[i];
+    const pemegang = await store.findByAccessCode(kode);
+    if (pemegang?.batch === 'DEMO') continue; // sudah terikat — biarkan
+    if (pemegang) continue; // kode bentrok dengan peserta sungguhan: mustahil (format beda), tapi jangan menimpa
+
+    if (i < PERSONA_DEMO.length) {
+      // 101–105: akun persona aslinya sudah ada sejak seed — ikat ulang.
+      const asli = await store.findUserById(PERSONA_DEMO[i].id);
+      if (asli) {
+        await store.setAccessCode(asli.id, kode);
+        continue;
+      }
+    }
+
+    const buat = await store.createUser({ name: `Demo ${kode}`, business: '', batch: 'DEMO' });
+    await store.setAccessCode(buat.user.id, kode);
+    // Persona berputar — ditandai di akunnya supaya pembagian tetap
+    // sama di penyalaan berikutnya, bukan tergantung urutan iterasi.
+    await store.terapkanDemo(buat.user.id, { demoPersona: i % PERSONA_DEMO.length });
+  }
+}
+
+/**
+ * Mengisi akun-akun demo dan melanjutkan riwayatnya sampai hari ini.
+ *
+ * Mengembalikan jumlah akun yang siap dipakai. Setiap akun diperiksa
+ * persona-nya dari ID — generator menolak menyentuh apa pun yang bukan
+ * akun DEMO, jadi peserta penelitian tidak mungkin tertimpa dari sini.
+ */
+async function pastikanDemoSiap() {
+  const hariIni = todayISO();
+  await sediakanAkunDemo();
+  let siap = 0;
+  for (const ringkas of await store.listUsers()) {
+    if (ringkas.batch !== 'DEMO') continue;
+    const user = await store.findUserById(ringkas.id);
+    const persona = personaDemo(user);
+    if (!persona) continue;
+
+    /*
+     * Benih angka: kelima akun asli memakai ID persona (data lama mereka
+     * tidak berubah), akun tambahan memakai ID penggunanya sendiri — kalau
+     * tidak, semua warung 106–120 akan punya pembukuan identik.
+     */
+    const kunci = PERSONA_DEMO.some((p) => p.id === user.id) ? undefined : user.id;
+
+    if (!user.profile) {
+      await store.terapkanDemo(user.id, isiDemoPenuh(persona, hariIni, kunci));
+    } else {
+      const lanjutan = lanjutkanDemo(persona, user, hariIni, kunci);
+      if (lanjutan) await store.terapkanDemo(user.id, lanjutan);
+    }
+    siap += 1;
+  }
+  return siap;
+}
+
+/*
+ * Server hanya dinyalakan bila berkas ini memang DIJALANKAN, bukan sekadar
+ * diimpor. Tanpa penjagaan ini, satu `import './server.js'` dari berkas uji ikut
+ * membuka port dan menahan proses tetap hidup selamanya — uji-nya menggantung
+ * tanpa satu pun pesan, dan itulah alasan lapisan HTTP ini tidak pernah teruji.
+ */
+const dijalankanLangsung =
+  process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+/**
+ * Mematikan server dengan rapi.
+ *
+ * SIGTERM datang pada setiap deploy ulang, setiap `systemctl restart`, dan
+ * setiap kali mesinnya dijadwalkan berhenti. Tanpa penanganan ini, proses mati
+ * seketika — memotong permintaan yang sedang berjalan, dan bisa berhenti tepat
+ * di antara "peserta menekan simpan" dan "berkas tertulis ke disk". Peserta
+ * yakin catatannya tersimpan, dan tidak ada satu pun pesan yang mengatakan
+ * sebaliknya.
+ *
+ * Urutannya: berhenti menerima sambungan baru, biarkan yang sedang berjalan
+ * selesai, tunggu antrean penulisan kosong, baru keluar. Ada batas waktu keras
+ * supaya satu sambungan yang menggantung tidak menahan proses selamanya —
+ * systemd dan Cloud Run sama-sama akan membunuh paksa setelah beberapa detik,
+ * jadi lebih baik kita yang berhenti lebih dulu, dengan sadar.
+ */
+const MATI_BATAS_MS = Number(process.env.SHUTDOWN_TIMEOUT_MS) || 8000;
+
+function pasangPenutupan(server) {
+  let sedangTutup = false;
+
+  const tutup = async (sinyal) => {
+    if (sedangTutup) return;
+    sedangTutup = true;
+    log.info('server', 'menerima sinyal berhenti, menutup dengan rapi', { sinyal });
+
+    const paksa = setTimeout(() => {
+      log.warn('server', 'batas waktu penutupan tercapai, keluar paksa', { batasMs: MATI_BATAS_MS });
+      process.exit(1);
+    }, MATI_BATAS_MS);
+    paksa.unref();
+
+    try {
+      await new Promise((selesai) => server.close(selesai));
+      await store.selesaikanPenulisan();
+      log.info('server', 'seluruh penulisan selesai, berhenti');
+      process.exit(0);
+    } catch (err) {
+      log.error('server', 'gagal menutup dengan rapi', { sebab: err?.message ?? String(err) });
+      process.exit(1);
+    }
+  };
+
+  for (const sinyal of ['SIGTERM', 'SIGINT']) process.on(sinyal, () => tutup(sinyal));
+}
+
+if (dijalankanLangsung) {
+  /*
+   * Penyimpanan diperiksa SEBELUM port dibuka.
+   *
+   * Menerima peserta lebih dulu lalu menemukan folder datanya tidak bisa
+   * ditulis berarti setiap catatan yang mereka masukkan hari itu hilang, satu
+   * per satu, tanpa ada yang menyadarinya sampai berhari-hari kemudian.
+   */
+  await wajibBisaMenyimpan();
+
+  /*
+   * Hidrasi demo juga sebelum port dibuka — dengan alasan yang sama.
+   *
+   * Iklan yang menjanjikan "coba tanpa kode" dan rute yang menjawab 503
+   * "akun demo belum siap" adalah dua janji yang saling meniadakan; juri
+   * kontes yang datang lebih cepat dari pengisian data adalah kegagalan
+   * demo yang paling murah dicegah: tunggu sebentar sebelum menyala.
+   *
+   * Kegagalan mengisi TIDAK mematikan server — peserta penelitian tidak
+   * boleh terhalang oleh masalah akun demo. Akun demo yang gagal diisi
+   * terlihat dari log dan dari /api/demo yang menjawab 503.
+   */
+  try {
+    const siap = await pastikanDemoSiap();
+    if (siap > 0) console.log(`  Demo        : ${siap} akun terisi (masuk tanpa kode aktif di /api/demo)`);
+  } catch (err) {
+    log.error('demo', 'gagal mengisi akun demo — rute /api/demo mungkin menjawab 503', { sebab: err?.message ?? String(err) });
+  }
+}
+
+if (dijalankanLangsung) {
+  const server = app.listen(PORT, () => {
+  console.log(`\n  Nova Explorer berjalan di http://localhost:${PORT}`);
+  console.log(`  Model AI    : ${modelAktif()}`);
+  console.log(
+    backendAI() === 'anthropic'
+      ? `  Layanan AI  : Anthropic langsung — kunci ${isConfigured() ? 'terpasang' : 'BELUM DIATUR, fitur AI nonaktif'}`
+      : `  Layanan AI  : ${backendAI() === 'gemini' ? 'Gemini' : 'Claude'} di Vertex AI (project ${process.env.GOOGLE_CLOUD_PROJECT}, region ${process.env.CLOUD_ML_REGION || 'global'})`,
+  );
+  console.log(`  Batas AI    : ${RATE_LIMIT} permintaan/jam per pengguna`);
+  console.log(`  Data        : ${store.DB_PATH}`);
+  console.log(
+    `  Validasi    : ${kodeValidasi() ? `aktif di /validasi (hasil di ${validasiStore.FILE_PATH})` : 'nonaktif — isi VALIDASI_KODE di .env bila lembar validasi materi akan dipakai'}`,
+    /*
+     * Ditampilkan terpisah karena inilah yang paling mahal bila baru disadari
+     * belakangan: lembar boleh masuk sementara tidak ada satu pun jalan
+     * mengambilnya kembali. Di mesin tanpa shell, itu berarti kehilangan
+     * penilaian ahli yang tidak bisa diminta dua kali.
+     */
+    `  Unduh hasil : ${kodePengelola() ? 'aktif di GET /api/validasi/hasil (kode pengelola)' : 'NONAKTIF — VALIDASI_PENGELOLA_KODE belum diisi; hasil validasi tidak bisa diunduh dari mesin ini'}`,
+  );
+
+  // Cadangan dinyalakan lebih dulu: kalau pembacaan data gagal, justru itulah
+  // saat pencadangan paling tidak boleh ikut batal.
+  scheduleBackups();
+
+  barisPengguna().then((baris) => {
+    console.log(`  Pengguna    : ${baris}`);
+    console.log(`  Cadangan    : otomatis tiap 24 jam (npm run backup -- list)`);
+    console.log(`  HTTPS       : ${process.env.FORCE_HTTPS === '1' ? 'dipaksakan' : 'TIDAK dipaksakan (set FORCE_HTTPS=1 di produksi)'}`);
+    console.log(`  Trust proxy : ${process.env.TRUST_PROXY ? 'ya' : 'tidak (set TRUST_PROXY=1 bila di belakang Nginx)'}`);
+    console.log(`  Log         : ${log.jsonMode() ? 'JSON (siap untuk Cloud Logging)' : 'teks (set LOG_FORMAT=json di produksi)'}`);
+    if (process.env.FORCE_HTTPS === '1' && !punyaPublicHost()) {
+      console.log(`  Alamat      : PUBLIC_HOST belum diatur — sebaiknya diisi agar pengalihan HTTPS tidak mengikuti header Host dari klien.`);
+    }
+    console.log(`\n  Tambah pengguna: npm run users -- add "Nama" "Nama Usaha"\n`);
+  });
+  });
+
+  pasangPenutupan(server);
+}
+
+export default app;
+// Diuji lewat test/demo.test.js — hidrasi adalah bagian yang menentukan
+// apakah /api/demo bisa menjawab 200, jadi jalurnya sendiri ikut diuji.
+export { pastikanDemoSiap };

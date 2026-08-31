@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lembar Validasi Ahli — Nova Explorer</title>
+<meta name="description" content="Lembar validasi materi dan infrastruktur IT Nova Explorer untuk validator ahli.">
+<meta name="robots" content="noindex, nofollow">
+<!--
+  Halaman ini dipakai VALIDATOR AHLI (Materi & IT), bukan peserta.
+
+  Keistimewaan teknis:
+  1. Mandiri tanpa dependensi domain eksternal (Zero external CDN/fonts).
+  2. Draf tersimpan otomatis di localStorage per instrumen.
+  3. Skor dihitung server-side saat disubmit untuk integritas penelitian.
+  4. Mendukung validasi Materi Pembelajaran & Validasi Infrastruktur IT.
+-->
+<style>
+:root{
+  --paper:#F8FAF8; --card:#FFFFFF; --ink:#18261E; --ink-soft:#4E6155;
+  --green:#1B6B4A; --green-deep:#124A33; --green-tint:#EAF5EF; --green-light:#28A76E;
+  --gold:#B47A0B; --gold-tint:#FDF6E8; --gold-border:#E5C37A; --line:#E2E8E4;
+  --red:#C0392B; --red-tint:#FDEDEC; --red-border:#E6B0AA;
+  --orange:#D35400; --orange-tint:#FBEEE6;
+  --blue:#2563EB; --blue-tint:#EFF6FF; --blue-border:#BFDBFE;
+  --placeholder:#8C9E94; --radius:16px;
+  --shadow:0 2px 4px rgba(24,38,30,.04),0 8px 24px rgba(24,38,30,.06);
+  --shadow-lg:0 4px 6px -1px rgba(0,0,0,.08), 0 16px 32px -4px rgba(24,38,30,.12);
+}
+:root[data-theme="dark"]{
+  --paper:#0B131E; --card:#131E2E; --ink:#EDF3FB; --ink-soft:#9FB0C8;
+  --green:#2E9E6B; --green-deep:#8CDDB4; --green-tint:#142E24; --green-light:#48C78E;
+  --gold:#E0B04A; --gold-tint:#2E2510; --gold-border:#7B6022; --line:#223249;
+  --red:#E74C3C; --red-tint:#3D1A16; --red-border:#782B24;
+  --orange:#E67E22; --orange-tint:#3B2012;
+  --blue:#3B82F6; --blue-tint:#1E293B; --blue-border:#1D4ED8;
+  --placeholder:#5F7496;
+  --shadow:0 2px 4px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.4);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  background:var(--paper);color:var(--ink);font-size:16px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px}
+h1{font-size:clamp(1.5rem,4vw,2.15rem);font-weight:800;letter-spacing:-.02em;line-height:1.2}
+h2{font-size:1.2rem;font-weight:800;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+h3{font-size:.98rem;font-weight:700}
+.eyebrow{font-size:.74rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+.sub{color:var(--ink-soft);font-size:.92rem}
+.muted{color:var(--ink-soft);font-size:.84rem}
+
+/* ---------- Gerbang kode ---------- */
+.auth{min-height:100vh;display:grid;place-items:center;padding:24px}
+.auth-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:36px 30px;max-width:480px;width:100%;box-shadow:var(--shadow-lg)}
+.auth-mark{width:50px;height:50px;border-radius:14px;background:var(--green);color:#fff;display:grid;place-items:center;font-size:1.4rem;font-weight:800;margin-bottom:18px;box-shadow:0 4px 12px rgba(27,107,74,.3)}
+.code-input{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:13px 16px;font:inherit;font-size:1rem;background:var(--paper);color:var(--ink);outline:none;transition:border-color .15s}
+.code-input:focus{border-color:var(--green)}
+
+/* ---------- Tab Pilihan Instrumen ---------- */
+.tab-switcher{display:flex;gap:6px;background:var(--paper);padding:4px;border-radius:12px;border:1px solid var(--line);margin:14px 0}
+.tab-btn{flex:1;padding:8px 12px;border-radius:8px;font-size:.84rem;font-weight:700;color:var(--ink-soft);transition:all .15s;text-align:center}
+.tab-btn.active{background:var(--card);color:var(--green-deep);box-shadow:0 2px 6px rgba(0,0,0,.06)}
+
+/* ---------- Bilah atas ---------- */
+header{position:sticky;top:0;z-index:40;background:var(--card);border-bottom:1px solid var(--line);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.bar{display:flex;align-items:center;gap:12px;max-width:960px;margin:0 auto;padding:10px 20px}
+.brand{font-weight:800;display:flex;align-items:center;gap:10px;margin-right:auto;font-size:1rem}
+.brand-mark{width:28px;height:28px;border-radius:8px;background:var(--green);color:#fff;display:grid;place-items:center;font-size:.85rem;font-weight:800}
+.live{display:flex;align-items:center;gap:10px;font-variant-numeric:tabular-nums}
+.live b{font-size:1.1rem}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:99px;font-size:.76rem;font-weight:700;background:var(--green-tint);color:var(--green-deep)}
+.pill.warn{background:var(--gold-tint);color:var(--gold)}
+.pill.bad{background:var(--red-tint);color:var(--red)}
+.pill.info{background:var(--paper);border:1px solid var(--line);color:var(--ink-soft)}
+.icon-btn{width:36px;height:36px;border-radius:10px;border:1.5px solid var(--line);display:grid;place-items:center;flex:none;transition:all .15s}
+.icon-btn:hover{border-color:var(--green);background:var(--green-tint)}
+
+/* ---------- Progress Indicator ---------- */
+.progress-container{width:100%;background:var(--line);height:4px;position:absolute;bottom:0;left:0}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--green));width:0%;transition:width .25s ease}
+
+/* ---------- Aspect Navigator ---------- */
+.aspect-nav{position:sticky;top:57px;z-index:30;background:var(--paper);border-bottom:1px solid var(--line);padding:8px 0;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.03)}
+.aspect-scroll{display:flex;gap:6px;overflow-x:auto;padding:0 20px;max-width:960px;margin:0 auto;scrollbar-width:thin}
+.aspect-chip{
+  display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;font-size:.78rem;font-weight:700;
+  white-space:nowrap;border:1.5px solid var(--line);background:var(--card);color:var(--ink-soft);text-decoration:none;transition:all .15s;flex:none;
+}
+.aspect-chip:hover{border-color:var(--green);color:var(--green-deep)}
+.aspect-chip.active{background:var(--green-tint);border-color:var(--green);color:var(--green-deep)}
+.aspect-chip .badge{font-size:.7rem;padding:2px 6px;border-radius:99px;background:var(--line);color:var(--ink-soft)}
+.aspect-chip.complete .badge{background:var(--green);color:#fff}
+.aspect-chip.partial .badge{background:var(--gold);color:#fff}
+
+/* ---------- Kartu & Section ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin-bottom:16px;box-shadow:var(--shadow)}
+.card.tight{padding:16px 18px}
+section{padding:24px 0 10px;scroll-margin-top:120px}
+.note{background:var(--green-tint);border:1px solid rgba(27,107,74,.2);border-radius:14px;padding:14px 18px;font-size:.9rem;color:var(--green-deep);margin-bottom:16px;line-height:1.55}
+.note.warn{background:var(--gold-tint);border-color:var(--gold-border);color:var(--gold)}
+
+/* ---------- Formulir ---------- */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field label{font-size:.82rem;font-weight:700;color:var(--ink-soft)}
+.field input,.field select,.field textarea{
+  border:1.5px solid var(--line);border-radius:11px;padding:10px 14px;font:inherit;font-size:.93rem;
+  background:var(--paper);color:var(--ink);outline:none;width:100%;transition:border-color .15s;
+}
+.field textarea{resize:vertical;min-height:90px}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--green)}
+.checks{display:flex;flex-wrap:wrap;gap:8px}
+.check{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);border-radius:99px;padding:7px 14px;font-size:.86rem;cursor:pointer;background:var(--card);transition:all .15s}
+.check input{accent-color:var(--green)}
+.check:hover{border-color:var(--green)}
+.check.on{border-color:var(--green);background:var(--green-tint);color:var(--green-deep);font-weight:600}
+
+/* ---------- Butir Penilaian ---------- */
+.aspek-head{display:flex;align-items:baseline;gap:12px;margin:32px 0 12px;padding-bottom:6px;border-bottom:1.5px solid var(--line)}
+.aspek-head .no{font-size:.78rem;font-weight:800;letter-spacing:.08em;color:var(--gold);background:var(--gold-tint);padding:3px 8px;border-radius:6px}
+.butir{background:var(--card);border:1.5px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:14px;transition:all .2s;box-shadow:var(--shadow)}
+.butir.belum{border-left:5px solid var(--gold)}
+.butir.diisi{border-left:5px solid var(--green)}
+.butir-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.butir-kode{font-size:.75rem;font-weight:800;letter-spacing:.06em;color:var(--ink-soft);background:var(--paper);padding:2px 8px;border-radius:6px}
+.butir p.pernyataan{margin:6px 0 8px;font-size:.98rem;font-weight:600;color:var(--ink)}
+.rujukan{font-size:.82rem;color:var(--ink-soft);margin-bottom:14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.rujukan b{color:var(--green-deep);font-weight:700;background:var(--green-tint);padding:2px 7px;border-radius:6px}
+
+/* Skala Likert Modern */
+.skala{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px}
+.skala label{
+  border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;
+  display:flex;flex-direction:column;gap:4px;font-size:.82rem;background:var(--paper);transition:all .15s;text-align:center;
+}
+.skala label:hover{border-color:var(--green);transform:translateY(-1px)}
+.skala label input{position:absolute;opacity:0}
+.skala label .n{font-weight:900;font-size:1.15rem;color:var(--ink)}
+.skala label .l{font-size:.74rem;line-height:1.25;color:var(--ink-soft)}
+
+/* Nilai Terpilih */
+.skala label.on{border-width:2px;font-weight:700}
+.skala label[data-skor="5"].on{border-color:#16A085;background:#E8F8F5;color:#0E6655}
+.skala label[data-skor="4"].on{border-color:var(--green);background:var(--green-tint);color:var(--green-deep)}
+.skala label[data-skor="3"].on{border-color:var(--gold);background:var(--gold-tint);color:var(--gold)}
+.skala label[data-skor="2"].on{border-color:var(--orange);background:var(--orange-tint);color:var(--orange)}
+.skala label[data-skor="1"].on{border-color:var(--red);background:var(--red-tint);color:var(--red)}
+:root[data-theme="dark"] .skala label[data-skor="5"].on{background:#0E3B32;color:#A2F5E2}
+:root[data-theme="dark"] .skala label[data-skor="4"].on{background:var(--green-tint);color:var(--green-deep)}
+:root[data-theme="dark"] .skala label[data-skor="3"].on{background:var(--gold-tint);color:var(--gold)}
+:root[data-theme="dark"] .skala label[data-skor="2"].on{background:var(--orange-tint);color:#FAD7A0}
+:root[data-theme="dark"] .skala label[data-skor="1"].on{background:var(--red-tint);color:#F5B7B1}
+
+/* Kotak komentar tiap butir */
+.butir-komentar-box{margin-top:8px}
+.butir-komentar-label{display:flex;justify-content:space-between;font-size:.78rem;font-weight:700;color:var(--ink-soft);margin-bottom:4px}
+.butir-komentar-wajib{color:var(--red);display:none;align-items:center;gap:4px;font-size:.76rem;font-weight:700}
+.butir.perlu-alasan .butir-komentar-wajib{display:inline-flex}
+.butir.perlu-alasan textarea{border-color:var(--red-border);background:var(--red-tint)}
+.butir textarea{
+  width:100%;font:inherit;font-size:.9rem;min-height:68px;resize:vertical;
+  border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;
+  background:var(--paper);color:var(--ink);outline:none;transition:border-color .15s;
+}
+.butir textarea:focus{border-color:var(--green)}
+.butir textarea::placeholder{color:var(--placeholder)}
+
+/* ---------- Revisi ---------- */
+.revisi-row{display:grid;grid-template-columns:minmax(140px,1fr) 2fr auto;gap:10px;margin-bottom:10px;align-items:start}
+.revisi-row input,.revisi-row textarea{
+  border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;font:inherit;font-size:.9rem;
+  background:var(--paper);color:var(--ink);outline:none;width:100%;
+}
+.revisi-row textarea{resize:vertical;min-height:48px}
+.hapus-btn{border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--red);font-size:.85rem;background:var(--card);transition:all .15s}
+.hapus-btn:hover{background:var(--red-tint);border-color:var(--red)}
+
+/* ---------- Tombol ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 20px;border-radius:12px;font-weight:700;font-size:.92rem;transition:all .15s}
+.btn-primary{background:var(--green);color:#fff;box-shadow:var(--shadow)}
+.btn-primary:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-ghost{background:var(--card);color:var(--green-deep);border:1.5px solid var(--line)}
+.btn-ghost:hover{border-color:var(--green);background:var(--green-tint)}
+.btn-secondary{background:var(--gold-tint);color:var(--gold);border:1.5px solid var(--gold-border)}
+.btn:disabled{opacity:.55;cursor:not-allowed;transform:none!important}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0 60px}
+.form-error{background:var(--red-tint);color:var(--red);border:1px solid var(--red-border);border-radius:12px;padding:14px 16px;font-size:.9rem;font-weight:600;margin:16px 0}
+
+/* ---------- Ringkasan hasil & Gauge ---------- */
+.gauge-card{background:linear-gradient(135deg,var(--card) 0%,var(--paper) 100%);border:1px solid var(--line);border-radius:var(--radius);padding:24px;margin-bottom:18px;box-shadow:var(--shadow)}
+.hasil-angka{display:flex;flex-wrap:wrap;gap:24px;align-items:baseline;margin:8px 0 16px}
+.hasil-angka div{display:flex;flex-direction:column}
+.hasil-angka b{font-size:1.75rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--ink)}
+.hasil-angka span{font-size:.76rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
+th{font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.hidden{display:none!important}
+
+@media (max-width:720px){
+  .grid-2{grid-template-columns:1fr}
+  .revisi-row{grid-template-columns:1fr}
+  .live b{font-size:.95rem}
+  .skala{grid-template-columns:repeat(5,1fr);gap:4px}
+  .skala label{padding:8px 4px}
+  .skala label .l{display:none}
+}
+@media print{
+  header,.aspect-nav,.actions,.no-print,.tab-switcher{display:none!important}
+  body{background:#fff}
+  .card,.butir{break-inside:avoid;box-shadow:none;border-color:#ccc}
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================ Gerbang kode -->
+<div class="auth" id="gerbang">
+  <div class="auth-card">
+    <div class="auth-mark">✓</div>
+    <h1 style="font-size:1.35rem" id="judulGerbang">Validasi Ahli Nova Explorer</h1>
+    <p class="sub" style="margin:6px 0 14px">
+      Lembar instrumen kelayakan materi &amp; infrastruktur sistem bagi validator ahli.
+    </p>
+
+    <!-- Pilihan Jenis Instrumen -->
+    <div class="tab-switcher">
+      <button class="tab-btn active" type="button" id="pilihMateriBtn">📚 Validasi Materi</button>
+      <button class="tab-btn" type="button" id="pilihITBtn">💻 Validasi Ahli IT</button>
+    </div>
+
+    <form id="formKode">
+      <input class="code-input" id="kode" type="password" placeholder="Kode akses validator" autocomplete="off" required>
+      <div class="actions" style="margin:14px 0 0">
+        <button class="btn btn-primary" type="submit" id="masukBtn">Buka Lembar Validasi</button>
+      </div>
+    </form>
+    <div class="form-error hidden" id="kodeError"></div>
+    <p class="muted" style="margin-top:16px">
+      Kode validasi disediakan oleh pengelola penelitian. Kode ini terisolasi dan tidak membuka data transaksi peserta.
+    </p>
+  </div>
+</div>
+
+<!-- ============================================================== Lembar isi -->
+<div id="lembar" class="hidden">
+  <header>
+    <div class="bar">
+      <div class="brand"><span class="brand-mark">N</span> <span id="brandTeks">Validasi Materi</span></div>
+      <div class="live">
+        <span class="muted" id="liveButir">0/25 butir</span>
+        <b id="livePersen">—</b>
+        <span class="pill" id="liveKategori">belum dinilai</span>
+      </div>
+      <button class="icon-btn" id="temaBtn" title="Ganti mode terang/gelap" aria-label="Ganti mode terang/gelap">🌙</button>
+    </div>
+    <div class="progress-container"><div class="progress-bar-fill" id="progressBar"></div></div>
+  </header>
+
+  <!-- Navigasi aspek -->
+  <nav class="aspect-nav" id="aspectNav" aria-label="Navigasi aspek penilaian">
+    <div class="aspect-scroll" id="aspectScroll"></div>
+  </nav>
+
+  <div class="wrap">
+    <section id="pengantar">
+      <!-- Switcher di dalam halaman -->
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+        <p class="eyebrow" id="eyebrowTeks">Instrumen validasi materi</p>
+        <div class="tab-switcher" style="margin:0">
+          <button class="tab-btn" type="button" id="topPilihMateriBtn">📚 Materi &amp; Media</button>
+          <button class="tab-btn" type="button" id="topPilihITBtn">💻 Infrastruktur IT</button>
+        </div>
+      </div>
+
+      <h1 id="judulHalaman">Kelayakan isi materi pembelajaran Nova Explorer</h1>
+      <p class="sub" style="margin-top:8px" id="deskripsiHalaman">
+        Nova Explorer adalah sistem micro-learning pengenalan cloud accounting untuk usaha
+        kuliner mikro di Kecamatan Banyumanik, Kota Semarang. Materinya berbentuk 7 sesi
+        harian (jalur dasar) dan 22 modul pustaka, seluruhnya dapat dibaca di halaman
+        <b>Modul</b> aplikasi peserta.
+      </p>
+
+      <div class="note" style="margin-top:16px" id="notePengantar">
+        <b>Cara mengisi.</b> Buka materi / arsitektur yang dirujuk tiap butir, lalu beri skor 1–5 dan
+        komentar seperlunya. Butir yang diberi skor 1 atau 2 <b>wajib</b> disertai komentar —
+        butir itulah yang akan dijadikan dasar revisi. Isian tersimpan otomatis di
+        peramban ini sampai lembarnya dikirim, jadi pengisian boleh dijeda kapan saja.
+      </div>
+
+      <div class="card tight" id="kartuSkala"></div>
+      <div class="card tight" id="kartuKategori"></div>
+    </section>
+
+    <!-- ------------------------------------------------------- Identitas -->
+    <section id="identitas">
+      <h2>A. Identitas validator</h2>
+      <p class="sub" style="margin-bottom:12px">Diisi sesuai keadaan sebenarnya; dipakai untuk keperluan pelaporan penelitian.</p>
+      <div class="card">
+        <div class="grid-2">
+          <div class="field">
+            <label for="vNama">Nama lengkap &amp; gelar *</label>
+            <input id="vNama" type="text" maxlength="100" placeholder="Contoh: Dr. Budi Santoso, M.Ak. / Dr. Eng. Heri, M.T." required>
+          </div>
+          <div class="field">
+            <label for="vInstitusi">Institusi / instansi</label>
+            <input id="vInstitusi" type="text" maxlength="150" placeholder="Contoh: Universitas Diponegoro">
+          </div>
+          <div class="field">
+            <label for="vJabatan">Jabatan / bidang tugas</label>
+            <input id="vJabatan" type="text" maxlength="100" placeholder="Contoh: Dosen / DevOps Engineer / Praktisi UMKM">
+          </div>
+          <div class="field">
+            <label for="vTanggal">Tanggal validasi *</label>
+            <input id="vTanggal" type="date" required>
+          </div>
+        </div>
+        <div class="field">
+          <label>Bidang keahlian * (boleh lebih dari satu)</label>
+          <div class="checks" id="bidangBox"></div>
+        </div>
+        <div class="field">
+          <label for="vBidangLain">Bidang keahlian lain (opsional)</label>
+          <input id="vBidangLain" type="text" maxlength="100" placeholder="Tulis bila tidak ada di daftar di atas">
+        </div>
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------ Butir penilaian -->
+    <section id="penilaian">
+      <h2 id="judulBagianB">B. Penilaian instrumen</h2>
+      <p class="sub" style="margin-bottom:6px">
+        <span id="jumlahButirTeks">25</span> butir penilaian, dikelompokkan ke dalam <span id="jumlahAspekTeks">12</span> aspek.
+      </p>
+      <div id="butirBox"></div>
+    </section>
+
+    <!-- ---------------------------------------------------------- Catatan -->
+    <section id="catatan">
+      <h2>C. Catatan, rekomendasi, dan kesimpulan</h2>
+      <div class="card">
+        <div class="field">
+          <label for="catatanUmum" id="labelCatatanUmum">Catatan umum</label>
+          <textarea id="catatanUmum" maxlength="3000" placeholder="Penilaian menyeluruh terhadap kelebihan, kelemahan, dan kesesuaian sistem/materi."></textarea>
+        </div>
+        <div class="field">
+          <label for="rekomendasi" id="labelRekomendasi">Rekomendasi perbaikan</label>
+          <textarea id="rekomendasi" maxlength="3000" placeholder="Saran perbaikan yang perlu dilakukan sebelum sistem/materi dipakai pada tahap pengujian responden."></textarea>
+        </div>
+
+        <div class="field">
+          <label id="labelRevisiBox">Bagian yang perlu direvisi</label>
+          <p class="muted" style="margin:-2px 0 8px" id="hintRevisiBox">
+            Sebutkan bagian/fitur yang perlu diperbaiki beserta catatannya.
+          </p>
+          <div id="revisiBox"></div>
+          <div><button class="btn btn-ghost" type="button" id="tambahRevisi" style="padding:8px 14px;font-size:.85rem">+ Tambah baris perbaikan</button></div>
+        </div>
+
+        <div class="field">
+          <label for="kesimpulan" id="labelKesimpulan">Kesimpulan kelayakan *</label>
+          <select id="kesimpulan" required></select>
+          <p class="muted">
+            Kesimpulan ini adalah keputusan resmi Anda sebagai validator ahli, dan disimpan terpisah dari
+            kategori hasil hitungan persentase.
+          </p>
+        </div>
+      </div>
+
+      <div class="gauge-card" id="ringkasSementara">
+        <h3>Ringkasan kelayakan sementara</h3>
+        <p class="muted" style="margin-bottom:12px">
+          Persentase dihitung secara langsung dari butir yang telah Anda isi.
+        </p>
+        <div class="hasil-angka">
+          <div><b id="sumSkor">0</b><span>Skor Diperoleh</span></div>
+          <div><b id="sumMaks">0</b><span>Skor Maksimum</span></div>
+          <div><b id="sumPersen">0%</b><span>Persentase Kelayakan</span></div>
+          <div><b id="sumKategori">—</b><span>Kategori Kelayakan</span></div>
+        </div>
+        <p class="muted" id="sumBelum"></p>
+      </div>
+
+      <div class="card tight" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div>
+          <b>Cadangan Isian Draf</b>
+          <p class="muted">Ekspor isian Anda ke berkas JSON atau pulihkan bila berganti perangkat.</p>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" type="button" id="eksporDrafBtn" style="padding:8px 14px;font-size:.85rem">💾 Unduh Draf (JSON)</button>
+          <label class="btn btn-ghost" style="padding:8px 14px;font-size:.85rem;cursor:pointer">
+            📂 Buka Draf
+            <input type="file" id="imporDrafInput" accept=".json" style="display:none">
+          </label>
+        </div>
+      </div>
+
+      <div class="form-error hidden" id="kirimError"></div>
+      <div class="actions">
+        <button class="btn btn-primary" type="button" id="kirimBtn">Kirim Lembar Validasi</button>
+        <button class="btn btn-ghost" type="button" id="hapusDrafBtn">Kosongkan Isian</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- =============================================================== Hasil kirim -->
+<div id="hasil" class="hidden">
+  <div class="wrap">
+    <section>
+      <p class="eyebrow">Terkirim</p>
+      <h1>Lembar validasi tersimpan</h1>
+      <p class="sub" style="margin:8px 0 18px">
+        Terima kasih atas kontribusi dan penilaian Anda. Perhitungan di bawah dihasilkan server dari jawaban yang Anda kirim.
+        Simpan atau cetak halaman ini bila Anda memerlukan salinan bukti validasi.
+      </p>
+      <div class="card" id="hasilRingkas"></div>
+      <div class="card" id="hasilAspek"></div>
+      <div class="actions no-print">
+        <button class="btn btn-primary" type="button" onclick="window.print()">Cetak / Simpan PDF</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   Lembar Validasi Ahli (Materi & IT) — Skrip Halaman.
+   ========================================================================= */
+
+const el = (id) => document.getElementById(id);
+
+let JENIS_AKTIF = (new URLSearchParams(window.location.search).get('jenis') || (window.location.pathname.includes('-it') ? 'it' : 'materi')).toLowerCase();
+if (JENIS_AKTIF !== 'it') JENIS_AKTIF = 'materi';
+
+let INSTRUMEN_MATERI = null;
+let INSTRUMEN_IT = null;
+let INSTRUMEN = null;
+let KODE = '';
+
+const getKunciDraf = () => `nova-validasi-draf-${JENIS_AKTIF}-v1`;
+
+let draf = { validator: {}, jawaban: {}, catatanUmum: '', rekomendasi: '', materiPerluRevisi: [], kesimpulan: '' };
+
+/* ------------------------------------------------------------------ Tema */
+const temaTersimpan = localStorage.getItem('nova-tema');
+if (temaTersimpan) document.documentElement.setAttribute('data-theme', temaTersimpan);
+el('temaBtn').addEventListener('click', () => {
+  const gelap = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', gelap ? 'light' : 'dark');
+  localStorage.setItem('nova-tema', gelap ? 'light' : 'dark');
+});
+
+/* -------------------------------------------------------- Switcher Jenis */
+function setJenis(j) {
+  JENIS_AKTIF = j;
+  el('pilihMateriBtn').classList.toggle('active', j === 'materi');
+  el('pilihITBtn').classList.toggle('active', j === 'it');
+  el('topPilihMateriBtn').classList.toggle('active', j === 'materi');
+  el('topPilihITBtn').classList.toggle('active', j === 'it');
+
+  if (KODE && (INSTRUMEN_MATERI || INSTRUMEN_IT)) {
+    pilihInstrumenAktif();
+  }
+}
+
+el('pilihMateriBtn').addEventListener('click', () => setJenis('materi'));
+el('pilihITBtn').addEventListener('click', () => setJenis('it'));
+el('topPilihMateriBtn').addEventListener('click', () => setJenis('materi'));
+el('topPilihITBtn').addEventListener('click', () => setJenis('it'));
+
+// Init state
+setJenis(JENIS_AKTIF);
+
+/* ------------------------------------------------------------------ Draf */
+function muatDraf() {
+  draf = { validator: {}, jawaban: {}, catatanUmum: '', rekomendasi: '', materiPerluRevisi: [], kesimpulan: '' };
+  try {
+    const isi = JSON.parse(localStorage.getItem(getKunciDraf()) ?? 'null');
+    if (isi && typeof isi === 'object') draf = { ...draf, ...isi };
+  } catch { /* draf rusak */ }
+}
+function simpanDraf() {
+  try { localStorage.setItem(getKunciDraf(), JSON.stringify(draf)); } catch { /* penyimpanan penuh */ }
+}
+
+/* ------------------------------------------------------------ Gerbang kode */
+el('formKode').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const kode = el('kode').value.trim();
+  if (!kode) return;
+  el('masukBtn').disabled = true;
+  try {
+    const res = await fetch('/api/validasi/instrumen', { headers: { Authorization: 'Bearer ' + kode } });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || 'Kode tidak dikenali.');
+    KODE = kode;
+    INSTRUMEN_MATERI = body.instrumen;
+    INSTRUMEN_IT = body.instrumenIT;
+
+    el('gerbang').classList.add('hidden');
+    el('lembar').classList.remove('hidden');
+    pilihInstrumenAktif();
+  } catch (err) {
+    const box = el('kodeError');
+    box.textContent = err.message;
+    box.classList.remove('hidden');
+  } finally {
+    el('masukBtn').disabled = false;
+  }
+});
+
+function pilihInstrumenAktif() {
+  INSTRUMEN = JENIS_AKTIF === 'it' ? (INSTRUMEN_IT || INSTRUMEN_MATERI) : (INSTRUMEN_MATERI || INSTRUMEN_IT);
+
+  if (JENIS_AKTIF === 'it') {
+    document.title = 'Validasi Ahli IT & Infrastruktur — Nova Explorer';
+    el('brandTeks').textContent = 'Validasi Ahli IT';
+    el('eyebrowTeks').textContent = 'Instrumen Validasi Ahli IT & Infrastruktur';
+    el('judulHalaman').textContent = 'Kesiapan & Kelayakan Infrastruktur Sistem Nova Explorer';
+    el('deskripsiHalaman').innerHTML =
+      'Nova Explorer dibangun dengan arsitektur Cloud Native (Google Cloud Run serverless & Managed Cloud SQL PostgreSQL) ' +
+      'serta integrasi AI Gemini melalui Google Vertex AI. Lembar ini mengevaluasi 6 dimensi: arsitektur, keamanan, integritas DB, efisiensi jaringan, keandalan AI, dan auditabilitas.';
+    el('notePengantar').innerHTML =
+      '<b>Cara mengisi.</b> Buka arsitektur/kode/modul yang dirujuk pada tiap butir, lalu beri skor 1–5 dan komentar seperlunya. ' +
+      'Butir dengan skor 1 atau 2 <b>wajib</b> disertai komentar alasan/perbaikan teknis. Draf tersimpan otomatis.';
+    el('labelCatatanUmum').textContent = 'Catatan umum terhadap infrastruktur & arsitektur sistem';
+    el('labelRekomendasi').textContent = 'Rekomendasi teknis & keamanan sistem';
+    el('labelRevisiBox').textContent = 'Komponen sistem yang perlu perbaikan / penyempurnaan';
+    el('hintRevisiBox').textContent = 'Sebutkan modul / komponen sistem (mis. Pool koneksi DB / Cache modul.js) beserta catatannya.';
+    el('labelKesimpulan').textContent = 'Kesimpulan kelayakan infrastruktur IT *';
+  } else {
+    document.title = 'Validasi Materi — Nova Explorer';
+    el('brandTeks').textContent = 'Validasi Materi';
+    el('eyebrowTeks').textContent = 'Instrumen Validasi Materi Pembelajaran';
+    el('judulHalaman').textContent = 'Kelayakan Isi Materi Pembelajaran Nova Explorer';
+    el('deskripsiHalaman').innerHTML =
+      'Nova Explorer adalah sistem micro-learning pengenalan cloud accounting untuk usaha kuliner mikro di Kecamatan Banyumanik, Kota Semarang. ' +
+      'Materinya berbentuk 7 sesi harian (jalur dasar) dan 22 modul pustaka, seluruhnya dapat dibaca di halaman <b>Modul</b> aplikasi peserta.';
+    el('notePengantar').innerHTML =
+      '<b>Cara mengisi.</b> Buka materi yang dirujuk tiap butir, lalu beri skor 1–5 dan komentar seperlunya. ' +
+      'Butir yang diberi skor 1 atau 2 <b>wajib</b> disertai komentar — butir itulah yang akan dijadikan dasar revisi materi. Draf tersimpan otomatis.';
+    el('labelCatatanUmum').textContent = 'Catatan umum terhadap materi';
+    el('labelRekomendasi').textContent = 'Rekomendasi perbaikan materi';
+    el('labelRevisiBox').textContent = 'Materi yang perlu direvisi';
+    el('hintRevisiBox').textContent = 'Sebutkan bagian materinya (mis. “Modul 5 — contoh HPP ayam geprek”) beserta apa yang perlu diperbaiki.';
+    el('labelKesimpulan').textContent = 'Kesimpulan kelayakan materi *';
+  }
+
+  gambarLembar();
+}
+
+/* ----------------------------------------------------------- Menggambar */
+function gambarLembar() {
+  muatDraf();
+
+  el('jumlahButirTeks').textContent = INSTRUMEN.jumlahButir;
+  el('jumlahAspekTeks').textContent = INSTRUMEN.aspek.length;
+
+  /* Skala */
+  el('kartuSkala').innerHTML =
+    '<h3>Skala penilaian</h3><p class="muted" style="margin:4px 0 10px">Setiap butir dinilai dengan skala Likert 1–5.</p>' +
+    '<div class="checks">' +
+    INSTRUMEN.skala.map((s) => `<span class="check"><b>${s.nilai}</b> ${s.label}</span>`).join('') +
+    '</div>';
+
+  /* Kriteria interpretasi */
+  el('kartuKategori').innerHTML =
+    '<h3>Kriteria interpretasi persentase kelayakan</h3>' +
+    '<p class="muted" style="margin:4px 0 8px">' +
+    'Persentase Kelayakan = (total skor diperoleh ÷ skor maksimum) × 100%. ' +
+    'Rentang di bawah adalah kriteria interpretasi <b>yang digunakan dalam penelitian ini</b>, ' +
+    'bukan standar yang berlaku umum.</p>' +
+    '<table><tbody>' +
+    INSTRUMEN.kategori.map((k) => `<tr><td style="width:130px">${k.rentang}</td><td><b>${k.label}</b></td></tr>`).join('') +
+    '</tbody></table>';
+
+  /* Identitas */
+  const v = draf.validator ?? {};
+  el('vNama').value = v.nama ?? '';
+  el('vInstitusi').value = v.institusi ?? '';
+  el('vJabatan').value = v.jabatan ?? '';
+  el('vTanggal').value = v.tanggalValidasi ?? new Date().toISOString().slice(0, 10);
+  el('vBidangLain').value = v.bidangLain ?? '';
+  el('vTanggal').max = new Date().toISOString().slice(0, 10);
+
+  el('bidangBox').innerHTML = INSTRUMEN.bidang
+    .map((b, i) => `<label class="check" data-bidang="${i}"><input type="checkbox" value="${b.replace(/"/g, '&quot;')}"> ${b}</label>`)
+    .join('');
+  for (const label of el('bidangBox').querySelectorAll('label')) {
+    const kotak = label.querySelector('input');
+    kotak.checked = (v.bidang ?? []).includes(kotak.value);
+    label.classList.toggle('on', kotak.checked);
+    kotak.addEventListener('change', () => {
+      label.classList.toggle('on', kotak.checked);
+      simpanIdentitas();
+    });
+  }
+  for (const id of ['vNama', 'vInstitusi', 'vJabatan', 'vTanggal', 'vBidangLain']) {
+    el(id).addEventListener('input', simpanIdentitas);
+  }
+
+  /* Navigasi Aspek */
+  gambarAspectNav();
+
+  /* Butir per aspek */
+  el('butirBox').innerHTML = INSTRUMEN.aspek
+    .map(
+      (a, i) => `
+      <div class="aspek-section" id="aspek-${i + 1}">
+        <div class="aspek-head">
+          <span class="no">Aspek ${i + 1}</span>
+          <h3>${a.nama}</h3>
+        </div>
+        ${a.deskripsi ? `<p class="muted" style="margin:-4px 0 12px">${a.deskripsi}</p>` : ''}
+        ${a.butir.map(kartuButir).join('')}
+      </div>`,
+    )
+    .join('');
+
+  for (const kotak of el('butirBox').querySelectorAll('input[type="radio"]')) {
+    kotak.addEventListener('change', () => {
+      const { kode, nilai } = kotak.dataset;
+      draf.jawaban[kode] = { ...(draf.jawaban[kode] ?? {}), skor: Number(nilai) };
+      tandaiButir(kode);
+      simpanDraf();
+      hitungSementara();
+      updateAspectNav();
+    });
+  }
+  for (const area of el('butirBox').querySelectorAll('textarea[data-kode]')) {
+    area.addEventListener('input', () => {
+      const kode = area.dataset.kode;
+      draf.jawaban[kode] = { ...(draf.jawaban[kode] ?? {}), komentar: area.value };
+      simpanDraf();
+      tandaiButir(kode);
+    });
+  }
+
+  // Tandai butir-butir yang sudah memiliki skor dari draf
+  for (const a of INSTRUMEN.aspek) {
+    for (const b of a.butir) {
+      tandaiButir(b.kode);
+    }
+  }
+
+  /* Catatan & kesimpulan */
+  el('catatanUmum').value = draf.catatanUmum ?? '';
+  el('rekomendasi').value = draf.rekomendasi ?? '';
+  el('catatanUmum').addEventListener('input', () => { draf.catatanUmum = el('catatanUmum').value; simpanDraf(); });
+  el('rekomendasi').addEventListener('input', () => { draf.rekomendasi = el('rekomendasi').value; simpanDraf(); });
+
+  el('kesimpulan').innerHTML =
+    '<option value="">— pilih kesimpulan kelayakan —</option>' +
+    INSTRUMEN.kesimpulan.map((k) => `<option value="${k.kunci}">${k.label}</option>`).join('');
+  el('kesimpulan').value = draf.kesimpulan ?? '';
+  el('kesimpulan').addEventListener('change', () => { draf.kesimpulan = el('kesimpulan').value; simpanDraf(); });
+
+  gambarRevisi();
+  el('tambahRevisi').addEventListener('click', () => {
+    draf.materiPerluRevisi = [...(draf.materiPerluRevisi ?? []), { bagian: '', catatan: '' }];
+    simpanDraf();
+    gambarRevisi();
+  });
+
+  /* Ekspor / Impor Draf */
+  el('eksporDrafBtn').addEventListener('click', () => {
+    simpanIdentitas();
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(draf, null, 2));
+    const dl = document.createElement('a');
+    dl.setAttribute('href', dataStr);
+    dl.setAttribute('download', `draf-validasi-${JENIS_AKTIF}-nova-${draf.validator?.nama || 'ahli'}-${new Date().toISOString().slice(0, 10)}.json`);
+    dl.click();
+  });
+
+  el('imporDrafInput').addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const imported = JSON.parse(event.target.result);
+        if (imported && typeof imported === 'object') {
+          draf = { ...draf, ...imported };
+          simpanDraf();
+          gambarLembar();
+          alert('Draf berhasil dipulihkan!');
+        }
+      } catch {
+        alert('Berkas JSON tidak valid.');
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  el('kirimBtn').addEventListener('click', kirim);
+  el('hapusDrafBtn').addEventListener('click', () => {
+    if (!confirm(`Kosongkan seluruh isian pada lembar ${JENIS_AKTIF === 'it' ? 'Validasi IT' : 'Validasi Materi'}?`)) return;
+    localStorage.removeItem(getKunciDraf());
+    gambarLembar();
+  });
+
+  hitungSementara();
+  updateAspectNav();
+}
+
+function gambarAspectNav() {
+  el('aspectScroll').innerHTML = INSTRUMEN.aspek
+    .map(
+      (a, i) => `
+      <a href="#aspek-${i + 1}" class="aspect-chip" id="chip-aspek-${i + 1}" title="${a.nama}">
+        <span>Aspek ${i + 1}</span>
+        <span class="badge" id="badge-aspek-${i + 1}">0/${a.butir.length}</span>
+      </a>`,
+    )
+    .join('');
+
+  for (const chip of el('aspectScroll').querySelectorAll('.aspect-chip')) {
+    chip.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetId = chip.getAttribute('href').slice(1);
+      const targetEl = document.getElementById(targetId);
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        for (const c of el('aspectScroll').querySelectorAll('.aspect-chip')) c.classList.remove('active');
+        chip.classList.add('active');
+      }
+    });
+  }
+}
+
+function updateAspectNav() {
+  if (!INSTRUMEN) return;
+  INSTRUMEN.aspek.forEach((a, i) => {
+    let terisi = 0;
+    for (const b of a.butir) {
+      if (draf.jawaban?.[b.kode]?.skor) terisi++;
+    }
+    const chip = el(`chip-aspek-${i + 1}`);
+    const badge = el(`badge-aspek-${i + 1}`);
+    if (badge) badge.textContent = `${terisi}/${a.butir.length}`;
+    if (chip) {
+      chip.classList.toggle('complete', terisi === a.butir.length);
+      chip.classList.toggle('partial', terisi > 0 && terisi < a.butir.length);
+    }
+  });
+}
+
+function kartuButir(b) {
+  const jawab = draf.jawaban?.[b.kode] ?? {};
+  const skala = INSTRUMEN.skala
+    .map(
+      (s) => `
+      <label class="${jawab.skor === s.nilai ? 'on' : ''}" data-skor="${s.nilai}" data-untuk="${b.kode}-${s.nilai}">
+        <input type="radio" name="${b.kode}" value="${s.nilai}" data-kode="${b.kode}" data-nilai="${s.nilai}"
+          ${jawab.skor === s.nilai ? 'checked' : ''}>
+        <span class="n">${s.nilai}</span>
+        <span class="l">${s.label}</span>
+      </label>`,
+    )
+    .join('');
+
+  return `
+    <div class="butir ${jawab.skor ? 'diisi' : 'belum'}" id="butir-${b.kode}">
+      <div class="butir-top">
+        <span class="butir-kode">${b.kode}</span>
+        <span class="muted" style="font-size:.76rem" id="status-${b.kode}">
+          ${jawab.skor ? `Skor: ${jawab.skor}/5` : 'Belum dinilai'}
+        </span>
+      </div>
+      <p class="pernyataan">${b.pernyataan}</p>
+      <p class="rujukan">Periksa pada: <b>${b.rujukan}</b></p>
+      <div class="skala">${skala}</div>
+      <div class="butir-komentar-box">
+        <div class="butir-komentar-label">
+          <span>Catatan / Masukan Butir:</span>
+          <span class="butir-komentar-wajib">⚠️ Wajib disertai alasan untuk skor 1 atau 2</span>
+        </div>
+        <textarea data-kode="${b.kode}" maxlength="600" placeholder="Berikan komentar perbaikan khusus untuk butir ini...">${(jawab.komentar ?? '').replace(/</g, '&lt;')}</textarea>
+      </div>
+    </div>`;
+}
+
+function tandaiButir(kode) {
+  const kartu = el('butir-' + kode);
+  if (!kartu) return;
+  const skor = draf.jawaban?.[kode]?.skor;
+  const komentar = (draf.jawaban?.[kode]?.komentar ?? '').trim();
+  const statusEl = el('status-' + kode);
+
+  kartu.classList.toggle('diisi', Boolean(skor));
+  kartu.classList.toggle('belum', !skor);
+
+  const butuhAlasan = skor === 1 || skor === 2;
+  const belumIsiAlasan = butuhAlasan && !komentar;
+  kartu.classList.toggle('perlu-alasan', belumIsiAlasan);
+
+  if (statusEl) {
+    if (skor) {
+      const sk = INSTRUMEN.skala.find((s) => s.nilai === skor);
+      statusEl.textContent = `Skor: ${skor} (${sk ? sk.label : ''})${belumIsiAlasan ? ' — Perlu alasan' : ''}`;
+      statusEl.style.color = belumIsiAlasan ? 'var(--red)' : 'var(--green-deep)';
+      statusEl.style.fontWeight = '700';
+    } else {
+      statusEl.textContent = 'Belum dinilai';
+      statusEl.style.color = 'var(--ink-soft)';
+      statusEl.style.fontWeight = 'normal';
+    }
+  }
+
+  for (const label of kartu.querySelectorAll('.skala label')) {
+    label.classList.toggle('on', label.querySelector('input').checked);
+  }
+}
+
+function gambarRevisi() {
+  const baris = draf.materiPerluRevisi ?? [];
+  el('revisiBox').innerHTML = baris
+    .map(
+      (r, i) => `
+      <div class="revisi-row">
+        <input type="text" data-revisi="bagian" data-i="${i}" maxlength="120" placeholder="${JENIS_AKTIF === 'it' ? 'Komponen / Bagian Sistem (mis. Pool DB)' : 'Bagian materi (mis. Modul 5)'}" value="${(r.bagian ?? '').replace(/"/g, '&quot;')}">
+        <textarea data-revisi="catatan" data-i="${i}" maxlength="600" placeholder="Rincian perbaikan yang diperlukan...">${(r.catatan ?? '').replace(/</g, '&lt;')}</textarea>
+        <button type="button" class="hapus-btn" data-hapus="${i}">Hapus</button>
+      </div>`,
+    )
+    .join('');
+
+  for (const kotak of el('revisiBox').querySelectorAll('[data-revisi]')) {
+    kotak.addEventListener('input', () => {
+      const i = Number(kotak.dataset.i);
+      draf.materiPerluRevisi[i][kotak.dataset.revisi] = kotak.value;
+      simpanDraf();
+    });
+  }
+  for (const tombol of el('revisiBox').querySelectorAll('[data-hapus]')) {
+    tombol.addEventListener('click', () => {
+      draf.materiPerluRevisi.splice(Number(tombol.dataset.hapus), 1);
+      simpanDraf();
+      gambarRevisi();
+    });
+  }
+}
+
+function simpanIdentitas() {
+  draf.validator = {
+    nama: el('vNama').value,
+    institusi: el('vInstitusi').value,
+    jabatan: el('vJabatan').value,
+    tanggalValidasi: el('vTanggal').value,
+    bidangLain: el('vBidangLain').value,
+    bidang: [...el('bidangBox').querySelectorAll('input:checked')].map((k) => k.value),
+  };
+  simpanDraf();
+}
+
+/* ------------------------------------------------------ Hitungan sementara */
+function hitungSementara() {
+  if (!INSTRUMEN) return;
+  const skor = [];
+  for (const a of INSTRUMEN.aspek) {
+    for (const b of a.butir) {
+      const n = draf.jawaban?.[b.kode]?.skor;
+      if (Number.isInteger(n) && n >= 1 && n <= 5) skor.push(n);
+    }
+  }
+  const jumlah = skor.reduce((s, n) => s + n, 0);
+  const maks = skor.length * 5;
+  const persen = maks ? Math.round((jumlah / maks) * 10000) / 100 : 0;
+  const kategori = maks ? INSTRUMEN.kategori.find((k) => k.batasBawah === null || persen > k.batasBawah) : null;
+
+  el('sumSkor').textContent = jumlah;
+  el('sumMaks').textContent = maks;
+  el('sumPersen').textContent = maks ? persen.toFixed(2) + '%' : '—';
+  el('sumKategori').textContent = kategori ? kategori.label : '—';
+
+  const belum = INSTRUMEN.jumlahButir - skor.length;
+  el('sumBelum').textContent = belum
+    ? `${belum} butir belum dinilai. Skor maksimum di atas baru menghitung ${skor.length} butir yang sudah diisi; skor maksimum lembar lengkap adalah ${INSTRUMEN.skorMaksimum}.`
+    : `Seluruh ${INSTRUMEN.jumlahButir} butir sudah dinilai lengkap.`;
+
+  el('liveButir').textContent = `${skor.length}/${INSTRUMEN.jumlahButir} butir`;
+  el('livePersen').textContent = maks ? persen.toFixed(1) + '%' : '—';
+  const pil = el('liveKategori');
+  pil.textContent = kategori ? kategori.label : 'belum dinilai';
+  pil.className = 'pill' + (!kategori ? '' : persen > 60 ? '' : persen > 40 ? ' warn' : ' bad');
+
+  const persenSelesai = (skor.length / INSTRUMEN.jumlahButir) * 100;
+  el('progressBar').style.width = persenSelesai + '%';
+}
+
+/* ------------------------------------------------------------------ Kirim */
+async function kirim() {
+  simpanIdentitas();
+  const box = el('kirimError');
+  box.classList.add('hidden');
+  el('kirimBtn').disabled = true;
+
+  if (!draf.validator?.nama?.trim()) {
+    box.textContent = 'Mohon lengkapi nama dan gelar validator.';
+    box.classList.remove('hidden');
+    el('vNama').focus();
+    el('kirimBtn').disabled = false;
+    return;
+  }
+
+  // Periksa skor 1 atau 2 tanpa alasan
+  for (const a of INSTRUMEN.aspek) {
+    for (const b of a.butir) {
+      const ans = draf.jawaban?.[b.kode];
+      if (ans && (ans.skor === 1 || ans.skor === 2) && !ans.komentar?.trim()) {
+        box.textContent = `Butir ${b.kode} diberi skor ${ans.skor} namun belum memiliki alasan komentar perbaikan. Komentar wajib diisi untuk skor 1 atau 2.`;
+        box.classList.remove('hidden');
+        el('butir-' + b.kode).scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el('butir-' + b.kode).querySelector('textarea')?.focus();
+        el('kirimBtn').disabled = false;
+        return;
+      }
+    }
+  }
+
+  const bidang = [...(draf.validator.bidang ?? [])];
+  if (draf.validator.bidangLain?.trim()) bidang.push(draf.validator.bidangLain.trim());
+
+  const muatan = {
+    jenis: JENIS_AKTIF,
+    validator: {
+      nama: draf.validator.nama ?? '',
+      institusi: draf.validator.institusi ?? '',
+      jabatan: draf.validator.jabatan ?? '',
+      tanggalValidasi: draf.validator.tanggalValidasi ?? '',
+      bidang,
+    },
+    jawaban: draf.jawaban ?? {},
+    kesimpulan: draf.kesimpulan ?? '',
+    catatanUmum: draf.catatanUmum ?? '',
+    rekomendasi: draf.rekomendasi ?? '',
+    materiPerluRevisi: draf.materiPerluRevisi ?? [],
+  };
+
+  try {
+    const res = await fetch('/api/validasi/kirim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + KODE },
+      body: JSON.stringify(muatan),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || 'Lembar gagal dikirim.');
+
+    localStorage.removeItem(getKunciDraf());
+    tampilkanHasil(body);
+  } catch (err) {
+    box.textContent = err.message;
+    box.classList.remove('hidden');
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } finally {
+    el('kirimBtn').disabled = false;
+  }
+}
+
+function tampilkanHasil(body) {
+  const h = body.hasil;
+  el('lembar').classList.add('hidden');
+  el('hasil').classList.remove('hidden');
+  window.scrollTo(0, 0);
+
+  el('hasilRingkas').innerHTML = `
+    <h3>Hasil Perhitungan Validasi ${h.jenis === 'it' ? 'Ahli IT' : 'Materi'}</h3>
+    <div class="hasil-angka">
+      <div><b>${h.skorDiperoleh}</b><span>Jumlah skor</span></div>
+      <div><b>${h.skorMaksimum}</b><span>Skor maksimum</span></div>
+      <div><b>${h.persentase.toFixed(2)}%</b><span>Persentase kelayakan</span></div>
+      <div><b>${h.kategori ? h.kategori.label : '—'}</b><span>Kategori (${h.kategori ? h.kategori.rentang : '—'})</span></div>
+    </div>
+    <p class="muted">
+      Rata-rata skor per butir <b>${h.rataButir.toFixed(2)}</b> dari 5 · <b>${h.butirDinilai}</b> dari ${h.butirTotal} butir dinilai ·
+      nomor lembar <b>${body.id}</b> · diterima ${new Date(body.dikirimPada).toLocaleString('id-ID')}.
+    </p>
+    <p class="muted" style="margin-top:8px">
+      Kategori dihitung berdasarkan kriteria interpretasi resmi penelitian Nova Explorer.
+    </p>`;
+
+  el('hasilAspek').innerHTML = `
+    <h3>Rincian per aspek penilaian</h3>
+    <table>
+      <thead><tr><th>Aspek</th><th class="num">Skor</th><th class="num">Maks</th><th class="num">%</th></tr></thead>
+      <tbody>
+        ${h.aspek
+          .map(
+            (a) => `<tr><td>${a.nama}</td><td class="num">${a.skor}</td><td class="num">${a.skorMaksimum}</td><td class="num">${a.persentase.toFixed(2)}%</td></tr>`,
+          )
+          .join('')}
+      </tbody>
+    </table>`;
+}
+</script>
+</body>
+</html>

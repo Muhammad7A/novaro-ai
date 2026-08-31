@@ -1,0 +1,29 @@
+{
+  "name": "nova-explorer-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Backend Nova Explorer — micro-learning akuntansi UMKM dengan konsultasi AI (Gemini / Claude) dan rekomendasi personal.",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test --test-concurrency=1",
+    "smoke": "node scripts/smoke.js",
+    "users": "node scripts/users.js",
+    "export": "node scripts/export.js",
+    "backup": "node scripts/backup.js",
+    "validasi": "node scripts/validasi.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
+    "@anthropic-ai/vertex-sdk": "^0.19.4",
+    "@google/genai": "^2.17.1",
+    "dotenv": "^17.0.0",
+    "express": "^5.0.0",
+    "pg": "^8.23.0"
+  }
+}

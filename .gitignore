@@ -1,0 +1,23 @@
+# Rahasia — jangan pernah di-commit
+.env
+*.env
+!.env.example
+
+# Dependensi
+node_modules/
+
+# Data pengguna (berisi profil usaha & riwayat chat)
+# Isi folder diabaikan, foldernya sendiri tetap ada di repositori.
+server/data/*
+!server/data/.gitkeep
+
+# Hasil ekspor penelitian — memuat data peserta, termasuk mode anonim.
+# Data penelitian tidak pernah masuk repositori kode.
+server/export/
+
+# Berkas sistem
+.DS_Store
+*.log
+npm-debug.log*
+server/data/kode-akses-peserta.txt
+server/data/users-seed.json

@@ -1,0 +1,313 @@
+# Pipeline Cloud Build → Artifact Registry → Cloud Run.
+#
+# ------------------------------------------------------------------
+# KENAPA BERKAS INI ADA
+#
+# Aplikasinya tidak berada di akar repositori — ia ada di `server/`. Akar hanya
+# berisi berkas dokumentasi. Deploy bawaan Cloud Run ("deploy from source")
+# menjalankan buildpack dengan `--path=.`, jadi ia melihat akar, tidak menemukan
+# `package.json`, dan gagal pada tahap DETECT sebelum satu baris kode pun
+# dibangun.
+#
+# Berkas ini membuang tebak-tebakan buildpack sama sekali: ia membangun
+# `server/Dockerfile` yang memang sudah ada dan sudah disiapkan untuk produksi
+# (pengguna tak-istimewa, dumb-init untuk SIGTERM, NODE_ENV, LOG_FORMAT=json).
+#
+# ------------------------------------------------------------------
+# PERINGATAN — BACA SEBELUM MEMAKAI INI SUNGGUHAN
+#
+# Nova Explorer menyimpan seluruh data peserta di berkas JSON di dalam folder
+# `NOVA_DATA_DIR`. Filesystem Cloud Run bersifat sementara dan per-instance:
+# ia hilang setiap kali instance didaur ulang, dan dua instance tidak pernah
+# melihat berkas yang sama. Kunci antar-proses (`lib/kunci.js`) dan penulisan
+# atomik (tmp + rename) di `lib/store.js` mengandalkan satu filesystem yang
+# sama — jaminan itu tidak berlaku di sini.
+#
+# Yang membuatnya berbahaya: /data di dalam kontainer BISA ditulis, jadi
+# pemeriksaan `wajibBisaMenyimpan()` LULUS dan server menyala dengan tenang.
+# Ia akan menerima pembukuan peserta selama berhari-hari, lalu membuangnya
+# tanpa pesan galat saat instance diganti.
+#
+# Karena itu langkah deploy di bawah mengunci `--max-instances=1`: dua instance
+# yang menulis buku kas yang sama akan saling menimpa tanpa suara.
+#
+# `--min-instances` adalah pilihan yang harus dibuat sadar, dan bawaannya di
+# sini **0** — instance mati saat sepi, dan biayanya ikut mati bersamanya.
+# Harganya: /data ikut hilang setiap kali itu terjadi. Kode akses peserta
+# selamat (dipulihkan dari Secret Manager oleh docker-entrypoint.sh saat
+# menyala lagi), tetapi transaksi, progres modul, dan riwayat chat yang
+# dicatat sesudahnya TIDAK.
+#
+# Untuk tahap validasi ahli — validator membaca modul, tidak menabung data —
+# itu tidak masalah, dan _MIN_INSTANCES=0 memangkas tagihan sepenuhnya.
+#
+#   _MIN_INSTANCES=1  →  instance disimpan hidup 24 jam sehari dan DITAGIH
+#                        24 jam sehari, meski tidak ada yang membukanya.
+#
+# Perlu ditegaskan: min-instances=1 pun BUKAN penyimpanan yang aman untuk
+# pilot sungguhan. Ia hanya memperjarang daur ulang, tidak menghentikannya.
+# Sebelum peserta mulai mencatat buku kas beneran, lapisan penyimpanannya
+# harus pindah dulu — lihat dua baris di bawah ini.
+#
+# Untuk data penelitian sungguhan, pakai Compute Engine + Persistent Disk
+# ("Jalan C" di server/CARA-MENJALANKAN.md), atau ganti dulu lapisan
+# penyimpanan di `lib/store.js` dengan Cloud SQL/Firestore.
+#
+# ------------------------------------------------------------------
+# CARA MENJALANKAN
+#
+#   gcloud builds submit --config cloudbuild.yaml
+#
+# Untuk bisa melacak citra mana berasal dari commit mana (dan bisa kembali ke
+# versi sebelumnya), kirim SHA-nya sendiri:
+#
+#   gcloud builds submit --config cloudbuild.yaml \
+#     --substitutions=_TAG=$(git rev-parse --short HEAD)
+#
+# Kunci API disuntikkan dari Secret Manager, tidak pernah masuk ke citra:
+#
+#   echo -n "sk-ant-..." | gcloud secrets create anthropic-api-key --data-file=-
+#   gcloud secrets add-iam-policy-binding anthropic-api-key \
+#     --member=serviceAccount:<SA-RUNTIME-CLOUD-RUN> \
+#     --role=roles/secretmanager.secretAccessor
+#
+# ------------------------------------------------------------------
+# MEMAKAI VERTEX AI ALIH-ALIH KUNCI API ANTHROPIC (opsional)
+#
+# Server memilih jalurnya dari ada-tidaknya GOOGLE_CLOUD_PROJECT. Peralihan itu
+# SENGAJA tidak ditaruh di pipeline ini: `gcloud builds submit` tidak boleh
+# diam-diam memindahkan layanan yang sedang melayani peserta ke penyedia lain.
+#
+# Prasyarat di sisi Google Cloud (sekali saja):
+#   gcloud services enable aiplatform.googleapis.com
+#   gcloud projects add-iam-policy-binding <PROJECT_ID> \
+#     --member=serviceAccount:<SA-RUNTIME> --role=roles/aiplatform.user --condition=None
+#   lalu aktifkan Claude di Console: Vertex AI > Model Garden (langkah manual)
+#
+# Jalur AI-nya sendiri sudah diatur pipeline ini lewat substitusi _AI_BACKEND
+# (bawaan: gemini) — lihat blok substitutions di bawah. Tidak ada lagi langkah
+# `gcloud run services update` yang perlu diingat untuk menyalakannya.
+#
+# Model Claude di Vertex adalah partner model dan TIDAK ditanggung kredit
+# percobaan Google Cloud; Gemini produk Google langsung, jadi ditanggung. Itu
+# sebabnya bawaannya gemini, bukan vertex.
+#
+# Kembali ke kunci API Anthropic:
+#   gcloud builds submit --config cloudbuild.yaml \
+#     --substitutions=_AI_BACKEND=anthropic
+#
+# ------------------------------------------------------------------
+# DATA AWAL UNTUK UJI COBA (opsional — kosongkan untuk deploy produksi biasa)
+#
+# users.json memuat hash kode akses peserta, dan kode 8 karakter acak retak
+# dalam hitungan detik di GPU biasa begitu hash-nya terlihat — jadi berkas itu
+# TIDAK PERNAH masuk ke git. Repositori ini sekarang privat, dan itu tidak
+# mengubah apa pun di sini: hak akses repositori bisa berubah kapan saja,
+# sedangkan hash yang sudah ter-commit tinggal selamanya di riwayat git. Ia dikirim
+# lewat Secret Manager, dipasang baca-saja pada build, lalu docker-entrypoint.sh
+# menyalinnya ke NOVA_DATA_DIR sebelum server menyala (lihat berkas itu untuk
+# alasannya — pemasangan baca-saja langsung akan membuat penulisan pertama
+# gagal).
+#
+#   gcloud secrets create nova-seed-users --data-file=users-50-peserta.json
+#
+# Sengaja TIDAK ditambahkan ke langkah `deploy` di bawah, supaya pipeline ini
+# tetap berjalan seperti biasa untuk siapa pun yang belum membuat secret-nya.
+# Nyalakan hanya untuk uji coba, sebagai langkah TERPISAH setelah deploy:
+#
+#   gcloud run services update novaexplorer --region=asia-southeast2 \
+#     --update-secrets=/secrets/seed-users.json=nova-seed-users:latest \
+#     --update-env-vars=NOVA_SEED_USERS_FILE=/secrets/seed-users.json
+#
+# Matikan lagi begitu berpindah ke penyimpanan yang sungguh persisten:
+#
+#   gcloud run services update novaexplorer --region=asia-southeast2 \
+#     --remove-secrets=/secrets/seed-users.json \
+#     --remove-env-vars=NOVA_SEED_USERS_FILE
+#
+# ------------------------------------------------------------------
+# VALIDASI MATERI OLEH AHLI
+#
+# Dua kode, dan keduanya HARUS berbeda:
+#
+#   VALIDASI_KODE           dibagikan kepada validator, membuka /validasi
+#   VALIDASI_PENGELOLA_KODE dipegang peneliti, membuka GET /api/validasi/hasil
+#
+# Yang kedua tidak boleh dilewatkan di Cloud Run. Lembar validasi tersimpan di
+# NOVA_DATA_DIR/validasi.json, dan rekapnya dirancang untuk dibaca lewat
+# `npm run validasi` — yang menuntut shell di mesin server. Cloud Run tidak
+# punya shell. Tanpa VALIDASI_PENGELOLA_KODE, lembar yang sudah diisi validator
+# ahli masuk ke mesin dan tidak bisa diambil kembali oleh siapa pun, termasuk
+# penelitinya sendiri. Penilaian ahli tidak bisa diminta dua kali.
+#
+#   openssl rand -base64 18 | tr -d '\n' | gcloud secrets create nova-validasi-kode --data-file=-
+#   openssl rand -base64 18 | tr -d '\n' | gcloud secrets create nova-validasi-pengelola --data-file=-
+#
+#   gcloud run services update novaexplorer --region=asia-southeast2 \
+#     --update-secrets=VALIDASI_KODE=nova-validasi-kode:latest \
+#     --update-secrets=VALIDASI_PENGELOLA_KODE=nova-validasi-pengelola:latest
+#
+# Mengunduh hasilnya (kodenya HANYA lewat header, tidak pernah di query string —
+# query string ikut tercatat utuh di log permintaan Cloud Run):
+#
+#   gcloud secrets versions access latest --secret=nova-validasi-pengelola
+#   curl -H "Authorization: Bearer <kode-pengelola>" \
+#     https://<alamat-layanan>/api/validasi/hasil -o hasil-validasi.json
+#
+# Jaring pengaman kedua, bila disknya keburu hilang sebelum sempat diunduh:
+# isi tiap lembar ikut tercatat ke Cloud Logging saat diterima (tanpa nama,
+# institusi, dan jabatan validator).
+#
+#   gcloud logging read \
+#     'jsonPayload.komponen="validasi" AND jsonPayload.message="lembar validasi diterima"' \
+#     --limit=50 --format=json
+#
+# ------------------------------------------------------------------
+# Data awal ini ditulis ulang dari secret yang sama setiap instance didaur
+# ulang — bukan pengganti pemulihan data sungguhan.
+
+substitutions:
+  # Jakarta. Peserta penelitian ada di Semarang; europe-north1 menambah
+  # ~250-300 ms bolak-balik untuk tiap permintaan mereka, dan salah satu
+  # yang diukur penelitian ini justru apakah alatnya terasa mudah dipakai.
+  _REGION: asia-southeast2
+  _SERVICE: novaexplorer
+  _REPO: cloud-run-source-deploy
+  _IMAGE_NAME: claude-code-testing/novaexplorer
+
+  # Tag citra.
+  #
+  # SEBELUMNYA ini memakai ${SHORT_SHA}, dan itu keliru. SHORT_SHA hanya diisi
+  # Cloud Build bila build dipicu lewat trigger yang terhubung ke repositori
+  # git. Pada `gcloud builds submit` biasa — yang dijalankan dari folder di
+  # Cloud Shell — tidak ada konteks commit, sehingga SHORT_SHA kosong dan nama
+  # citranya berakhir dengan titik dua tanpa apa pun di belakangnya:
+  #
+  #   invalid image name ".../novaexplorer:": could not parse reference
+  #
+  # Build ditolak sebelum satu langkah pun berjalan. Nilai bawaan di sini
+  # membuat build manual selalu punya tag yang sah; kirim _TAG sendiri bila
+  # ingin melacak versi (lihat CARA MENJALANKAN di atas).
+  _TAG: latest
+
+  # Instance minimum yang disimpan hidup. 0 = tidak ada yang ditagih saat sepi.
+  #
+  # Ini satu-satunya angka di berkas ini yang langsung menentukan tagihan
+  # bulanan. Dengan 1, Cloud Run menagih satu instance 24 jam sehari entah ada
+  # yang membukanya atau tidak. Dengan 0, tagihannya hanya muncul saat ada yang
+  # benar-benar memakai — dengan konsekuensi data /data ikut hilang tiap kali
+  # instance mati. Baca peringatan lengkapnya di kepala berkas sebelum
+  # menaikkannya:
+  #
+  #   gcloud builds submit --config cloudbuild.yaml \
+  #     --substitutions=_MIN_INSTANCES=1
+  _MIN_INSTANCES: '0'
+
+  # Jalur AI yang dipakai: gemini | vertex | anthropic.
+  #
+  #   gemini    Gemini lewat Vertex AI — model asli Google, ditanggung kredit
+  #             GCP. Butuh peran roles/aiplatform.user pada service account
+  #             layanan ini.
+  #   vertex    Claude lewat Vertex AI. Model Marketplace, TIDAK ditanggung
+  #             kredit GCP dan harus dilanggan terpisah.
+  #   anthropic Claude lewat API Anthropic langsung, pakai ANTHROPIC_API_KEY.
+  #
+  # Nilai yang tidak dikenali ditolak lib/backend.js saat permintaan pertama,
+  # bukan didiamkan — salah ketik di sini tidak boleh berubah jadi "model
+  # bawaan" yang menagih ke tempat lain.
+  _AI_BACKEND: gemini
+
+options:
+  # Wajib bila build memakai service account pilihan sendiri tanpa bucket log.
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+
+steps:
+  # ----------------------------------------------------------------
+  # 1. Uji regresi dulu. Citra yang gagal uji tidak layak dibangun.
+  - id: uji
+    name: node:22-slim
+    dir: server
+    entrypoint: bash
+    args:
+      - -c
+      - npm ci && npm test
+
+  # ----------------------------------------------------------------
+  # 2. Bangun dari server/Dockerfile. Konteksnya `server`, bukan akar —
+  #    server/.dockerignore yang menentukan apa yang ikut masuk.
+  - id: bangun
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --tag=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_IMAGE_NAME}:${_TAG}
+      - --file=server/Dockerfile
+      - server
+
+  # ----------------------------------------------------------------
+  # 3. Dorong kedua tag.
+  - id: dorong
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_IMAGE_NAME}:${_TAG}
+
+  # ----------------------------------------------------------------
+  # 4. Deploy ke Cloud Run.
+  #
+  #    PORT tidak diset di sini: Cloud Run menyuntikkannya sendiri (8080) dan
+  #    server.js sudah membaca process.env.PORT.
+  #
+  #    max-instances=1 bukan soal biaya, min-instances justru sepenuhnya soal
+  #    biaya — dua-duanya dijelaskan di kepala berkas.
+  - id: deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_IMAGE_NAME}:${_TAG}
+      - --region=${_REGION}
+      - --platform=managed
+      - --max-instances=1
+      - --min-instances=${_MIN_INSTANCES}
+      - --concurrency=80
+      - --cpu=1
+      - --memory=512Mi
+      # Jawaban AI dialirkan sebagai SSE dan bisa berjalan lama.
+      - --timeout=300
+      # Sengaja TANPA --no-cpu-throttling.
+      #
+      # Kekhawatirannya dulu: penulisan yang mengantre tertahan saat CPU
+      # dicekik di luar permintaan. Setelah ditelusuri, setiap penulisan di
+      # server.js di-`await` sebelum responsnya dikirim — termasuk
+      # simpanGiliranChat, yang selesai sebelum `send('done')`. Tidak ada
+      # pekerjaan penting yang tersisa di antara permintaan, jadi cekikan CPU
+      # tidak bisa memotong apa pun. Menyalakannya hanya menambah tagihan.
+      # `--update-*`, BUKAN `--set-*`.
+      #
+      # `--set-env-vars` mengganti SELURUH daftar variabel, dan `--set-secrets`
+      # seluruh daftar rahasia. Apa pun yang dipasang di luar pipeline ini —
+      # GOOGLE_CLOUD_PROJECT untuk Vertex, NOVA_SEED_USERS_FILE untuk data awal —
+      # akan lenyap diam-diam pada rebuild berikutnya, dan layanan kembali ke
+      # perilaku lama tanpa satu baris pun di log yang menyebutkannya.
+      #
+      # NOVA_AI_BACKEND diset TEGAS, dan itu penting.
+      #
+      # Tanpa variabel ini, lib/backend.js memilih sendiri: begitu
+      # GOOGLE_CLOUD_PROJECT terisi ia memilih 'vertex', yang berarti Claude
+      # lewat Vertex AI — model pihak ketiga di Marketplace, yang tidak
+      # ditanggung kredit GCP dan harus dilanggan terpisah. Layanannya akan
+      # naik dengan tenang lalu menolak pada permintaan AI pertama peserta.
+      #
+      # GOOGLE_CLOUD_PROJECT diambil dari PROJECT_ID build ini, jadi tidak ada
+      # lagi langkah manual yang bisa terlewat.
+      - --update-env-vars=NODE_ENV=production,TZ=Asia/Jakarta,LOG_FORMAT=json,NOVA_DATA_DIR=/tmp/data,NOVA_AI_BACKEND=${_AI_BACKEND},GOOGLE_CLOUD_PROJECT=${PROJECT_ID}
+      - --update-secrets=ANTHROPIC_API_KEY=anthropic-api-key:latest
+      - --allow-unauthenticated
+
+images:
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_IMAGE_NAME}:${_TAG}
+
+timeout: 1200s

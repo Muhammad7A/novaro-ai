@@ -1,0 +1,71 @@
+# Nova Explorer — unit systemd untuk Compute Engine (atau VPS mana pun).
+#
+# Pasang:
+#   sudo cp deploy/nova.service /etc/systemd/system/nova.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now nova
+#   sudo systemctl status nova
+#   journalctl -u nova -f
+#
+# Sesuaikan User, WorkingDirectory, dan EnvironmentFile bila letaknya berbeda.
+
+[Unit]
+Description=Nova Explorer — pendamping keuangan UMKM
+Documentation=https://github.com/Muhammad7A/Claude-Code-testing
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nova
+Group=nova
+WorkingDirectory=/opt/nova/server
+
+# Kunci API dibaca dari berkas terpisah milik root, bukan dari baris perintah.
+# Baris perintah terlihat oleh SEMUA pengguna di mesin lewat `ps aux`.
+EnvironmentFile=/etc/nova/nova.env
+
+ExecStart=/usr/bin/node server.js
+
+# --- Penutupan rapi ---------------------------------------------------------
+# SIGTERM ditangani server.js: berhenti menerima sambungan baru, tunggu antrean
+# penulisan kosong, baru keluar. Tenggangnya dibuat lebih longgar daripada batas
+# internal aplikasi (8 detik) supaya aplikasi selalu sempat selesai lebih dulu
+# dan systemd tidak pernah perlu membunuh paksa di tengah penulisan.
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+# --- Ketahanan --------------------------------------------------------------
+# Server sengaja MENOLAK menyala bila folder data tidak bisa ditulis. Restart
+# otomatis membuat kegagalan itu terlihat sebagai proses yang gagal berulang di
+# `systemctl status` — bukan sebagai aplikasi yang seolah berjalan normal
+# sambil membuang setiap catatan peserta.
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# --- Pengetatan hak akses ---------------------------------------------------
+# Aplikasi ini hanya perlu menulis ke satu folder. Sisanya dikunci, sehingga
+# celah apa pun di lapisan HTTP tidak otomatis berarti akses ke seluruh mesin.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/nova
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+# Log masuk ke journald; dengan LOG_FORMAT=json, Ops Agent meneruskannya ke
+# Cloud Logging lengkap dengan severity yang bisa disaring.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nova
+
+[Install]
+WantedBy=multi-user.target
