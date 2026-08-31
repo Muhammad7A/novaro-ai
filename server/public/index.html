@@ -592,6 +592,11 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
 .papan-skor small.neg{color:var(--red)}
 .papan-ket{font-size:.78rem;color:var(--ink-soft);margin-top:10px}
 
+/* ---------- Konteks usaha personal ---------- */
+.baca-konteks{margin:0 0 16px}
+.baca-konteks .konteks-usaha{padding:16px 18px}
+.konteks-usaha .stat-list{margin-top:2px}
+
 /* ---------- Cetak (laporan KUR) ---------- */
 @media print{
   nav,.tabbar,footer,.page-head,.no-print,#toast{display:none!important}
@@ -1533,6 +1538,9 @@ function enterApp() {
   loadTimeline().catch(() => {});
   // Perbandingan bulan ini vs bulan lalu — deterministik, tanpa AI.
   loadPerubahan().catch(() => {});
+  // Konteks "Angka usahamu bulan ini" — dimuat lebih awal supaya pembaca
+  // modul dan check-up tidak menunggu saat pertama dibuka.
+  muatKonteksUsaha().catch(() => {});
   goTo(state.user.profile ? 'dasbor' : 'profil');
   if (modeDemo) tampilkanTurDemo();
 }
@@ -1781,6 +1789,16 @@ function renderDashboard() {
        </div>`
     : '';
 
+  /*
+   * Konsistensi mencatat: penyebutnya hariBulan untuk bulan yang sudah habis,
+   * hari yang sudah lewat untuk bulan berjalan — membandingkan 5 hari tercatat
+   * dengan 31 akan selalu terlihat gagal padahal baru tanggal 5.
+   */
+  const dariHariKini = m.bulanLengkap ? m.hariBulan : (m.hariBerjalan || m.hariBulan || 0);
+  const konsistensiRow = m.sumber === 'catatan' && dariHariKini
+    ? `<div class="stat-row"><span>Konsistensi mencatat</span><b>${m.hariTercatat}/${dariHariKini} hari</b></div>`
+    : '';
+
   box.innerHTML = `
     <div class="hero-row">
       <div class="score-card">
@@ -1806,7 +1824,7 @@ function renderDashboard() {
         </div>
       </div>
       <div class="card">
-        <h3 style="margin-bottom:10px">Ringkasan bulanan</h3>
+        <h3 style="margin-bottom:10px">📍 Angka usahamu bulan ini</h3>
         ${periodeNote}
         <div class="stat-list">
           <div class="stat-row"><span>Omzet per bulan</span><b>${fmtRp(m.omzet)}</b></div>
@@ -1814,6 +1832,7 @@ function renderDashboard() {
           <div class="stat-row"><span>Biaya operasional</span><b>− ${fmtRp(m.biaya)}</b></div>
           <div class="stat-row"><span>Laba bersih</span><b class="${m.labaBersih >= 0 ? 'pos' : 'neg'}">${m.labaBersih < 0 ? '− ' : ''}${fmtRp(Math.abs(m.labaBersih))}</b></div>
           <div class="stat-row"><span>Margin bersih</span><b class="${m.marginBersih >= 10 ? 'pos' : m.marginBersih >= 0 ? '' : 'neg'}">${m.marginBersih}%</b></div>
+          ${konsistensiRow}
           <div class="stat-row"><span>Batas cicilan sehat</span><b>${fmtRp(m.maxCicilanSehat)}/bulan</b></div>
           ${cicilanRow}
           ${kasRows}
@@ -3414,6 +3433,68 @@ async function loadPerubahan() {
 }
 
 /* ============================================================
+   Konteks usaha personal — "Angka usahamu bulan ini"
+============================================================
+ * Satu paket dari /api/konteks dipakai TIGA tempat: pembaca modul,
+ * hasil check-up, dan dasbor — supaya ketiganya selalu menunjukkan
+ * versi angka yang sama. Angkanya passthrough dari metrik dasbor
+ * (metricsFor + bandingkanBulan, disusun lib/konteks-usaha.js di
+ * server); tanpa data cukup kartu berlabel perkiraan, tanpa profil
+ * kartunya tidak dirender sama sekali — tidak ada angka karangan.
+ */
+let konteksCache = { muat: false, pada: 0, data: null };
+
+async function muatKonteksUsaha(paksa = false) {
+  if (!paksa && konteksCache.muat && Date.now() - konteksCache.pada < 5 * 60 * 1000) {
+    return konteksCache.data;
+  }
+  try {
+    const data = await api('/konteks');
+    konteksCache.data = data.konteks;
+    konteksCache.muat = true;
+    konteksCache.pada = Date.now();
+  } catch { /* biarkan nilai lama — kartu ini pelengkap, bukan penghalang halaman */ }
+  return konteksCache.data;
+}
+
+function kartuKonteksUsahaHTML(k) {
+  if (!k) return '';
+  const a = k.angka ?? {};
+  const baris = [
+    ['Omzet', a.omzet],
+    ['Laba bersih', a.labaBersih],
+    ['Belanja barang (HPP)', a.hpp],
+    ['Biaya operasional', a.biaya],
+  ];
+  if (k.sumber === 'catatan') baris.push(['Saldo kas', a.saldoKas]);
+  if ((a.prive ?? 0) > 0) baris.push(['Prive (ambil pribadi)', a.prive]);
+
+  const dariHari = k.konsistensi?.dari ?? 0;
+  const konsistensi = k.sumber === 'catatan' && dariHari > 0
+    ? `<div class="stat-row"><span>Konsistensi mencatat</span><b>${k.konsistensi.tercatat}/${dariHari} hari</b></div>`
+    : '';
+
+  return `<div class="card konteks-usaha">
+    <div class="bar-top" style="margin-bottom:8px"><b style="font-size:.92rem;color:var(--ink)">📍 Angka usahamu bulan ini</b><span class="source-badge ${k.sumber === 'catatan' ? 'real' : ''}" style="margin-top:0">${k.sumber === 'catatan' ? '✓ Dari catatanmu' : '≈ Perkiraan'}</span></div>
+    <div class="stat-list">
+      ${baris.filter(([, v]) => Number.isFinite(v)).map(([label, v]) =>
+        `<div class="stat-row"><span>${label}</span><b>${fmtRp(v)}</b></div>`).join('')}
+      ${konsistensi}
+    </div>
+    ${k.cicilanBelumTercatat ? `<div class="bar-note" style="margin-top:8px">Angka cicilan diambil dari profilmu; di buku kas bulan ini baru tercatat ${fmtRp(k.cicilanDicatat)}. Catat juga angsurannya supaya saldo kas ikut benar.</div>` : ''}
+    ${k.kalimat?.length ? `<div class="perubahan-kalimat">${k.kalimat.map((s) => `<p>${escapeHtml(s)}</p>`).join('')}</div>` : ''}
+  </div>`;
+}
+
+/** Isi kartu konteks di pembaca modul — dipanggil setelah modul dirender. */
+async function isiKonteksBaca() {
+  const k = await muatKonteksUsaha();
+  const kotak = document.getElementById('bacaKonteks');
+  if (!kotak || !k) return;
+  kotak.innerHTML = kartuKonteksUsahaHTML(k);
+}
+
+/* ============================================================
    Check-up keuangan — AI menilai status, angka tetap dari server
 ============================================================
  * HANYA berjalan saat pengguna menekan tombolnya: tidak ada panggilan
@@ -3430,7 +3511,9 @@ el('checkupBtn').addEventListener('click', async () => {
   try {
     const data = await api('/checkup', { method: 'POST' });
     const ikon = { ok: '✓', perhatian: '⚠' };
-    el('checkupHasil').innerHTML = `
+    // Kartu konteks ditampilkan DI ATAS penilaian AI: peserta membandingkan
+    // klaimnya dengan angka buku kasnya sendiri, bukan menerima mentah-mentah.
+    el('checkupHasil').innerHTML = `${kartuKonteksUsahaHTML(await muatKonteksUsaha())}
       <div>${(data.hasil.item ?? []).map((i) => `
         <div class="ck-item">
           <span class="ck-tanda ${escapeHtml(i.tipe)}">${ikon[i.tipe] ?? '⚠'}</span>
@@ -3814,6 +3897,8 @@ async function bacaModul(no) {
     <h2>${m.icon} ${escapeHtml(m.judul)}</h2>
     <p class="baca-meta">${escapeHtml(m.ringkas)}</p>
 
+    <div id="bacaKonteks" class="baca-konteks"></div>
+
     <div class="baca-isi">
       ${(m.isi ?? []).map((s) => `
         <section>
@@ -3846,6 +3931,7 @@ async function bacaModul(no) {
 
   el('bacaKembali').addEventListener('click', tutupModul);
   el('bacaTandai').addEventListener('click', () => toggleModule(m.no, true));
+  isiKonteksBaca();
   el('bacaTanya').addEventListener('click', () => {
     pasangKonteksModul(m);
     goTo('konsultasi');

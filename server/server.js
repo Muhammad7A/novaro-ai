@@ -39,6 +39,7 @@ import { jadwalUntukAI, modulTerbuka, ringkasJadwal, tanggalSesiTerbuka } from '
 import { JALUR, KURIKULUM, materiModul, nomorModulSah, ringkasKemajuan } from './lib/kurikulum.js';
 import { PROFIL_FIELDS, computeMetrics, metricsToText } from './lib/metrics.js';
 import { cashbookContext, LABEL } from './lib/prompts.js';
+import { susunKonteksUsaha } from './lib/konteks-usaha.js';
 import { store } from './lib/store.js';
 import { KODE_DEMO, isiDemoPenuh, lanjutkanDemo, personaDemo, PERSONA_DEMO } from './lib/demo-data.js';
 import { kenaliGambar, sanitasiHasilNota } from './lib/nota.js';
@@ -580,6 +581,31 @@ app.get('/api/me', authenticate, async (req, res) => {
     consent: hasConsented(req.user) ? null : CONSENT_TEXT,
     anggaran: await anggaranUntuk(req.user),
     belajar: ringkasJadwal(req.user),
+  });
+});
+
+/* ------------------------------------------------- Konteks usaha personal */
+
+/**
+ * Paket "Angka usahamu bulan ini" untuk pembaca modul, hasil check-up, dan
+ * dasbor. Sengaja SATU rute: ketiga tempat harus menampilkan versi angka
+ * yang sama, dan itu hanya bisa dijamin bila penyusunannya satu tempat
+ * (lib/konteks-usaha.js) di atas metrik yang sama (metricsFor +
+ * bandingkanBulan — sumber yang sama dengan dasbor).
+ *
+ * Baca-saja dan tanpa AI: murah, deterministik, dan boleh dipanggil saat
+ * membuka modul. Peminta tanpa profil mendapat `konteks: null` — tampilan
+ * menyembunyikan kartunya, bukan menampilkan nol yang terlihat seperti data.
+ */
+app.get('/api/konteks', authenticate, async (req, res) => {
+  await store.logEvent(req.user.id, 'konteks_viewed', undefined, { jedaMs: 5 * 60 * 1000 });
+  if (!req.user.profile) return res.json({ konteks: null, dibuatPada: new Date().toISOString() });
+
+  const { metrics, transactions } = await metricsFor(req.user);
+  const perubahan = bandingkanBulan(transactions);
+  res.json({
+    konteks: susunKonteksUsaha({ metrics, perubahan }),
+    dibuatPada: new Date().toISOString(),
   });
 });
 
