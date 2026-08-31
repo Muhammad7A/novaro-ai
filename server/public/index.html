@@ -596,6 +596,7 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
 .baca-konteks{margin:0 0 16px}
 .baca-konteks .konteks-usaha{padding:16px 18px}
 .konteks-usaha .stat-list{margin-top:2px}
+.fokus-harian{border-left:4px solid var(--gold);margin-bottom:16px}
 
 /* ---------- Cetak (laporan KUR) ---------- */
 @media print{
@@ -1541,6 +1542,8 @@ function enterApp() {
   // Konteks "Angka usahamu bulan ini" — dimuat lebih awal supaya pembaca
   // modul dan check-up tidak menunggu saat pertama dibuka.
   muatKonteksUsaha().catch(() => {});
+  // Fokus usaha hari ini — satu kartu di dasbor.
+  muatFokusHarian().catch(() => {});
   goTo(state.user.profile ? 'dasbor' : 'profil');
   if (modeDemo) tampilkanTurDemo();
 }
@@ -1800,6 +1803,7 @@ function renderDashboard() {
     : '';
 
   box.innerHTML = `
+    <div id="fokusHariIni"></div>
     <div class="hero-row">
       <div class="score-card">
         <div class="dial">
@@ -1881,6 +1885,8 @@ function renderDashboard() {
         <button class="btn btn-ghost" onclick="goTo('profil')">Ubah profil</button>
       </div>
     </div>`;
+
+  isiFokusHarian();
 }
 
 /* ============================================================
@@ -3492,6 +3498,54 @@ async function isiKonteksBaca() {
   const kotak = document.getElementById('bacaKonteks');
   if (!kotak || !k) return;
   kotak.innerHTML = kartuKonteksUsahaHTML(k);
+}
+
+/* ============================================================
+   Fokus usaha hari ini — SATU hal terpenting, bukan menu
+============================================================
+ * Dipilih aturan tetap di server (lib/fokus-harian.js) dari metrik yang
+ * sama dengan dasbor — tanpa AI, hasilnya konsisten dan bisa diuji.
+ * Kartu ini sengaja membawa MAKSIMAL SATU fokus dengan satu aksi: yang
+ * dituntut pemilik warung adalah langkah, bukan pilihan.
+ */
+let fokusCache = { muat: false, pada: 0, data: null };
+
+async function muatFokusHarian(paksa = false) {
+  if (!paksa && fokusCache.muat && Date.now() - fokusCache.pada < 5 * 60 * 1000) {
+    return fokusCache.data;
+  }
+  try {
+    const data = await api('/fokus');
+    fokusCache.data = data.fokus;
+    fokusCache.muat = true;
+    fokusCache.pada = Date.now();
+  } catch { /* biarkan nilai lama — kartu ini pelengkap, bukan penghalang halaman */ }
+  return fokusCache.data;
+}
+
+const HALAMAN_FOKUS = ['profil', 'kas', 'laporan', 'dasbor', 'rekomendasi', 'modul'];
+
+function kartuFokusHarianHTML(f) {
+  if (!f) return '';
+  const halaman = HALAMAN_FOKUS.includes(f.aksi?.halaman) ? f.aksi.halaman : 'dasbor';
+  const modul = f.modul != null ? MODULES.find((x) => x.no === f.modul) : null;
+  return `<div class="card fokus-harian">
+    <div class="eyebrow" style="color:var(--gold)">🎯 Fokus usaha hari ini</div>
+    <h3 style="margin:4px 0 6px">${escapeHtml(f.judul ?? '')}</h3>
+    <p style="font-size:.88rem;color:var(--ink-soft)">${escapeHtml(f.alasan ?? '')}</p>
+    <div class="actions" style="margin-top:12px">
+      <button class="btn btn-primary" onclick="goTo('${halaman}')">${escapeHtml(f.aksi?.label ?? 'Buka')}</button>
+      ${modul ? `<button class="btn btn-ghost" onclick="goTo('modul');bacaModul(${modul.no})">📖 ${escapeHtml(modul.judul)}</button>` : ''}
+    </div>
+  </div>`;
+}
+
+/** Isi kartu fokus di dasbor — dipanggil setelah dasbor dirender. */
+async function isiFokusHarian() {
+  const f = await muatFokusHarian();
+  const kotak = document.getElementById('fokusHariIni');
+  if (!kotak) return;
+  kotak.innerHTML = kartuFokusHarianHTML(f);
 }
 
 /* ============================================================

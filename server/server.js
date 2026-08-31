@@ -36,10 +36,11 @@ import { forceHttps, periksaKodeAkses, punyaPublicHost, securityHeaders } from '
 import { periksaPenyimpanan, wajibBisaMenyimpan } from './lib/kesehatan.js';
 import { log } from './lib/log.js';
 import { jadwalUntukAI, modulTerbuka, ringkasJadwal, tanggalSesiTerbuka } from './lib/jadwal.js';
-import { JALUR, KURIKULUM, materiModul, nomorModulSah, ringkasKemajuan } from './lib/kurikulum.js';
+import { JALUR, KURIKULUM, SESI_HARIAN, materiModul, nomorModulSah, ringkasKemajuan } from './lib/kurikulum.js';
 import { PROFIL_FIELDS, computeMetrics, metricsToText } from './lib/metrics.js';
 import { cashbookContext, LABEL } from './lib/prompts.js';
 import { susunKonteksUsaha } from './lib/konteks-usaha.js';
+import { susunFokusHarian } from './lib/fokus-harian.js';
 import { store } from './lib/store.js';
 import { KODE_DEMO, isiDemoPenuh, lanjutkanDemo, personaDemo, PERSONA_DEMO } from './lib/demo-data.js';
 import { kenaliGambar, sanitasiHasilNota } from './lib/nota.js';
@@ -605,6 +606,38 @@ app.get('/api/konteks', authenticate, async (req, res) => {
   const perubahan = bandingkanBulan(transactions);
   res.json({
     konteks: susunKonteksUsaha({ metrics, perubahan }),
+    dibuatPada: new Date().toISOString(),
+  });
+});
+
+/* ------------------------------------------------- Fokus usaha hari ini */
+
+/**
+ * SATU hal terpenting hari ini, dipilih aturan tetap di lib/fokus-harian.js
+ * di atas metrik yang sama dengan dasbor (metricsFor + bandingkanBulan) —
+ * tanpa AI, tanpa rumus baru, dengan ambang yang sudah ada di aplikasi.
+ *
+ * Sesi berikutnya yang belum dikerjakan DAN sudah terbuka ikut diberikan ke
+ * penyusun, supaya fokus positif ("pertahankan") selalu membawa langkah yang
+ * bisa dijalankan peserta ini hari ini — bukan sesi yang masih terkunci.
+ */
+app.get('/api/fokus', authenticate, async (req, res) => {
+  await store.logEvent(req.user.id, 'fokus_viewed', undefined, { jedaMs: 5 * 60 * 1000 });
+
+  const { metrics, transactions } = await metricsFor(req.user);
+  const perubahan = bandingkanBulan(transactions);
+  const done = req.user.progress?.done ?? {};
+  const sesiBerikut = SESI_HARIAN
+    .find((m) => !done[m.no] && modulTerbuka(m.no, req.user.mulaiPada)) ?? null;
+
+  res.json({
+    fokus: susunFokusHarian({
+      punyaProfil: Boolean(req.user.profile),
+      metrics,
+      perubahan,
+      rekomendasi: req.user.recommendations ?? null,
+      sesiBerikut,
+    }),
     dibuatPada: new Date().toISOString(),
   });
 });
