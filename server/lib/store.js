@@ -770,9 +770,45 @@ export const store = {
       const baru = Object.keys(progress.done ?? {}).filter((k) => progress.done[k] && !lama[k]);
       // `checks` tidak lagi dikirim tampilan, tapi data lama yang sudah ada
       // tidak dihapus begitu saja — menimpanya dengan {} adalah kehilangan diam-diam.
-      user.progress = { ...progress, checks: progress.checks ?? user.progress?.checks ?? {} };
+      // `praktik` demikian pula: ia ditulis SERVER (bukti tindakan nyata),
+      // bukan dikirim peramban, jadi harus selamat dari setiap simpanan progres.
+      user.progress = {
+        ...progress,
+        praktik: user.progress?.praktik ?? {},
+        checks: progress.checks ?? user.progress?.checks ?? {},
+      };
       if (baru.length) pushEvent(user, 'module_completed', { modul: baru.map(Number).sort((a, b) => a - b) });
       return user.progress;
+    });
+  },
+
+  /**
+   * Menandai praktik modul yang TERVERIFIKASI oleh tindakan nyata.
+   *
+   * Ini bukan self-report: pemanggilnya adalah server, saat event tindakan
+   * (transaksi tercatat, laporan dibuka) benar-benar terjadi — lib/praktik.js
+   * yang memutuskan modul mana yang layak ditandai. Klik tombol CTA tidak
+   * pernah sampai ke sini.
+   *
+   * Tetap di dalam JSON `progress` — tidak ada skema baru yang perlu dimigrasi,
+   * dan progres lama tanpa `praktik` tetap sah.
+   */
+  async tandaiPraktik(userId, nos, jenis) {
+    return update((db) => {
+      const user = db.users.find((u) => u.id === userId);
+      if (!user) return null;
+      user.progress = user.progress ?? {};
+      user.progress.praktik = user.progress.praktik ?? {};
+      const baru = [];
+      for (const no of nos) {
+        if (!user.progress.praktik[no]) {
+          user.progress.praktik[no] = { pada: new Date().toISOString() };
+          baru.push(Number(no));
+        }
+      }
+      if (!baru.length) return null;
+      pushEvent(user, 'praktik_terverifikasi', { modul: baru, aksi: jenis });
+      return baru;
     });
   },
 

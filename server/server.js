@@ -41,6 +41,7 @@ import { PROFIL_FIELDS, computeMetrics, metricsToText } from './lib/metrics.js';
 import { cashbookContext, LABEL } from './lib/prompts.js';
 import { susunKonteksUsaha } from './lib/konteks-usaha.js';
 import { susunFokusHarian } from './lib/fokus-harian.js';
+import { modulPraktikTerverifikasi } from './lib/praktik.js';
 import { store } from './lib/store.js';
 import { KODE_DEMO, isiDemoPenuh, lanjutkanDemo, personaDemo, PERSONA_DEMO } from './lib/demo-data.js';
 import { kenaliGambar, sanitasiHasilNota } from './lib/nota.js';
@@ -854,7 +855,7 @@ app.get('/api/sesi/:no', authenticate, (req, res) => {
   const m = KURIKULUM.find((x) => x.no === Number(req.params.no));
 
   if (m.sesi == null) {
-    return res.json({ no: m.no, isi: m.isi, praktik: m.praktik });
+    return res.json({ no: m.no, isi: m.isi, praktik: m.praktik, aksi: m.aksi ?? null });
   }
 
   const jadwal = ringkasJadwal(req.user);
@@ -869,7 +870,7 @@ app.get('/api/sesi/:no', authenticate, (req, res) => {
     });
   }
 
-  res.json({ no: m.no, isi: m.isi, praktik: m.praktik, jadwal });
+  res.json({ no: m.no, isi: m.isi, praktik: m.praktik, aksi: m.aksi ?? null, jadwal });
 });
 
 /* ------------------------------------------------- Umpan balik jawaban AI */
@@ -1245,6 +1246,25 @@ app.post('/api/cashbook', authenticate, requireConsent, async (req, res) => {
   const month = tanggal.slice(0, 7);
   const thisMonth = currentMonth();
 
+  /*
+   * Bukti praktik: transaksi yang BENAR-BENAR tercatat adalah tindakan nyata
+   * yang diminta beberapa modul. Penandaannya di sisi server — klik tombol
+   * CTA di modul tidak pernah dihitung selesai; hanya baris buku kas yang
+   * benar-benar masuk. Praktik yang ditandai juga dibatasi: modul yang sudah
+   * selesai dibaca, atau sesi berikutnya yang sedang dijalani peserta.
+   */
+  const doneKas = req.user.progress?.done ?? {};
+  const praktikBaru = modulPraktikTerverifikasi({
+    done: doneKas,
+    sudah: req.user.progress?.praktik ?? {},
+    jenis: 'transaksi',
+    sesiBerikutNo: SESI_HARIAN
+      .find((x) => !doneKas[x.no] && modulTerbuka(x.no, req.user.mulaiPada))?.no ?? null,
+  });
+  if (praktikBaru.length) await store.tandaiPraktik(req.user.id, praktikBaru, 'transaksi');
+  // Bukti tambahan untuk penelitian sudah disediakan store.addTransaction
+  // (event transaction_added) — tidak ada event kedua yang menduplikasinya.
+
   // Transaksi bisa dicatat mundur ke bulan lalu; ringkasan yang dikembalikan
   // adalah bulan transaksinya, sedangkan metrik selalu bulan berjalan.
   const summary = summarizeMonth(transactions, month);
@@ -1253,6 +1273,7 @@ app.post('/api/cashbook', authenticate, requireConsent, async (req, res) => {
   res.status(201).json({
     transaction: row,
     summary,
+    praktikTerverifikasi: praktikBaru,
     metrics: computeMetrics(req.user.profile ?? {}, isMonthReliable(berjalan) ? berjalan : null, berjalan),
   });
 });
@@ -1271,6 +1292,22 @@ app.get('/api/report', authenticate, async (req, res) => {
   // Tanpa jeda, tiap penggantian menulis ulang seluruh berkas data.
   await store.logEvent(req.user.id, 'report_viewed', { bulan: count }, { jedaMs: 5 * 60 * 1000 });
   const transactions = await store.getTransactions(req.user.id);
+
+  /*
+   * Membuka laporan adalah tindakan nyata yang diminta beberapa modul
+   * (sesi 7, anggaran, pajak, berkas KUR) — praktik mereka terverifikasi di
+   * sini, dari event yang sama dengan yang selama ini mencatat `report_viewed`.
+   */
+  const doneLaporan = req.user.progress?.done ?? {};
+  const praktikLaporan = modulPraktikTerverifikasi({
+    done: doneLaporan,
+    sudah: req.user.progress?.praktik ?? {},
+    jenis: 'laporan',
+    sesiBerikutNo: SESI_HARIAN
+      .find((x) => !doneLaporan[x.no] && modulTerbuka(x.no, req.user.mulaiPada))?.no ?? null,
+  });
+  if (praktikLaporan.length) await store.tandaiPraktik(req.user.id, praktikLaporan, 'laporan');
+
   const months = lastMonths(count).reverse(); // terlama dulu, seperti pembukuan
   const summaries = summarizeRange(transactions, months);
   const total = summaries.reduce(
@@ -1690,7 +1727,7 @@ app.post('/api/validasi/it/kirim', autentikasiValidator, async (req, res) => {
  * keberadaannya. Isi satu sesi (rata-rata 2,9 KB) diambil sekali sehari lewat
  * `GET /api/sesi/:no`, yang tahu peserta mana yang sedang bertanya.
  */
-const tanpaIsi = ({ isi, praktik, ...meta }) => ({ ...meta, isiTerpisah: true });
+const tanpaIsi = ({ isi, praktik, aksi, ...meta }) => ({ ...meta, isiTerpisah: true });
 const KURIKULUM_PUBLIK = KURIKULUM.map((m) => (m.sesi == null ? m : tanpaIsi(m)));
 
 const MODUL_JS = `window.NOVA_MODUL=${JSON.stringify(KURIKULUM_PUBLIK)};window.NOVA_JALUR=${JSON.stringify(JALUR)};`;

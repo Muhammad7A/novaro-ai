@@ -157,6 +157,7 @@ export const KURIKULUM = [
       },
     ],
     praktik: 'Dua hal hari ini. Pertama, tebak dulu — menurutmu berapa laba usahamu bulan lalu? Tulis angkanya di kolom perkiraan pada halaman Profil; nanti kita bandingkan di sesi 4. Kedua, tentukan di mana uang usahamu mulai disimpan terpisah, lalu catat satu pengambilan pribadi terakhir yang kamu ingat dengan kategori Prive.',
+    aksi: { halaman: 'kas', label: 'Catat di Buku Kas sekarang', terverifikasi: 'transaksi' },
   },
 
   {
@@ -206,6 +207,7 @@ export const KURIKULUM = [
       },
     ],
     praktik: 'Buka aplikasi ini dari HP-mu dengan kode akses, lalu catat SATU transaksi hari ini. Sesudah itu tutup peramban dan buka lagi — pastikan catatanmu masih ada di sana. Itulah bedanya dengan buku tulis.',
+    aksi: { halaman: 'kas', label: 'Catat satu transaksi sekarang', terverifikasi: 'transaksi' },
   },
 
   {
@@ -277,6 +279,7 @@ export const KURIKULUM = [
       },
     ],
     praktik: 'Catat semua transaksi hari ini di Buku Kas — dari pembukaan sampai sekarang — lengkap dengan kategorinya. Kalau hari ini belum jualan, catat hari kemarin. Kalau ada belanja yang dapat potongan, catat jumlah yang benar-benar kamu bayar.',
+    aksi: { halaman: 'kas', label: 'Buka Buku Kas', terverifikasi: 'transaksi' },
   },
 
   {
@@ -317,6 +320,7 @@ export const KURIKULUM = [
       },
     ],
     praktik: 'Buka Dasbor dan lihat angka Laba bersih bulan ini. Bandingkan dengan tebakanmu di sesi 1. Jauh berbeda? Itu temuan, bukan kesalahan — dan itulah alasan mencatat.',
+    aksi: { halaman: 'dasbor', label: 'Buka Dasbor', terverifikasi: null },
   },
 
   {
@@ -422,6 +426,7 @@ export const KURIKULUM = [
       },
     ],
     praktik: 'Lakukan tutup buku hari ini: hitung uang di laci, bandingkan dengan saldo di aplikasi, dan telusuri selisihnya kalau ada. Sekalian periksa apakah ada transaksi yang tercatat dua kali.',
+    aksi: { halaman: 'kas', label: 'Periksa Buku Kas', terverifikasi: null },
   },
 
   {
@@ -483,6 +488,7 @@ export const KURIKULUM = [
       },
     ],
     praktik: 'Buka halaman Laporan dan baca ketiga bagiannya berurutan, lalu tulis satu kalimat kesimpulan untuk dirimu sendiri. Sesudah itu buka halaman Saran dan pilih TIGA target untuk 30 hari ke depan, lengkap dengan tanggal kapan kamu akan memeriksanya.',
+    aksi: { halaman: 'laporan', label: 'Buka Laporan', terverifikasi: 'laporan' },
   },
 
   /* ================================================================
@@ -532,6 +538,7 @@ export const KURIKULUM = [
       },
     ],
     praktik: 'Periksa buku kasmu bulan ini. Cari pembelian alat dan pembayaran cicilan, lalu pastikan kategorinya sudah benar — bukan tercatat sebagai belanja bahan.',
+    aksi: { halaman: 'kas', label: 'Periksa Buku Kas', terverifikasi: null },
   },
   {
     no: 9,
@@ -575,6 +582,7 @@ export const KURIKULUM = [
       },
     ],
     praktik: 'Lihat Dasbor: bandingkan Laba bersih dan Saldo kas bulan ini. Kalau selisihnya besar, tuliskan penyebabnya — biasanya prive, cicilan, atau piutang.',
+    aksi: { halaman: 'dasbor', label: 'Buka Dasbor', terverifikasi: null },
   },
   {
     no: 10,
@@ -1087,6 +1095,7 @@ export const KURIKULUM = [
       },
     ],
     praktik: 'Cocokkan penjualan QRIS-mu minggu lalu dengan mutasi rekening. Kalau ada selisih, cari penyebabnya sekarang selagi masih ingat.',
+    aksi: { halaman: 'kas', label: 'Periksa Buku Kas', terverifikasi: null },
   },
   {
     no: 27,
@@ -1162,6 +1171,7 @@ export const KURIKULUM = [
       },
     ],
     praktik: 'Buat anggaran empat baris untuk bulan depan berdasarkan rata-rata 3 bulan terakhir di halaman Laporan. Simpan, dan periksa lagi di akhir bulan.',
+    aksi: { halaman: 'laporan', label: 'Buka Laporan', terverifikasi: 'laporan' },
   },
 
   /* ================================================================
@@ -1252,6 +1262,7 @@ export const KURIKULUM = [
       },
     ],
     praktik: 'Lihat total penjualan 12 bulan terakhir di halaman Laporan. Catat angkanya — itu yang akan ditanyakan pertama kali saat kamu berkonsultasi ke KPP.',
+    aksi: { halaman: 'laporan', label: 'Buka Laporan', terverifikasi: 'laporan' },
   },
   {
     no: 31,
@@ -1343,6 +1354,7 @@ export const KURIKULUM = [
       },
     ],
     praktik: 'Buka halaman Laporan, pilih rentang bulan terpanjang yang catatannya rapat, dan cetak sebagai PDF. Simpan — itu berkas pertamamu.',
+    aksi: { halaman: 'laporan', label: 'Buka Laporan & cetak', terverifikasi: 'laporan' },
   },
 ];
 

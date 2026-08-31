@@ -597,6 +597,9 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
 .baca-konteks .konteks-usaha{padding:16px 18px}
 .konteks-usaha .stat-list{margin-top:2px}
 .fokus-harian{border-left:4px solid var(--gold);margin-bottom:16px}
+.praktik-aksi{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}
+.praktik-status{font-size:.8rem;font-weight:700;color:var(--green)}
+.praktik-status.tunggu{color:var(--ink-soft);font-weight:600}
 
 /* ---------- Cetak (laporan KUR) ---------- */
 @media print{
@@ -3121,6 +3124,7 @@ el('notaSimpan').addEventListener('click', async () => {
     });
     tutupModalNota();
     state.metrics = data.metrics;
+    tandaiPraktikLokal(data);
     renderDashboard();
     await loadCashbook(el('kasMonth').value); // grafik + daftar ikut segar
     toast('✅ Transaksi berhasil disimpan');
@@ -3160,9 +3164,10 @@ el('kasForm').addEventListener('submit', async (e) => {
     el('kasJumlah').value = '';
     el('kasKeterangan').value = '';
     state.metrics = data.metrics;
+    tandaiPraktikLokal(data);
     renderDashboard();
     await loadCashbook(el('kasMonth').value); // grafik dasbor ikut disegarkan di sini
-    toast('✅ Tercatat');
+    toast('✅ Tercatat' + (data.praktikTerverifikasi?.length ? ' — praktik modul terverifikasi ✓' : ''));
     el('kasJumlah').focus();
   } catch (err) {
     errBox.textContent = err.message;
@@ -3891,6 +3896,52 @@ function renderModules() {
   updateProgress();
 }
 
+/* ---------- Praktik modul: CTA ke fitur + status verifikasi server ----------
+
+   Membuka fitur dan melakukan tindakan dibedakan di sini: tombol CTA hanya
+   membawa pengguna ke fiturnya — yang menganggap praktik selesai adalah
+   SERVER, saat tindakannya benar-benar tercatat (transaksi masuk, laporan
+   dibuka). Klik CTA tidak pernah menandai apa pun.
+                                                                         */
+const PRAKTIK_HALAMAN = ['kas', 'dasbor', 'laporan'];
+
+function praktikSelesai(no) {
+  return state.user?.progress?.praktik?.[no] ?? null;
+}
+
+function praktikBoxHTML(m) {
+  if (!m.praktik) return '';
+  const selesai = praktikSelesai(m.no);
+  const halaman = PRAKTIK_HALAMAN.includes(m.aksi?.halaman) ? m.aksi.halaman : null;
+  const status = selesai
+    ? `<div class="praktik-status">✓ Terverifikasi — tindakannya tercatat di aplikasi (${new Date(selesai.pada).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}).</div>`
+    : (m.aksi?.terverifikasi
+      ? `<div class="praktik-status tunggu">Status di sini berubah otomatis setelah tindakannya tercatat di aplikasi — membuka halamannya saja belum dihitung selesai.</div>`
+      : '');
+  const cta = halaman
+    ? `<button class="btn btn-primary" onclick="goTo('${halaman}')">${escapeHtml(m.aksi.label ?? 'Kerjakan sekarang')} →</button>`
+    : '';
+  const kaki = (cta || status) ? `<div class="praktik-aksi">${cta}${status}</div>` : '';
+  return `<div class="praktik"><b>Praktik hari ini</b><p>${escapeHtml(m.praktik)}</p>${kaki}</div>`;
+}
+
+/**
+ * Server melaporkan praktik yang baru terverifikasi setiap transaksi tersimpan
+ * — simpan ke state lokal supaya pembaca modul langsung menunjukkan ✓ tanpa
+ * memuat ulang, lalu umumkan lewat toast.
+ */
+function tandaiPraktikLokal(data) {
+  if (!data.praktikTerverifikasi?.length) return;
+  state.user.progress = state.user.progress ?? {};
+  state.user.progress.praktik = state.user.progress.praktik ?? {};
+  let judul = '';
+  for (const no of data.praktikTerverifikasi) {
+    state.user.progress.praktik[no] = { pada: new Date().toISOString() };
+    judul = judul || MODULES.find((x) => x.no === no)?.judul || '';
+  }
+  if (judul) setTimeout(() => toast(`✓ Praktik terverifikasi: ${judul}`), 1200);
+}
+
 /** Membuka satu modul untuk dibaca, menggantikan daftar. */
 /**
  * Membuka satu modul.
@@ -3909,6 +3960,7 @@ async function bacaModul(no) {
       const data = await api('/sesi/' + m.no);
       m.isi = data.isi;
       m.praktik = data.praktik;
+      m.aksi = data.aksi ?? null;
       if (data.jadwal) state.belajar = data.jadwal;
     } catch (err) {
       /*
@@ -3962,7 +4014,7 @@ async function bacaModul(no) {
         </section>`).join('')}
     </div>
 
-    ${m.praktik ? `<div class="praktik"><b>Praktik hari ini</b><p>${escapeHtml(m.praktik)}</p></div>` : ''}
+    ${praktikBoxHTML(m)}
 
     <div class="baca-bawah">
       <button class="btn ${done[m.no] ? 'btn-ghost' : 'btn-primary'}" id="bacaTandai">
