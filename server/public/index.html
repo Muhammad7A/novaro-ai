@@ -577,6 +577,21 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
 .putar-akhir .stat-list{margin-top:14px}
 @media (prefers-reduced-motion:reduce){.putar-overlay .putar-gambar{transition:none!important}}
 
+/* ---------- Papan Kemajuan ---------- */
+.papan-row{display:flex;align-items:center;gap:12px;padding:11px 2px;border-bottom:1px solid var(--line)}
+.papan-row:last-child{border-bottom:none}
+.papan-row.aku{background:var(--blue-tint);border-radius:10px;padding:11px 10px;margin:0 -8px;border-bottom-color:transparent}
+.papan-no{flex:none;width:36px;text-align:center;font-weight:800;font-size:1.05rem;color:var(--ink-soft)}
+.papan-nama{flex:1;min-width:0}
+.papan-nama b{display:block;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.papan-nama small{color:var(--ink-soft);font-size:.75rem}
+.papan-skor{text-align:right;flex:none;font-variant-numeric:tabular-nums}
+.papan-skor b{font-size:1.1rem;font-weight:800}
+.papan-skor small{display:block;font-size:.72rem;color:var(--ink-soft)}
+.papan-skor small.pos{color:var(--green)}
+.papan-skor small.neg{color:var(--red)}
+.papan-ket{font-size:.78rem;color:var(--ink-soft);margin-top:10px}
+
 /* ---------- Cetak (laporan KUR) ---------- */
 @media print{
   nav,.tabbar,footer,.page-head,.no-print,#toast{display:none!important}
@@ -713,6 +728,18 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
       <div class="form-error" id="checkupError" style="display:none"></div>
       <div id="checkupHasil" style="margin-top:14px"></div>
     </div>
+  </div>
+</section>
+
+<!-- ---------- Papan Kemajuan ---------- -->
+<section class="page" id="page-papan">
+  <div class="wrap">
+    <div class="page-head">
+      <div class="eyebrow">Komunitas</div>
+      <h2>Papan Kemajuan</h2>
+      <p class="sub">Skor kesehatan warung-warung contoh Nova, diurutkan bulan ini — lengkap dengan arah perubahannya. Angka tiap baris dihitung dengan rumus yang sama dengan dasbormu.</p>
+    </div>
+    <div id="papanBody"></div>
   </div>
 </section>
 
@@ -1513,7 +1540,7 @@ function enterApp() {
 /* ---------- Navigasi ---------- */
 // Halaman yang tidak punya tombolnya sendiri di menu — menyorot tombol induknya,
 // supaya menu tidak pernah tampak "tidak sedang di mana pun".
-const INDUK_HALAMAN = { laporan: 'kas', profil: 'profil' };
+const INDUK_HALAMAN = { laporan: 'kas', papan: 'dasbor', profil: 'profil' };
 
 function goTo(page) {
   const tujuan = el('page-' + page);
@@ -1532,6 +1559,7 @@ function goTo(page) {
   // Halaman yang datanya diambil saat dibuka.
   if (page === 'kas') loadCashbook(kas.month);
   if (page === 'laporan') loadReport();
+  if (page === 'papan') loadPapan();
 }
 document.querySelectorAll('#navLinks button, #tabbar button').forEach((b) =>
   b.addEventListener('click', () => goTo(b.dataset.page)));
@@ -1559,6 +1587,7 @@ const LANGKAH_TUR = [
   { halaman: 'rekomendasi', judul: 'Rekomendasi AI', ringkas: 'Saran perbaikan yang menyebut angka usaha ini, bukan nasihat umum.' },
   { halaman: 'konsultasi', judul: 'Tanya AI', ringkas: 'Konsultan yang membaca buku kasmu. Coba: "labaku sebulan berapa?"' },
   { halaman: 'laporan', judul: 'Laporan KUR', ringkas: 'Rekap 3–12 bulan siap cetak PDF untuk lampiran pengajuan bank.' },
+  { halaman: 'papan', judul: 'Papan Kemajuan 🏆', ringkas: 'Peringkat warung contoh yang hidup — dan posisimu di antara mereka.' },
   { halaman: 'modul', judul: 'Kelas 14 sesi', ringkas: 'Micro-learning 10 menit/hari, satu sesi terbuka tiap hari.' },
 ];
 
@@ -1572,7 +1601,7 @@ function tampilkanTurDemo() {
   kartu.id = 'tourCard';
   kartu.innerHTML = `
     <h4>📍 Jelajahi dalam 2 menit <button class="tour-close" id="tourClose" aria-label="Tutup tur">✕</button></h4>
-    <p class="tour-sub">Tujuh hal yang bisa langsung dicoba di akun demo ini.</p>
+    <p class="tour-sub">Delapan hal yang bisa langsung dicoba di akun demo ini.</p>
     <ul class="tour-list">
       ${LANGKAH_TUR.map((l, i) => `
         <li><button data-tur="${l.halaman}">
@@ -1829,9 +1858,50 @@ function renderDashboard() {
         <button class="btn btn-primary" onclick="goTo('kas')">🧾 Catat transaksi</button>
         <button class="btn btn-ghost" onclick="goTo('rekomendasi')">Lihat rekomendasi →</button>
         <button class="btn btn-ghost" onclick="goTo('konsultasi')">💬 Tanya konsultan AI</button>
+        <button class="btn btn-ghost" onclick="goTo('papan')">🏆 Papan Kemajuan →</button>
         <button class="btn btn-ghost" onclick="goTo('profil')">Ubah profil</button>
       </div>
     </div>`;
+}
+
+/* ============================================================
+   Papan Kemajuan — peringkat komunitas warung contoh
+============================================================
+ *
+ * Datanya dari /api/papan yang hanya pernah MEMBACA akun DEMO — peserta
+ * sungguhan tidak sekadar disembunyikan, ia tidak pernah disentuh rute
+ * itu. Halaman ini hanya menata ulang yang dikirim server: peringkat,
+ * arah skor, dan posisi peminta (bila pemintanya memang baris demo).
+ */
+async function loadPapan() {
+  const box = el('papanBody');
+  try {
+    const data = await api('/papan');
+    const baris = data.baris ?? [];
+    if (!baris.length) {
+      box.innerHTML = `<div class="card empty"><span class="big">🏆</span><h3>Papan masih kosong</h3><p style="margin-top:6px">Akun contoh belum siap — coba buka lagi beberapa saat.</p></div>`;
+      return;
+    }
+    const medali = { 1: '🥇', 2: '🥈', 3: '🥉' };
+    box.innerHTML = `
+      <div class="card">
+        ${baris.map((b) => `
+          <div class="papan-row${b.peringkat === data.aku ? ' aku' : ''}">
+            <span class="papan-no">${medali[b.peringkat] ?? b.peringkat}</span>
+            <span class="papan-nama">
+              <b>${escapeHtml(b.nama)}</b>${b.peringkat === data.aku ? ' <span class="demo-badge">Warungmu</span>' : ''}
+              <small>${escapeHtml(b.jenis ?? 'Usaha contoh')} · ${b.hariTercatat} hari tercatat bulan ini</small>
+            </span>
+            <span class="papan-skor">
+              <b>${b.skor}</b>
+              ${b.delta == null ? '' : `<small class="${b.delta > 0 ? 'pos' : b.delta < 0 ? 'neg' : ''}">${b.delta > 0 ? '▲ naik' : b.delta < 0 ? '▼ turun' : '• tetap'} ${Math.abs(b.delta)}</small>`}
+            </span>
+          </div>`).join('')}
+      </div>
+      <p class="papan-ket">Papan ini memperlihatkan 20 usaha contoh mode demo Nova — omzet dicatat sebagai angka setara sebulan. Data peserta sungguhan tidak pernah ditampilkan di sini.</p>`;
+  } catch (err) {
+    box.innerHTML = `<div class="card empty"><span class="big">🏆</span><h3>Papan belum bisa dimuat</h3><p style="margin-top:6px">${escapeHtml(err.message || 'Periksa sambungan lalu coba lagi.')}</p></div>`;
+  }
 }
 
 /* ============================================================

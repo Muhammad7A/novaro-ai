@@ -933,6 +933,88 @@ app.get('/api/timeline', authenticate, async (req, res) => {
   res.json({ titik, tren });
 });
 
+/* ------------------------------------------------- Papan kemajuan (demo) */
+
+/*
+ * Papan kemajuan komunitas — dibangun HANYA dari akun DEMO.
+ *
+ * Daftar putih ketat, bukan daftar hitam: satu-satunya akun yang boleh
+ * tampil adalah yang bermeta batch === 'DEMO' — nomor demo 101–120, semua
+ * persona fiktif dari lib/demo-data.js. Peserta penelitian tidak sekadar
+ * "disamarkan namanya": rute ini tidak pernah MEMBACA data mereka sama
+ * sekali, jadi tidak ada yang bisa bocor dari sini betapapun salah kodenya.
+ *
+ * Yang tampil per baris dibatasi eksplisit (medan yang sama filosofinya
+ * dengan susunKartuPublik): nama usaha, jenis, skor, omzet, ritme mencatat,
+ * dan arah perubahan skor. Bukan: transaksi satu per satu, riwayat chat,
+ * id internal, atau apa pun yang bisa mengidentifikasi di luar papan.
+ *
+ * Angka per akun dihitung metricsFor/metricsForBulan — rumus yang sama
+ * dengan dasbor tiap akun, bukan perhitungan kedua. Hasilnya di-cache
+ * dalam proses sesaat: papan yang digambar ulang penuh untuk dua puluh
+ * orang yang membukanya dalam semenit bukan papan, tapi beban.
+ */
+let papanCache = { pada: 0, baris: null };
+const PAPAN_TTL_MS = 60 * 1000;
+
+app.get('/api/papan', authenticate, async (req, res) => {
+  await store.logEvent(req.user.id, 'papan_viewed', undefined, { jedaMs: 5 * 60 * 1000 });
+
+  const kini = Date.now();
+  if (!papanCache.baris || kini - papanCache.pada > PAPAN_TTL_MS) {
+    const baris = [];
+    for (const ringkas of await store.listUsers()) {
+      if (ringkas.batch !== 'DEMO') continue;
+      const user = await store.findUserById(ringkas.id);
+      if (!user?.profile) continue;
+
+      const transactions = await store.getTransactions(user.id);
+      const { metrics } = await metricsFor(user);
+
+      // Arah skor: titik-titik yang sama dengan garis waktu kesehatan.
+      const titik = [];
+      for (const bulan of lastMonths(6).reverse()) {
+        const ringkasan = summarizeMonth(transactions, bulan);
+        if (!ringkasan.jumlahTransaksi) continue; // bulan kosong tidak dikarang
+        titik.push(metricsForBulan(user, transactions, ringkasan).metrics.skorKesehatan);
+      }
+
+      baris.push({
+        id: user.id,
+        nama: String(user.profile.namaUsaha || user.name || 'Usaha contoh').slice(0, 80),
+        jenis: LABEL.jenisUsaha[user.profile.jenisUsaha] ?? null,
+        skor: metrics.skorKesehatan,
+        omzet: Number.isFinite(metrics.omzet) ? Math.round(metrics.omzet) : 0,
+        hariTercatat: Number(metrics.hariTercatat) || 0,
+        delta: titik.length >= 2 ? titik.at(-1) - titik.at(-2) : null,
+      });
+    }
+
+    baris.sort((a, b) => b.skor - a.skor);
+    papanCache = { pada: kini, baris };
+  }
+
+  // Posisi peminta dihitung SAAT diminta, bukan ikut cache — cache hanya
+  // menyimpan angka komunitas, bukan hubungannya dengan siapa pun.
+  const idxAku = papanCache.baris.findIndex((b) => b.id === req.user.id);
+
+  res.json({
+    baris: papanCache.baris.map(({ id, ...tampil }, i) => ({
+      peringkat: i + 1,
+      nama: tampil.nama,
+      jenis: tampil.jenis,
+      skor: tampil.skor,
+      omzet: tampil.omzet,
+      hariTercatat: tampil.hariTercatat,
+      delta: tampil.delta,
+    })),
+    // `aku` hanya terisi bila peminta memang baris demo — peserta penelitian
+    // melihat papan yang sama tanpa pernah punya baris di dalamnya.
+    aku: idxAku >= 0 ? idxAku + 1 : null,
+    dibuatPada: new Date().toISOString(),
+  });
+});
+
 /* ------------------------------------------------- Apa yang berubah? */
 
 /**
