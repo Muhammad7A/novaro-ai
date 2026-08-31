@@ -1580,9 +1580,17 @@ const ASET_KARTU = asetDariBerkas(path.join(HERE, 'public', 'kartu.html'), 'text
  * rumus yang bisa menyimpang diam-diam.
  */
 const ASET_SIMULASI = asetDariBerkas(path.join(HERE, 'lib', 'simulasi-kur.js'), 'application/javascript; charset=utf-8');
+/*
+ * Susunan film Putar Ulang — pola yang sama dengan ASET_SIMULASI di atas:
+ * lib/putar-ulang.js diimpor uji node dan dimuat peramban sebagai modul,
+ * jadi pengelompokan hari, kumulatif saldo, dan penempelan skor bulanannya
+ * tidak pernah punya salinan kedua yang bisa menyimpang diam-diam.
+ */
+const ASET_PUTAR = asetDariBerkas(path.join(HERE, 'lib', 'putar-ulang.js'), 'application/javascript; charset=utf-8');
 
 app.get('/modul.js', sajikanAset(ASET_MODUL, { cacheControl: 'public, max-age=300' }));
 app.get('/simulasi-kur.js', sajikanAset(ASET_SIMULASI, { cacheControl: 'public, max-age=300' }));
+app.get('/putar-ulang.js', sajikanAset(ASET_PUTAR, { cacheControl: 'public, max-age=300' }));
 
 /*
  * Halaman kartu yang dibagikan. Jalurnya cantik (/kartu/kartu_XXXX…), halaman
