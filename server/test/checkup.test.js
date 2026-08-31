@@ -28,6 +28,7 @@ process.on('exit', () => rmSync(DATA_DIR, { recursive: true, force: true }));
 const { store } = await import('../lib/store.js');
 const { sanitasiCheckup } = await import('../lib/checkup.js');
 const { PERKIRAAN } = await import('../lib/anggaran.js');
+const { tanggalWIB } = await import('../lib/cashbook.js');
 const app = (await import('../server.js')).default;
 
 const server = await new Promise((resolve) => {
@@ -129,4 +130,69 @@ test('rekonsiliasi: anggaran checkup tercatat di jejak token peserta', async () 
   const log = await store.getTokenLog(user.id);
   const entriCheckup = (log ?? []).filter((x) => x.jenis === 'checkup');
   assert.equal(entriCheckup.length, 0);
+});
+
+test('jalur bahagia: AI menjawab, hasil bersih sampai ke peserta dan jatah tercatat', async () => {
+  /*
+   * Jalur ini dulu TIDAK PERNAH teruji karena `analyzeCheckup` tidak ada di
+   * daftar import server.js — ReferenceError di dalam try menjadikan rute
+   * 500 di produksi, sementara seluruh uji di atas berhenti di pagar 503.
+   * Uji ini berjalan MELEWATI pagar itu: AI ditirui layanan Anthropic palsu
+   * (pola yang sama dengan rute.test.js), jadi yang diperiksa adalah sambungan
+   * rute → lib/ai.js → sanitasiCheckup → jawaban, bukan jaringannya.
+   */
+  const { createServer } = await import('node:http');
+  let diminta = null;
+  const palsu = createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => { body += c; });
+    req.on('end', () => {
+      diminta = JSON.parse(body || '{}');
+      const usage = { input_tokens: 120, output_tokens: 40 };
+      const json = JSON.stringify({
+        item: [
+          { tipe: 'ok', teks: 'Pencatatan berjalan tanpa hari kosong pekan ini.' },
+          { tipe: 'perhatian', teks: 'Porsi belanja bahan mendekati batas atas.' },
+        ],
+        insight: 'Sisihkan uang cicilan di awal pekan sebelum prive diambil.',
+      });
+      res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+      const w = (t, d) => res.write(`event: ${t}\ndata: ${JSON.stringify(d)}\n\n`);
+      w('message_start', { type: 'message_start', message: { id: 'm', type: 'message', role: 'assistant', model: 'claude-sonnet-5', content: [], stop_reason: null, usage } });
+      w('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } });
+      w('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: json } });
+      w('content_block_stop', { type: 'content_block_stop', index: 0 });
+      w('message_delta', { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage });
+      w('message_stop', { type: 'message_stop' });
+      res.end();
+    });
+  });
+  await new Promise((r) => palsu.listen(0, r));
+  process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${palsu.address().port}`;
+  process.env.ANTHROPIC_API_KEY = 'sk-ant-uji';
+
+  try {
+    const res = await minta('/api/checkup', { method: 'POST' });
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.equal(data.hasil.item.length, 2);
+    assert.equal(data.hasil.item[0].tipe, 'ok');
+    assert.ok(data.hasil.insight.length > 0);
+    assert.ok(data.anggaran, 'sisa jatah ikut dikembalikan');
+
+    // Angka yang dinilai AI memang berasal dari aplikasi, bukan diminta ulang.
+    assert.match(String(diminta?.system ?? ''), /Perbandingan bulan/i);
+
+    // Jejak token berbentuk {tanggal, token} per hari — panggilan ini wajib
+    // tercatat di sana, itulah dasar anggaran pemakaian berikutnya.
+    const log = await store.getTokenLog(user.id);
+    const hariIni = (log ?? []).find((x) => x.tanggal === tanggalWIB());
+    assert.ok(hariIni && hariIni.token > 0, 'pemakaian AI checkup harus ikut tercatat');
+    const tersimpan = await store.findUserById(user.id);
+    assert.ok((tersimpan?.usage?.requests ?? 0) >= 1, 'hitungan permintaan ikut naik');
+  } finally {
+    palsu.close();
+    delete process.env.ANTHROPIC_BASE_URL;
+    delete process.env.ANTHROPIC_API_KEY;
+  }
 });

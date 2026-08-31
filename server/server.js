@@ -29,7 +29,7 @@ import {
 } from './lib/cashbook.js';
 import { PERKIRAAN, cekAnggaran, ringkasAnggaran } from './lib/anggaran.js';
 import { scheduleBackups } from './lib/backup.js';
-import { analyzeNota, backendAI, describeError, generateRecommendations, isConfigured, modelAktif, streamChat } from './lib/ai.js';
+import { analyzeCheckup, analyzeNota, backendAI, describeError, generateRecommendations, isConfigured, modelAktif, streamChat } from './lib/ai.js';
 import { CONSENT_TEXT, CONSENT_VERSION, hasConsented } from './lib/consent.js';
 import { asetDariBerkas, asetDariNilai, sajikanAset } from './lib/aset.js';
 import { forceHttps, periksaKodeAkses, punyaPublicHost, securityHeaders } from './lib/guard.js';
