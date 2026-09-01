@@ -37,7 +37,7 @@ function box(lines) {
 
 function usage() {
   console.log(`
-Pengelola peserta Nova Explorer
+Pengelola peserta Novaro
 
   npm run users -- list                              Tampilkan semua peserta
   npm run users -- add "<nama>" ["<usaha>"] [--batch B1]

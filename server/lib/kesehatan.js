@@ -133,7 +133,7 @@ async function hitungPeserta(sidik, { menyeluruh = false } = {}) {
  * pertama normal dan yang kedua berarti jangan menerima peserta.
  *
  * Hanya KEPALA berkas yang dibaca (4 KB). Itu cukup membuktikan berkasnya bisa
- * dibuka dan masih berbentuk basis data Nova Explorer, dengan biaya yang tidak
+ * dibuka dan masih berbentuk basis data Novaro, dengan biaya yang tidak
  * bertambah walau datanya tumbuh menjadi ratusan megabita.
  */
 async function bisaMembaca({ menyeluruh = false } = {}) {

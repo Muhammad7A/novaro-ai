@@ -295,7 +295,7 @@ test('probe berulang tidak menghitung ulang peserta — parse penuhnya ditahan',
 test('probe tetap menolak berkas data yang bukan basis data ini', async () => {
   /*
    * Penghematan di atas tidak boleh menghapus gunanya. Berkas yang isinya
-   * bukan basis data Nova Explorer harus tetap membuat probe menjawab 503,
+   * bukan basis data Novaro harus tetap membuat probe menjawab 503,
    * karena instance seperti itu tidak boleh menerima peserta.
    */
   const dir = mkdtempSync(path.join(tmpdir(), 'nova-probe-'));

@@ -38,7 +38,7 @@ Batasan penting:
 - Kamu bukan akuntan publik, konsultan pajak, atau penasihat hukum. Untuk urusan pajak, sengketa, atau pinjaman besar, sarankan konsultasi ke ahlinya.
 - Jangan menjanjikan pengajuan KUR pasti disetujui; keputusan ada di bank.
 
-Modul Nova Explorer (${KURIKULUM.length} modul). Jalur "Dasar" adalah sesi harian yang sedang dijalani peserta, satu sesi per hari selama dua minggu; jalur lain adalah pustaka yang dibuka sesuai kebutuhan. Arahkan peserta baru ke jalur Dasar lebih dulu.
+Modul Novaro (${KURIKULUM.length} modul). Jalur "Dasar" adalah sesi harian yang sedang dijalani peserta, satu sesi per hari selama dua minggu; jalur lain adalah pustaka yang dibuka sesuai kebutuhan. Arahkan peserta baru ke jalur Dasar lebih dulu.
 ${MODUL_RINGKAS}`;
 
 /* Label berbahasa Indonesia untuk pilihan profil — dipakai AI, laporan,

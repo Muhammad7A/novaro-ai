@@ -114,7 +114,7 @@ export async function runBackup({ quiet = false } = {}) {
    * pintu yang lain.
    */
   if (!Array.isArray(db.users)) {
-    console.error('[backup] BERKAS DATA BUKAN BASIS DATA NOVA EXPLORER — pencadangan dibatalkan agar salinan sehat tidak hilang.');
+    console.error('[backup] BERKAS DATA BUKAN BASIS DATA Novaro — pencadangan dibatalkan agar salinan sehat tidak hilang.');
     return { skipped: 'bukan-basis-data' };
   }
 
@@ -217,7 +217,7 @@ export async function restoreBackup(file) {
 
   const raw = await readFile(src, 'utf8');
   const db = JSON.parse(raw); // sengaja dibiarkan melempar bila rusak
-  if (!Array.isArray(db.users)) throw new Error('Berkas cadangan tidak berbentuk basis data Nova Explorer.');
+  if (!Array.isArray(db.users)) throw new Error('Berkas cadangan tidak berbentuk basis data Novaro.');
 
   await mkdir(BACKUP_DIR, { recursive: true });
 

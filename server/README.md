@@ -1,4 +1,4 @@
-# Nova Explorer — Aplikasi Pendamping Keuangan UMKM
+# Novaro — Aplikasi Pendamping Keuangan UMKM
 
 Aplikasi web untuk program pendampingan UMKM skala kecil (5–10 pengguna, ditambahkan manual).
 Setiap pemilik usaha mengisi **profil usaha** sekali, lalu memakai aplikasi ini setiap hari:

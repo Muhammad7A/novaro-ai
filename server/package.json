@@ -1,9 +1,9 @@
 {
-  "name": "nova-explorer-server",
+  "name": "novaro-server",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Backend Nova Explorer — micro-learning akuntansi UMKM dengan konsultasi AI (Gemini / Claude) dan rekomendasi personal.",
+  "description": "Backend Novaro — micro-learning akuntansi UMKM dengan konsultasi AI (Gemini / Claude) dan rekomendasi personal.",
   "main": "server.js",
   "engines": {
     "node": ">=20"

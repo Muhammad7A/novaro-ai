@@ -1,5 +1,5 @@
 /**
- * Instrumen validasi Ahli IT & Infrastruktur Sistem — Nova Explorer.
+ * Instrumen validasi Ahli IT & Infrastruktur Sistem — Novaro.
  *
  * Berkas ini memuat:
  *   1. 6 Dimensi dan 25 butir pernyataan kelayakan infrastruktur IT penelitian.

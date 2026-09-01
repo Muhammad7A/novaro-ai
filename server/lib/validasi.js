@@ -1,5 +1,5 @@
 /**
- * Instrumen validasi materi pembelajaran Nova Explorer — SUMBER TUNGGAL.
+ * Instrumen validasi materi pembelajaran Novaro — SUMBER TUNGGAL.
  *
  * Berkas ini memuat tiga hal, dan hanya tiga hal:
  *   1. Daftar aspek dan butir pernyataan yang dinilai validator ahli.
@@ -80,7 +80,7 @@ export const SKOR_MAKS = 5;
  *
  * Ini bukan standar universal dan tidak boleh ditulis sebagai standar universal.
  * Ia adalah kriteria yang ditetapkan dan dilaporkan sendiri oleh penelitian
- * Nova Explorer, sehingga pembaca laporan bisa menilai kesimpulannya dengan
+ * Novaro, sehingga pembaca laporan bisa menilai kesimpulannya dengan
  * ukuran yang sama. Kalau naskah penelitian memakai rentang lain, ubah di sini —
  * satu tempat — supaya lembar validator, perhitungan, dan naskah tidak pernah
  * menyebut tiga angka yang berbeda.

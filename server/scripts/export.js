@@ -312,7 +312,7 @@ for (const [name, content] of files) {
 
 await writeFile(
   path.join(OUT_DIR, 'BACA-DULU.txt'),
-  `Ekspor data pilot Nova Explorer
+  `Ekspor data pilot Novaro
 Dibuat        : ${new Date().toISOString()}
 Mode          : ${anonymize ? 'ANONIM — data pribadi dihapus' : 'LENGKAP — MEMUAT DATA PRIBADI'}
 Jumlah peserta: ${users.length}

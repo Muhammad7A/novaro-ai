@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lembar Validasi Ahli — Nova Explorer</title>
-<meta name="description" content="Lembar validasi materi dan infrastruktur IT Nova Explorer untuk validator ahli.">
+<title>Lembar Validasi Ahli — Novaro</title>
+<meta name="description" content="Lembar validasi materi dan infrastruktur IT Novaro untuk validator ahli.">
 <meta name="robots" content="noindex, nofollow">
 <!--
   Halaman ini dipakai VALIDATOR AHLI (Materi & IT), bukan peserta.
@@ -70,7 +70,7 @@ h3{font-size:.98rem;font-weight:700}
 header{position:sticky;top:0;z-index:40;background:var(--card);border-bottom:1px solid var(--line);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .bar{display:flex;align-items:center;gap:12px;max-width:960px;margin:0 auto;padding:10px 20px}
 .brand{font-weight:800;display:flex;align-items:center;gap:10px;margin-right:auto;font-size:1rem}
-.brand-mark{width:28px;height:28px;border-radius:8px;background:var(--green);color:#fff;display:grid;place-items:center;font-size:.85rem;font-weight:800}
+.brand-logo{width:30px;height:30px;border-radius:50%;object-fit:cover}
 .live{display:flex;align-items:center;gap:10px;font-variant-numeric:tabular-nums}
 .live b{font-size:1.1rem}
 .pill{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:99px;font-size:.76rem;font-weight:700;background:var(--green-tint);color:var(--green-deep)}
@@ -224,7 +224,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 <div class="auth" id="gerbang">
   <div class="auth-card">
     <div class="auth-mark">✓</div>
-    <h1 style="font-size:1.35rem" id="judulGerbang">Validasi Ahli Nova Explorer</h1>
+    <h1 style="font-size:1.35rem" id="judulGerbang">Validasi Ahli Novaro</h1>
     <p class="sub" style="margin:6px 0 14px">
       Lembar instrumen kelayakan materi &amp; infrastruktur sistem bagi validator ahli.
     </p>
@@ -252,7 +252,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 <div id="lembar" class="hidden">
   <header>
     <div class="bar">
-      <div class="brand"><span class="brand-mark">N</span> <span id="brandTeks">Validasi Materi</span></div>
+      <div class="brand"><img src="logo-novaro.jpg" class="brand-logo" alt="N"> <span id="brandTeks">Validasi Materi</span></div>
       <div class="live">
         <span class="muted" id="liveButir">0/25 butir</span>
         <b id="livePersen">—</b>
@@ -279,9 +279,9 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
         </div>
       </div>
 
-      <h1 id="judulHalaman">Kelayakan isi materi pembelajaran Nova Explorer</h1>
+      <h1 id="judulHalaman">Kelayakan isi materi pembelajaran Novaro</h1>
       <p class="sub" style="margin-top:8px" id="deskripsiHalaman">
-        Nova Explorer adalah sistem micro-learning pengenalan cloud accounting untuk usaha
+        Novaro adalah sistem micro-learning pengenalan cloud accounting untuk usaha
         kuliner mikro di Kecamatan Banyumanik, Kota Semarang. Materinya berbentuk 7 sesi
         harian (jalur dasar) dan 22 modul pustaka, seluruhnya dapat dibaca di halaman
         <b>Modul</b> aplikasi peserta.
@@ -520,12 +520,12 @@ function pilihInstrumenAktif() {
   INSTRUMEN = JENIS_AKTIF === 'it' ? (INSTRUMEN_IT || INSTRUMEN_MATERI) : (INSTRUMEN_MATERI || INSTRUMEN_IT);
 
   if (JENIS_AKTIF === 'it') {
-    document.title = 'Validasi Ahli IT & Infrastruktur — Nova Explorer';
+    document.title = 'Validasi Ahli IT & Infrastruktur — Novaro';
     el('brandTeks').textContent = 'Validasi Ahli IT';
     el('eyebrowTeks').textContent = 'Instrumen Validasi Ahli IT & Infrastruktur';
-    el('judulHalaman').textContent = 'Kesiapan & Kelayakan Infrastruktur Sistem Nova Explorer';
+    el('judulHalaman').textContent = 'Kesiapan & Kelayakan Infrastruktur Sistem Novaro';
     el('deskripsiHalaman').innerHTML =
-      'Nova Explorer dibangun dengan arsitektur Cloud Native (Google Cloud Run serverless & Managed Cloud SQL PostgreSQL) ' +
+      'Novaro dibangun dengan arsitektur Cloud Native (Google Cloud Run serverless & Managed Cloud SQL PostgreSQL) ' +
       'serta integrasi AI Gemini melalui Google Vertex AI. Lembar ini mengevaluasi 6 dimensi: arsitektur, keamanan, integritas DB, efisiensi jaringan, keandalan AI, dan auditabilitas.';
     el('notePengantar').innerHTML =
       '<b>Cara mengisi.</b> Buka arsitektur/kode/modul yang dirujuk pada tiap butir, lalu beri skor 1–5 dan komentar seperlunya. ' +
@@ -536,12 +536,12 @@ function pilihInstrumenAktif() {
     el('hintRevisiBox').textContent = 'Sebutkan modul / komponen sistem (mis. Pool koneksi DB / Cache modul.js) beserta catatannya.';
     el('labelKesimpulan').textContent = 'Kesimpulan kelayakan infrastruktur IT *';
   } else {
-    document.title = 'Validasi Materi — Nova Explorer';
+    document.title = 'Validasi Materi — Novaro';
     el('brandTeks').textContent = 'Validasi Materi';
     el('eyebrowTeks').textContent = 'Instrumen Validasi Materi Pembelajaran';
-    el('judulHalaman').textContent = 'Kelayakan Isi Materi Pembelajaran Nova Explorer';
+    el('judulHalaman').textContent = 'Kelayakan Isi Materi Pembelajaran Novaro';
     el('deskripsiHalaman').innerHTML =
-      'Nova Explorer adalah sistem micro-learning pengenalan cloud accounting untuk usaha kuliner mikro di Kecamatan Banyumanik, Kota Semarang. ' +
+      'Novaro adalah sistem micro-learning pengenalan cloud accounting untuk usaha kuliner mikro di Kecamatan Banyumanik, Kota Semarang. ' +
       'Materinya berbentuk 7 sesi harian (jalur dasar) dan 22 modul pustaka, seluruhnya dapat dibaca di halaman <b>Modul</b> aplikasi peserta.';
     el('notePengantar').innerHTML =
       '<b>Cara mengisi.</b> Buka materi yang dirujuk tiap butir, lalu beri skor 1–5 dan komentar seperlunya. ' +
@@ -983,7 +983,7 @@ function tampilkanHasil(body) {
       nomor lembar <b>${body.id}</b> · diterima ${new Date(body.dikirimPada).toLocaleString('id-ID')}.
     </p>
     <p class="muted" style="margin-top:8px">
-      Kategori dihitung berdasarkan kriteria interpretasi resmi penelitian Nova Explorer.
+      Kategori dihitung berdasarkan kriteria interpretasi resmi penelitian Novaro.
     </p>`;
 
   el('hasilAspek').innerHTML = `

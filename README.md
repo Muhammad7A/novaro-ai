@@ -1,4 +1,4 @@
-# Nova Explorer
+# Novaro
 
 Aplikasi pendamping keuangan untuk pemilik UMKM Indonesia — buku kas harian,
 skor kesehatan keuangan, konsultan AI, kurikulum micro-learning, laporan KUR

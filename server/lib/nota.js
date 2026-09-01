@@ -20,7 +20,7 @@
 import { JENIS, KATEGORI } from './cashbook.js';
 
 /**
- * Kata kunci nota → kategori baku Nova Explorer.
+ * Kata kunci nota → kategori baku Novaro.
  *
  * Model sengaja TIDAK diminta memilih kategori baku — ia diminta menulis
  * kata kunci bebas ("sembako", "pertalite"), dan PEMETAAN INI yang

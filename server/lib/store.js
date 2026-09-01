@@ -140,7 +140,7 @@ async function load() {
     const raw = await readFile(DB_PATH, 'utf8');
     const parsed = JSON.parse(raw);
     if (parsed?.users && !Array.isArray(parsed.users)) {
-      throw new Error(`Berkas data ${DB_PATH} tidak berbentuk basis data Nova Explorer.`);
+      throw new Error(`Berkas data ${DB_PATH} tidak berbentuk basis data Novaro.`);
     }
     cache = { ...EMPTY_DB, ...parsed, users: parsed.users ?? [] };
   } catch (err) {

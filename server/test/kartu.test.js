@@ -106,7 +106,7 @@ test('halaman publik membuka kartu TANPA login dan datanya konsisten', async () 
   const data = await res.json();
 
   const k = data.kartu;
-  assert.equal(k.aplikasi, 'Nova Explorer');
+  assert.equal(k.aplikasi, 'Novaro');
   assert.equal(k.namaUsaha, 'Warung Bu Kartu');
   assert.equal(k.jenisUsaha, 'Kuliner (warung/kafe/katering)');
   assert.ok(Number.isFinite(k.skorKesehatan) && k.skorKesehatan > 0, 'skor kesehatan harus terisi');

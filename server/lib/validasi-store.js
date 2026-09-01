@@ -41,7 +41,7 @@ async function baca() {
   try {
     const parsed = JSON.parse(await readFile(FILE_PATH, 'utf8'));
     if (parsed?.hasil && !Array.isArray(parsed.hasil)) {
-      throw new Error(`Berkas ${FILE_PATH} tidak berbentuk data validasi Nova Explorer.`);
+      throw new Error(`Berkas ${FILE_PATH} tidak berbentuk data validasi Novaro.`);
     }
     return { ...KOSONG, ...parsed, hasil: parsed.hasil ?? [] };
   } catch (err) {

@@ -1,5 +1,5 @@
 /**
- * Nova Explorer — server aplikasi.
+ * Novaro — server aplikasi.
  *
  * Menyajikan aplikasi web dan menjadi perantara aman ke Claude Sonnet 5.
  * Kunci API hanya ada di server; browser tidak pernah melihatnya.
@@ -513,7 +513,7 @@ function susunKartuPublik(user, metrics) {
       }];
 
   return {
-    aplikasi: 'Nova Explorer',
+    aplikasi: 'Novaro',
     namaUsaha: String(p.namaUsaha || user.business || 'Usaha saya').slice(0, 80),
     jenisUsaha: LABEL.jenisUsaha[p.jenisUsaha] ?? null,
     periode: {
@@ -928,7 +928,7 @@ app.get('/api/my-data', authenticate, async (req, res) => {
   const data = await store.exportUser(req.user.id);
   if (!data) return res.status(404).json({ error: 'Data tidak ditemukan.' });
   await store.logEvent(req.user.id, 'data_downloaded');
-  const nama = `nova-explorer-${req.user.id}-${todayISO()}.json`;
+  const nama = `novaro-${req.user.id}-${todayISO()}.json`;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${nama}"`);
   res.send(JSON.stringify(data, null, 2));
@@ -2031,7 +2031,7 @@ if (dijalankanLangsung) {
 
 if (dijalankanLangsung) {
   const server = app.listen(PORT, () => {
-  console.log(`\n  Nova Explorer berjalan di http://localhost:${PORT}`);
+  console.log(`\n  Novaro berjalan di http://localhost:${PORT}`);
   console.log(`  Model AI    : ${modelAktif()}`);
   console.log(
     backendAI() === 'anthropic'

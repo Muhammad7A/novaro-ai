@@ -70,7 +70,7 @@ async function ringkas() {
   const daftar = await ambilSemua();
   if (!daftar) return;
 
-  console.log(`\nHasil validasi Nova Explorer — ${daftar.length} lembar`);
+  console.log(`\nHasil validasi Novaro — ${daftar.length} lembar`);
   console.log(`Berkas: ${validasiStore.FILE_PATH}`);
   console.log(garis());
   for (const d of daftar) {

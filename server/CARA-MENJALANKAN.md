@@ -1,4 +1,4 @@
-# Cara menjalankan Nova Explorer — dari nol
+# Cara menjalankan Novaro — dari nol
 
 Panduan ini ditulis untuk orang yang **belum pernah menjalankan aplikasi server**.
 Tidak ada langkah yang dilewati dan tidak ada istilah yang dipakai tanpa dijelaskan.
@@ -14,7 +14,7 @@ Kalau kamu sudah terbiasa dengan Node.js dan VPS, langsung ke **Bagian 4**.
 Kamu mungkin terbiasa dengan berkas `.html`: klik dua kali, terbuka di peramban,
 selesai. Aplikasi ini **bukan** itu.
 
-| | Halaman HTML biasa | Nova Explorer |
+| | Halaman HTML biasa | Novaro |
 |---|---|---|
 | Cara membuka | Klik dua kali berkasnya | Harus ada **program yang berjalan** dulu |
 | Butuh apa | Peramban saja | Node.js (mesin penjalan program) |
@@ -143,7 +143,7 @@ npm start
 Kalau berhasil, muncul:
 
 ```
-  Nova Explorer berjalan di http://localhost:3000
+  Novaro berjalan di http://localhost:3000
   Model AI    : claude-sonnet-5
   Kunci API   : terpasang
   Data        : .../server/data/users.json
@@ -286,7 +286,7 @@ HTTPS       : dipaksakan
 Trust proxy : ya
 ```
 
-Alamatnya akan seperti `https://nova-explorer.onrender.com` — sudah HTTPS
+Alamatnya akan seperti `https://novaro.onrender.com` — sudah HTTPS
 otomatis. Buka di ponsel dan pastikan ada gembok.
 
 ### A.6 Uji bahwa datanya benar-benar permanen

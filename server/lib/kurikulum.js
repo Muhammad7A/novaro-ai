@@ -1,5 +1,5 @@
 /**
- * Kurikulum Nova Explorer — SUMBER TUNGGAL.
+ * Kurikulum Novaro — SUMBER TUNGGAL.
  *
  * Berkas ini dipakai tiga pihak sekaligus:
  *   1. Halaman Modul di peramban (lewat `GET /modul.js`)
@@ -203,7 +203,7 @@ export const KURIKULUM = [
       },
       {
         h: 'Di aplikasi ini',
-        p: 'Nova Explorer adalah cloud accounting. Kode aksesmu membuka data yang sama dari HP mana pun. Seluruh angka keuangan dihitung di server dengan rumus tetap — bukan ditaksir. Dan transaksi yang kamu hapus tetap meninggalkan jejak di riwayat, jadi tidak ada yang hilang diam-diam.',
+        p: 'Novaro adalah cloud accounting. Kode aksesmu membuka data yang sama dari HP mana pun. Seluruh angka keuangan dihitung di server dengan rumus tetap — bukan ditaksir. Dan transaksi yang kamu hapus tetap meninggalkan jejak di riwayat, jadi tidak ada yang hilang diam-diam.',
       },
     ],
     praktik: 'Buka aplikasi ini dari HP-mu dengan kode akses, lalu catat SATU transaksi hari ini. Sesudah itu tutup peramban dan buka lagi — pastikan catatanmu masih ada di sana. Itulah bedanya dengan buku tulis.',

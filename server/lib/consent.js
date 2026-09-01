@@ -31,7 +31,7 @@ export const CONSENT_TEXT = {
   versi: CONSENT_VERSION,
   judul: 'Sebelum mulai — apa yang perlu kamu tahu',
   ringkas:
-    'Nova Explorer adalah program pendampingan yang masih dalam tahap uji coba. Kamu bebas berhenti kapan saja, dan datamu bisa kamu unduh atau hapus sendiri.',
+    'Novaro adalah program pendampingan yang masih dalam tahap uji coba. Kamu bebas berhenti kapan saja, dan datamu bisa kamu unduh atau hapus sendiri.',
   poin: [
     {
       judul: 'Apa yang kami simpan',

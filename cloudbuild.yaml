@@ -16,7 +16,7 @@
 # ------------------------------------------------------------------
 # PERINGATAN — BACA SEBELUM MEMAKAI INI SUNGGUHAN
 #
-# Nova Explorer menyimpan seluruh data peserta di berkas JSON di dalam folder
+# Novaro menyimpan seluruh data peserta di berkas JSON di dalam folder
 # `NOVA_DATA_DIR`. Filesystem Cloud Run bersifat sementara dan per-instance:
 # ia hilang setiap kali instance didaur ulang, dan dua instance tidak pernah
 # melihat berkas yang sama. Kunci antar-proses (`lib/kunci.js`) dan penulisan

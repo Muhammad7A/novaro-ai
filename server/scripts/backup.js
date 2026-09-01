@@ -79,7 +79,7 @@ switch (perintah) {
 
   default:
     console.log(`
-Alat cadangan Nova Explorer
+Alat cadangan Novaro
 
   npm run backup                        Buat cadangan sekarang
   npm run backup -- list                Daftar cadangan yang tersimpan
