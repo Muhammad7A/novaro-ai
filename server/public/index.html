@@ -84,6 +84,7 @@ nav{position:sticky;top:0;z-index:50;background:var(--nav-bg);backdrop-filter:bl
 .nav-inner{display:flex;align-items:center;gap:8px;height:60px;max-width:1040px;margin:0 auto;padding:0 20px}
 .brand{font-weight:800;font-size:1.05rem;letter-spacing:-.01em;color:var(--ink);display:flex;align-items:center;gap:8px;margin-right:auto;flex-shrink:0}
 .brand-mark{width:26px;height:26px;border-radius:7px;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:.8rem;font-weight:800}
+.brand-logo{width:26px;height:26px;border-radius:50%;object-fit:cover}
 .nav-links{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;min-width:0}
 .nav-links::-webkit-scrollbar{display:none}
 .nav-links button{padding:7px 12px;border-radius:9px;font-size:.86rem;font-weight:600;color:var(--ink-soft);white-space:nowrap;flex-shrink:0}
@@ -600,6 +601,36 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
 .praktik-aksi{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}
 .praktik-status{font-size:.8rem;font-weight:700;color:var(--green)}
 .praktik-status.tunggu{color:var(--ink-soft);font-weight:600}
+
+/* ---------- Uji Pemahaman (latihan) ---------- */
+.latihan{border-left:4px solid var(--blue)}
+.lat-dots{display:flex;gap:6px}
+.lat-dot{width:22px;height:22px;border-radius:50%;background:var(--line);color:var(--ink-soft);
+  display:grid;place-items:center;font-size:.68rem;font-weight:800}
+.lat-dot.ok{background:var(--green);color:#fff}
+.lat-dot.now{background:var(--blue);color:#fff}
+.lat-tanya{margin:10px 0 12px;font-size:.95rem}
+.lat-pil{display:flex;flex-direction:column;gap:8px}
+.lat-pilihan{display:block;width:100%;text-align:left;padding:11px 14px;border:1.5px solid var(--line);
+  border-radius:10px;background:var(--card);font-size:.9rem;line-height:1.45;transition:border-color .15s}
+.lat-pilihan:hover{border-color:var(--blue)}
+.lat-input{width:100%;padding:11px 14px;border:1.5px solid var(--line);border-radius:10px;
+  background:var(--card);color:var(--ink);font-size:1rem;font-variant-numeric:tabular-nums}
+.lat-gol-baris{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:8px 0;border-bottom:1px dashed var(--line)}
+.lat-gol-baris:last-of-type{border-bottom:none}
+.lat-gol-baris>span:first-child{font-size:.88rem}
+.lat-gol-pil{display:flex;gap:6px;flex:none}
+.lat-gol{padding:5px 12px}
+.lat-gol.aktif{background:var(--blue);color:#fff;border-color:var(--blue)}
+.lat-umpan{font-weight:800;margin-top:4px}
+.lat-umpan.ok{color:var(--green)}
+.lat-umpan.gagal{color:var(--red)}
+.lat-jelas{font-size:.88rem;color:var(--ink-soft);margin-top:6px}
+.lat-lulus{background:var(--green-tint);border-radius:10px;padding:10px 14px;font-weight:700;
+  color:var(--green);font-size:.9rem}
+.lat-ai{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+.lat-catatan{font-size:.75rem;color:var(--ink-soft);margin-top:8px}
 
 /* ---------- Cetak (laporan KUR) ---------- */
 @media print{
@@ -3553,6 +3584,197 @@ async function isiFokusHarian() {
   kotak.innerHTML = kartuFokusHarianHTML(f);
 }
 
+/* ---------- Uji Pemahaman: kuis deterministik + tantangan AI ----------
+
+   Kunci jawaban tidak pernah turun ke peramban: soal datang bersih dari
+   /api/latihan/:no, jawaban dinilai server, dan salah boleh dicoba ulang
+   tanpa menimpa yang sudah benar. Lulus = SEMUA soal benar — bukti paham
+   pertama yang bukan sekadar tombol. Setelah lulus, satu tantangan AI
+   opsional disusun dari angka usaha sendiri.
+                                                                         */
+let latihanAktif = null;
+
+async function isiLatihan(m) {
+  const kotak = document.getElementById('latihanBox');
+  if (!kotak) return;
+  kotak.innerHTML = `<div class="card latihan"><div class="eyebrow" style="color:var(--blue-deep)">🎯 Uji Pemahaman</div><p class="sub">Memuat latihan…</p></div>`;
+  let data;
+  try {
+    data = await api('/latihan/' + m.no);
+  } catch {
+    kotak.innerHTML = ''; // modul tanpa latihan (pustaka) — panel tidak muncul
+    return;
+  }
+  latihanAktif = {
+    no: m.no,
+    soal: data.soal,
+    jawaban: { ...data.jawaban },
+    lulus: data.lulus,
+    kursor: 0,
+    umpan: null,
+    golSementara: {},
+    ai: null,
+  };
+  const belum = latihanAktif.soal.findIndex((_, i) => !latihanAktif.jawaban[i]?.benar);
+  latihanAktif.kursor = belum === -1 ? latihanAktif.soal.length - 1 : belum;
+  renderLatihan();
+}
+
+function latihanAiHTML() {
+  const L = latihanAktif;
+  if (!L.lulus || !state.aiConfigured) return '';
+  if (L.ai) {
+    if (L.ai.umpan) {
+      return `<div class="lat-ai"><div class="eyebrow" style="color:var(--gold)">⚡ Tantangan AI — pakai angka usahamu</div>
+        <p class="lat-tanya">${escapeHtml(L.ai.soal.pertanyaan)}</p>
+        <div class="lat-umpan ${L.ai.umpan.benar ? 'ok' : 'gagal'}">${L.ai.umpan.benar ? '✓ Benar!' : '✗ Belum tepat'}</div>
+        <p class="lat-jelas">${escapeHtml(L.ai.umpan.penjelasan)}</p></div>`;
+    }
+    return `<div class="lat-ai"><div class="eyebrow" style="color:var(--gold)">⚡ Tantangan AI — pakai angka usahamu</div>
+      <p class="lat-tanya">${escapeHtml(L.ai.soal.pertanyaan)}</p>
+      <div class="lat-pil">${Object.entries(L.ai.soal.pilihan).map(([h, t]) =>
+        `<button class="lat-pilihan" data-ai="${h}"><b>${h}.</b> ${escapeHtml(t)}</button>`).join('')}</div></div>`;
+  }
+  return `<div class="lat-ai"><div class="eyebrow" style="color:var(--gold)">⚡ Tantangan AI</div>
+    <p class="sub">Satu soal tambahan yang disusun AI dari angka usahamu sendiri — hanya untuk sesi ini.</p>
+    <div class="actions"><button class="btn btn-primary" id="latAiBuat">Buat tantangannya</button></div></div>`;
+}
+
+function latihanIsiKartu() {
+  const L = latihanAktif;
+  const s = L.soal[L.kursor];
+  const dots = L.soal.map((_, i) =>
+    `<span class="lat-dot ${L.jawaban[i]?.benar ? 'ok' : i === L.kursor ? 'now' : ''}">${i + 1}</span>`).join('');
+  const kepala = `<div class="bar-top" style="margin-bottom:8px"><b style="font-size:.92rem;color:var(--ink)">🎯 Uji Pemahaman</b><span class="lat-dots">${dots}</span></div>`;
+
+  let badan = '';
+  if (L.umpan) {
+    badan = `<div class="lat-umpan ${L.umpan.benar ? 'ok' : 'gagal'}">${L.umpan.benar ? '✓ Benar!' : '✗ Belum tepat'}</div>
+      <p class="lat-jelas">${escapeHtml(L.umpan.penjelasan)}</p>
+      <div class="actions"><button class="btn btn-primary" id="latLanjut">${L.umpan.benar ? 'Lanjut →' : 'Coba lagi'}</button></div>`;
+  } else if (s.tipe === 'pilihan') {
+    badan = `<div class="lat-pil">${Object.entries(s.pilihan).map(([h, t]) =>
+      `<button class="lat-pilihan" data-huruf="${h}"><b>${h}.</b> ${escapeHtml(t)}</button>`).join('')}</div>`;
+  } else if (s.tipe === 'hitung') {
+    badan = `<input class="input lat-input" id="latJawab" inputmode="numeric" placeholder="Tulis angkanya${s.satuan === 'rupiah' ? ' (rupiah)' : ''}">
+      <div class="actions"><button class="btn btn-primary" id="latKirim">Periksa jawaban</button></div>`;
+  } else if (s.tipe === 'golong') {
+    badan = s.item.map((it, i) => `<div class="lat-gol-baris"><span>${escapeHtml(it)}</span><span class="lat-gol-pil">${
+      s.golongan.map((g, gi) =>
+        `<button class="chip lat-gol ${latihanAktif.golSementara[i] === gi ? 'aktif' : ''}" data-item="${i}" data-gol="${gi}">${escapeHtml(g)}</button>`).join('')
+    }</span></div>`).join('')
+      + `<div class="actions"><button class="btn btn-primary" id="latKirim">Periksa jawaban</button></div>`;
+  }
+
+  return `${kepala}
+    ${L.lulus
+      ? `<div class="lat-lulus">✓ Semua soal benar — kamu paham sesi ini. Statusnya tersimpan di progresmu.</div>`
+      : `<p class="lat-tanya"><b>Soal ${L.kursor + 1} dari ${L.soal.length}.</b> ${escapeHtml(s.pertanyaan)}</p>${badan}`}
+    ${latihanAiHTML()}`;
+}
+
+function renderLatihan() {
+  const kotak = document.getElementById('latihanBox');
+  const L = latihanAktif;
+  if (!kotak || !L) return;
+  kotak.innerHTML = `<div class="card latihan">${latihanIsiKartu()}</div>`;
+  pasangLatihanEvents();
+}
+
+function pasangLatihanEvents() {
+  const L = latihanAktif;
+  const kotak = document.getElementById('latihanBox');
+  if (!kotak || !L) return;
+
+  kotak.querySelectorAll('[data-huruf]').forEach((b) =>
+    b.addEventListener('click', () => jawabLatihan(String(b.dataset.huruf))));
+
+  const kirim = document.getElementById('latKirim');
+  if (kirim) kirim.addEventListener('click', () => {
+    const s = L.soal[L.kursor];
+    if (s.tipe === 'hitung') {
+      jawabLatihan(parseAmount(document.getElementById('latJawab')?.value));
+    } else {
+      const pilihan = s.item.map((_, i) => latihanAktif.golSementara[i]);
+      if (pilihan.some((g) => g === undefined)) { toast('Pilah semua barisnya dulu ya.'); return; }
+      jawabLatihan(pilihan);
+    }
+  });
+
+  kotak.querySelectorAll('.lat-gol').forEach((b) =>
+    b.addEventListener('click', () => {
+      latihanAktif.golSementara[Number(b.dataset.item)] = Number(b.dataset.gol);
+      renderLatihan();
+    }));
+
+  const lanjut = document.getElementById('latLanjut');
+  if (lanjut) lanjut.addEventListener('click', () => {
+    const benarTadi = latihanAktif.umpan?.benar;
+    latihanAktif.umpan = null;
+    latihanAktif.golSementara = {};
+    latihanAktif.kursor = benarTadi
+      ? Math.max(0, latihanAktif.soal.findIndex((_, i) => !latihanAktif.jawaban[i]?.benar))
+      : latihanAktif.kursor;
+    if (latihanAktif.lulus) latihanAktif.kursor = latihanAktif.soal.length - 1;
+    renderLatihan();
+  });
+
+  const aiBuat = document.getElementById('latAiBuat');
+  if (aiBuat) aiBuat.addEventListener('click', async () => {
+    aiBuat.disabled = true;
+    aiBuat.innerHTML = '<span class="spin"></span> Menyusun dari angka usahamu…';
+    try {
+      const data = await api('/latihan/' + latihanAktif.no + '/ai', { method: 'POST' });
+      latihanAktif.ai = { soal: data.soal, umpan: null };
+      renderLatihan();
+    } catch (err) {
+      renderLatihan();
+      toast(err.message || 'Tantangan AI belum bisa dibuat.');
+    }
+  });
+
+  kotak.querySelectorAll('[data-ai]').forEach((b) =>
+    b.addEventListener('click', async () => {
+      try {
+        const data = await api('/latihan/' + latihanAktif.no + '/ai/jawab', {
+          method: 'POST',
+          body: JSON.stringify({ jawaban: b.dataset.ai }),
+        });
+        latihanAktif.ai.umpan = { benar: data.benar, penjelasan: data.penjelasan };
+        renderLatihan();
+      } catch (err) {
+        toast(err.message || 'Gagal memeriksa jawaban.');
+      }
+    }));
+
+  const input = document.getElementById('latJawab');
+  if (input) input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); kirim?.click(); }
+  });
+}
+
+async function jawabLatihan(jawaban) {
+  const L = latihanAktif;
+  if (!L || L.umpan) return;
+  try {
+    const data = await api('/latihan/' + L.no, {
+      method: 'POST',
+      body: JSON.stringify({ index: L.kursor, jawaban }),
+    });
+    L.umpan = { benar: data.benar, penjelasan: data.penjelasan };
+    L.jawaban[L.kursor] = { benar: data.benar };
+    if (data.status?.lulus) {
+      L.lulus = true;
+      state.user.progress = state.user.progress ?? {};
+      state.user.progress.latihan = state.user.progress.latihan ?? {};
+      state.user.progress.latihan[L.no] = { ...(state.user.progress.latihan[L.no] ?? {}), lulusPada: new Date().toISOString() };
+    }
+    renderLatihan();
+  } catch (err) {
+    toast(err.message || 'Gagal memeriksa jawaban.');
+  }
+}
+
 /* ============================================================
    Check-up keuangan — AI menilai status, angka tetap dari server
 ============================================================
@@ -4016,6 +4238,8 @@ async function bacaModul(no) {
 
     ${praktikBoxHTML(m)}
 
+    <div id="latihanBox"></div>
+
     <div class="baca-bawah">
       <button class="btn ${done[m.no] ? 'btn-ghost' : 'btn-primary'}" id="bacaTandai">
         ${done[m.no] ? '✓ Sudah selesai — batalkan' : 'Tandai selesai'}
@@ -4038,6 +4262,7 @@ async function bacaModul(no) {
   el('bacaKembali').addEventListener('click', tutupModul);
   el('bacaTandai').addEventListener('click', () => toggleModule(m.no, true));
   isiKonteksBaca();
+  isiLatihan(m);
   el('bacaTanya').addEventListener('click', () => {
     pasangKonteksModul(m);
     goTo('konsultasi');
@@ -4073,6 +4298,7 @@ function lepasKonteksModul() {
 }
 
 function tutupModul() {
+  latihanAktif = null;
   el('modBaca').hidden = true;
   el('modDaftar').hidden = false;
   renderModules();

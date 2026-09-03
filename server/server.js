@@ -29,7 +29,7 @@ import {
 } from './lib/cashbook.js';
 import { PERKIRAAN, cekAnggaran, ringkasAnggaran } from './lib/anggaran.js';
 import { scheduleBackups } from './lib/backup.js';
-import { analyzeCheckup, analyzeNota, backendAI, describeError, generateRecommendations, isConfigured, modelAktif, streamChat } from './lib/ai.js';
+import { analyzeCheckup, analyzeLatihanAi, analyzeNota, backendAI, describeError, generateRecommendations, isConfigured, modelAktif, streamChat } from './lib/ai.js';
 import { CONSENT_TEXT, CONSENT_VERSION, hasConsented } from './lib/consent.js';
 import { asetDariBerkas, asetDariNilai, sajikanAset } from './lib/aset.js';
 import { forceHttps, periksaKodeAkses, punyaPublicHost, securityHeaders } from './lib/guard.js';
@@ -42,6 +42,7 @@ import { cashbookContext, LABEL } from './lib/prompts.js';
 import { susunKonteksUsaha } from './lib/konteks-usaha.js';
 import { susunFokusHarian } from './lib/fokus-harian.js';
 import { modulPraktikTerverifikasi } from './lib/praktik.js';
+import { adaLatihan, periksa, sanitasiLatihanAI, soalPublik } from './lib/latihan.js';
 import { store } from './lib/store.js';
 import { KODE_DEMO, isiDemoPenuh, lanjutkanDemo, personaDemo, PERSONA_DEMO } from './lib/demo-data.js';
 import { kenaliGambar, sanitasiHasilNota } from './lib/nota.js';
@@ -641,6 +642,132 @@ app.get('/api/fokus', authenticate, async (req, res) => {
     }),
     dibuatPada: new Date().toISOString(),
   });
+});
+
+/* ------------------------------------------- Latihan micro-learning */
+
+/**
+ * Soal latihan jalur dasar — kunci jawaban TIDAK PERNAH keluar dari server.
+ * Peramban menerima soal bersih, mengirim jawabannya, dan yang menilai tetap
+ * lib/latihan.js di sini. Gerbang sesinya sama persis dengan /api/sesi/:no.
+ */
+app.get('/api/latihan/:no', authenticate, (req, res) => {
+  const no = Number(req.params.no);
+  if (!nomorModulSah(no)) return res.status(404).json({ error: 'Modul tidak ditemukan.' });
+  if (!adaLatihan(no)) return res.status(404).json({ error: 'Latihan belum tersedia untuk modul ini.' });
+
+  if (!modulTerbuka(no, req.user.mulaiPada)) {
+    const jadwal = ringkasJadwal(req.user);
+    const sesi = KURIKULUM.find((x) => x.no === no)?.sesi ?? null;
+    return res.status(403).json({
+      error: jadwal.dimulai
+        ? `Latihan sesi ini terbuka pada ${tanggalSesiTerbuka(sesi, jadwal.mulaiPada)}.`
+        : 'Jalur belajarmu belum dimulai. Pendamping akan membukanya saat pendampingan.',
+      terkunci: true,
+      jadwal,
+    });
+  }
+
+  const entri = req.user.progress?.latihan?.[no] ?? {};
+  res.json({
+    soal: soalPublik(no),
+    jawaban: entri.jawaban ?? {},
+    lulus: Boolean(entri.lulusPada),
+  });
+});
+
+/**
+ * Nilai satu jawaban. Nilainya server (bukan self-report), salah boleh
+ * dicoba ulang tanpa menimpa yang sudah benar, dan "lulus" berarti semua
+ * soal benar — bukti paham pertama yang bukan sekadar klik.
+ */
+app.post('/api/latihan/:no', authenticate, requireConsent, async (req, res) => {
+  const no = Number(req.params.no);
+  if (!nomorModulSah(no) || !adaLatihan(no)) return res.status(404).json({ error: 'Latihan tidak ditemukan.' });
+  if (!modulTerbuka(no, req.user.mulaiPada)) return res.status(403).json({ error: 'Latihan sesi ini belum terbuka.' });
+
+  let hasil;
+  try {
+    hasil = periksa(no, req.body?.index, req.body?.jawaban);
+  } catch (err) {
+    return res.status(err.status ?? 400).json({ error: err.message });
+  }
+
+  const status = await store.simpanJawabanLatihan(req.user.id, no, Number(req.body.index), hasil.benar, hasil.konsep);
+  res.json({ benar: hasil.benar, penjelasan: hasil.penjelasan, konsep: hasil.konsep, status });
+});
+
+/**
+ * Tantangan AI (opsional): SATU soal tambahan yang disusun dari materi modul
+ * dan angka usaha peserta sendiri. Hanya terbuka setelah kuis dasarnya lulus
+ * — AI mendongak, bukan menggantikan, penilaian deterministik. Soalnya
+ * tersimpan milik server (dengan kunci) dan dinilai server juga.
+ */
+app.post(
+  '/api/latihan/:no/ai',
+  authenticate,
+  requireConsent,
+  anggaranToken('latihanAi'),
+  rateLimit,
+  async (req, res) => {
+    const no = Number(req.params.no);
+    if (!nomorModulSah(no) || !adaLatihan(no)) return res.status(404).json({ error: 'Latihan tidak ditemukan.' });
+    // Gerbang belajarnya dulu, baru urusan layanan AI: tanpa kuis dasar yang
+    // lulus, status layanan AI tidak relevan untuk peserta.
+    if (!req.user.progress?.latihan?.[no]?.lulusPada) {
+      return res.status(400).json({ error: 'Selesaikan kuis dasarnya dulu — tantangan AI terbuka setelahnya.' });
+    }
+    if (!isConfigured()) {
+      return res.status(503).json({ error: 'Layanan AI belum diatur di server ini, jadi tantangan AI belum bisa dipakai.' });
+    }
+
+    const existing = await store.bacaLatihanAI(req.user.id, no);
+    if (existing) {
+      return res.json({ soal: { pertanyaan: existing.pertanyaan, pilihan: existing.pilihan }, sudahAda: true });
+    }
+
+    const controller = new AbortController();
+    res.on('close', () => {
+      if (!res.writableEnded) controller.abort();
+    });
+
+    try {
+      const { metrics, transactions } = await metricsFor(req.user);
+      const perubahan = bandingkanBulan(transactions);
+      const angkaTeks = metricsToText(metrics) + '\n' + perubahan.kalimat.map((s) => '- ' + s).join('\n');
+
+      const { data, usage } = await analyzeLatihanAi({
+        materiTeks: materiModul(no),
+        angkaTeks,
+        signal: controller.signal,
+      });
+      const bersih = sanitasiLatihanAI(data);
+      await store.recordUsage(req.user.id, usage);
+      const tersimpan = await store.aturLatihanAI(req.user.id, no, bersih);
+      log.info('latihan', 'soal AI dibuat', { userId: req.user.id, modul: no });
+      res.json({ soal: { pertanyaan: tersimpan.pertanyaan, pilihan: tersimpan.pilihan }, sudahAda: false });
+    } catch (err) {
+      if (controller.signal.aborted) {
+        log.info('latihan', 'soal AI dibatalkan peserta sebelum selesai', { userId: req.user.id });
+        return;
+      }
+      const { status, message } = describeError(err);
+      if (isServiceFailure(status)) req.refundRateLimit?.();
+      log.error('latihan', 'soal AI gagal', { userId: req.user.id, status, sebab: err?.message ?? String(err) });
+      res.status(status).json({ error: message });
+    }
+  },
+);
+
+/** Menilai jawaban tantangan AI — sekali jawab, hasilnya yang disimpan. */
+app.post('/api/latihan/:no/ai/jawab', authenticate, requireConsent, async (req, res) => {
+  const no = Number(req.params.no);
+  const soal = await store.bacaLatihanAI(req.user.id, no);
+  if (!soal) return res.status(404).json({ error: 'Belum ada tantangan AI untuk modul ini.' });
+
+  const benar = String(req.body?.jawaban ?? '').trim().toUpperCase() === soal.kunci;
+  const hasil = await store.catatJawabanLatihanAI(req.user.id, no, benar);
+  res.json({ benar: hasil?.hasilBenar ?? benar, penjelasan: soal.penjelasan, sudahJawab: true });
 });
 
 app.put('/api/profile', authenticate, requireConsent, async (req, res) => {

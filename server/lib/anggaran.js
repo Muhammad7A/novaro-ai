@@ -54,7 +54,7 @@ const BOBOT = {
  * berat berarti anggaran diperiksa dengan angka yang tidak benar, dan peserta
  * bisa menembus batas hariannya tanpa pernah dicegat.
  */
-export const PERKIRAAN = { chat: 3_500, chatModul: 4_500, rekomendasi: 6_000, nota: 4_000, checkup: 3_500 };
+export const PERKIRAAN = { chat: 3_500, chatModul: 4_500, rekomendasi: 6_000, nota: 4_000, checkup: 3_500, latihanAi: 2_500 };
 // `nota` paling berat di antara semuanya karena gambarnya sendiri dihitung
 // sebagai token masuk (±1.300 token untuk foto 1600px) di samping prompt dan
 // jawaban JSON-nya. Perkiraan yang terlalu kecil di sini berarti peserta bisa

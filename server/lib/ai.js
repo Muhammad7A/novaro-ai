@@ -61,6 +61,15 @@ export function analyzeCheckup(opts) {
 }
 
 /**
+ * Soal latihan personal dari materi modul + angka peserta.
+ * Keluarannya melewati sanitasiLatihanAI di lib/latihan.js; penilaian
+ * jawabannya tetap deterministik dan tidak pernah lewat AI.
+ */
+export function analyzeLatihanAi(opts) {
+  return impl().analyzeLatihanAi(opts);
+}
+
+/**
  * Membaca foto nota → JSON terstruktur.
  *
  * Keluarannya TIDAK pernah disimpan langsung di sini: rute pemanggilnya

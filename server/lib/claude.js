@@ -9,11 +9,14 @@ import { AnthropicVertex } from '@anthropic-ai/vertex-sdk';
 import { backendAI } from './backend.js';
 import {
   CHECKUP_SCHEMA,
+  LATIHAN_AI_SCHEMA,
   NOTA_SCHEMA,
   RECOMMENDATION_SCHEMA,
   chatSystem,
   checkupRequest,
   checkupSystem,
+  latihanAiRequest,
+  latihanAiSystem,
   notaRequest,
   notaSystem,
   recommendationRequest,
@@ -418,6 +421,55 @@ export async function analyzeCheckup({ metricsTeks, perubahanTeks, signal }) {
 
   if (response.stop_reason === 'max_tokens' || !text) {
     const err = new Error('Hasil check-up terpotong. Coba lagi sebentar.');
+    err.status = 502;
+    throw err;
+  }
+
+  return { data: parseNotaJson(text), usage: response.usage };
+}
+
+/**
+ * Soal latihan personal dari materi modul + angka peserta sendiri.
+ * Pola streaming analyzeCheckup di atas — AI hanya MENYUSUN soal dari
+ * angka yang dikirim; penilaiannya tetap deterministik di lib/latihan.js.
+ *
+ * @param {{materiTeks: string, angkaTeks: string, signal?: AbortSignal}} opts
+ * @returns {Promise<{data: object, usage: object}>}
+ */
+export async function analyzeLatihanAi({ materiTeks, angkaTeks, signal }) {
+  const anthropic = getClient();
+
+  const stream = anthropic.messages.stream(
+    {
+      max_tokens: 1500,
+      model: getModel(),
+      system: latihanAiSystem(materiTeks, angkaTeks),
+      messages: [{ role: 'user', content: latihanAiRequest() }],
+      thinking: { type: 'disabled' },
+      output_config: {
+        effort: 'low',
+        format: { type: 'json_schema', schema: LATIHAN_AI_SCHEMA },
+      },
+    },
+    { signal },
+  );
+
+  const response = await stream.finalMessage();
+
+  if (response.stop_reason === 'refusal') {
+    const err = new Error('Permintaan soal latihan ditolak sistem keamanan AI. Coba lagi sebentar.');
+    err.status = 422;
+    throw err;
+  }
+
+  const text = response.content
+    .filter((b) => b.type === 'text')
+    .map((b) => b.text)
+    .join('')
+    .trim();
+
+  if (response.stop_reason === 'max_tokens' || !text) {
+    const err = new Error('Hasil soal latihan terpotong. Coba lagi sebentar.');
     err.status = 502;
     throw err;
   }

@@ -24,11 +24,14 @@ import { ApiError, GoogleGenAI } from '@google/genai';
 
 import {
   CHECKUP_SCHEMA,
+  LATIHAN_AI_SCHEMA,
   NOTA_SCHEMA,
   RECOMMENDATION_SCHEMA,
   chatSystem,
   checkupRequest,
   checkupSystem,
+  latihanAiRequest,
+  latihanAiSystem,
   notaRequest,
   notaSystem,
   recommendationRequest,
@@ -357,6 +360,56 @@ export async function analyzeNota({ imageBase64, mimeType, signal }) {
   teks = teks.trim();
   if (alasan === 'MAX_TOKENS' || !teks) {
     const err = new Error('Hasil baca nota terpotong. Coba foto lebih dekat pada bagian totalnya.');
+    err.status = 502;
+    throw err;
+  }
+
+  return { data: parseNotaJson(teks), usage: keUsage(usage) };
+}
+
+/**
+ * Soal latihan personal dari materi modul + angka peserta sendiri.
+ * Kontraknya sama persis dengan lib/claude.js — hanya bentuk pemanggilan
+ * API-nya yang mengikuti Gemini.
+ *
+ * @param {{materiTeks: string, angkaTeks: string, signal?: AbortSignal}} opts
+ * @returns {Promise<{data: object, usage: object}>}
+ */
+export async function analyzeLatihanAi({ materiTeks, angkaTeks, signal }) {
+  const ai = getClient();
+
+  const stream = await ai.models.generateContentStream({
+    model: modelAktif(),
+    contents: [{ role: 'user', parts: [{ text: latihanAiRequest() }] }],
+    config: {
+      systemInstruction: latihanAiSystem(materiTeks, angkaTeks),
+      maxOutputTokens: 1500,
+      responseMimeType: 'application/json',
+      responseJsonSchema: LATIHAN_AI_SCHEMA,
+      thinkingConfig: { thinkingBudget: 0 },
+      abortSignal: signal,
+    },
+  });
+
+  let teks = '';
+  let usage = null;
+  let alasan = null;
+  for await (const bagian of stream) {
+    if (bagian.text) teks += bagian.text;
+    if (bagian.usageMetadata) usage = bagian.usageMetadata;
+    const f = bagian.candidates?.[0]?.finishReason;
+    if (f) alasan = f;
+  }
+
+  if (DITOLAK.has(alasan)) {
+    const err = new Error('Permintaan soal latihan ditolak sistem keamanan AI. Coba lagi sebentar.');
+    err.status = 422;
+    throw err;
+  }
+
+  teks = teks.trim();
+  if (alasan === 'MAX_TOKENS' || !teks) {
+    const err = new Error('Hasil soal latihan terpotong. Coba lagi sebentar.');
     err.status = 502;
     throw err;
   }

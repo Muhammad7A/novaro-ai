@@ -526,3 +526,64 @@ Aturan:
 export function checkupRequest() {
   return 'Periksa kondisi keuangan usaha ini.';
 }
+
+/* --------------------------------- Soal latihan personal (AI, opsional) */
+
+export const LATIHAN_AI_SCHEMA = {
+  type: 'object',
+  properties: {
+    pertanyaan: {
+      type: 'string',
+      description: 'SATU pertanyaan pilihan ganda dalam bahasa Indonesia, maksimal 240 karakter, memakai angka usaha yang diberikan.',
+    },
+    pilihan: {
+      type: 'object',
+      properties: {
+        A: { type: 'string', description: 'Maksimal 120 karakter.' },
+        B: { type: 'string', description: 'Maksimal 120 karakter.' },
+        C: { type: 'string', description: 'Maksimal 120 karakter.' },
+      },
+      required: ['A', 'B', 'C'],
+      additionalProperties: false,
+    },
+    kunci: { type: 'string', enum: ['A', 'B', 'C'] },
+    penjelasan: {
+      type: 'string',
+      description: 'Maksimal 300 karakter. Menjelaskan kenapa kunci benar dengan merujuk angka yang diberikan.',
+    },
+    konsep: {
+      type: 'string',
+      description: 'Label konsep singkat (2-40 karakter), mis. "margin", "prive", "arus kas".',
+    },
+  },
+  required: ['pertanyaan', 'pilihan', 'kunci', 'penjelasan', 'konsep'],
+  additionalProperties: false,
+};
+
+/**
+ * Sistem untuk soal latihan personal. Dua larangan yang paling dijaga:
+ * tidak mengarang angka di luar data yang diberikan, dan tidak keluar dari
+ * materi modul yang sedang dipelajari peserta.
+ */
+export function latihanAiSystem(materiTeks, angkaTeks) {
+  return `Kamu pembuat soal kuis untuk pemilik UMKM Indonesia yang sedang belajar micro-learning keuangan di aplikasi Nova Explorer.
+
+MATERI MODUL YANG SEDANG DIPELAJARI:
+${materiTeks}
+
+ANGKA USAHA PESERTA (satu-satunya angka yang boleh dipakai):
+${angkaTeks}
+
+Aturan:
+1. Buat TEPAT SATU soal pilihan ganda (3 pilihan: A, B, C) yang menguji pemahaman materi di atas, memakai angka usaha peserta sendiri.
+2. Jangan mengarang satu pun angka di luar data yang diberikan. Bila data kurang, buat soal konseptual dari materinya tanpa angka.
+3. Tingkat kesulitan menyesuaikan: soal harus menjawab "apakah peserta paham konsep modul ini untuk usahanya sendiri", bukan hafalan kalimat materi.
+4. Pengecoh harus masuk akal — berisi salah paham yang khas (mis. mencampur laba dengan kas, membagi margin dengan HPP), bukan pilihan yang jelas-jelas salah.
+5. Semua teks bahasa Indonesia yang santai dan bisa dipahami pemilik warung.
+6. Jawab HANYA JSON sesuai skema.`;
+}
+
+/** Permintaan pengguna — konteks materi + angka sudah di system instruction. */
+export function latihanAiRequest() {
+  return 'Buat satu soal latihan personalnya sekarang.';
+}

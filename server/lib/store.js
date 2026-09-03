@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 import { hitungToken, pangkasLog } from './anggaran.js';
 import { tanggalWIB } from './cashbook.js';
+import { totalSoal } from './latihan.js';
 import { pool, initDb } from './db.js';
 import { denganKunci } from './kunci.js';
 
@@ -775,10 +776,74 @@ export const store = {
       user.progress = {
         ...progress,
         praktik: user.progress?.praktik ?? {},
+        latihan: user.progress?.latihan ?? {},
         checks: progress.checks ?? user.progress?.checks ?? {},
       };
       if (baru.length) pushEvent(user, 'module_completed', { modul: baru.map(Number).sort((a, b) => a - b) });
       return user.progress;
+    });
+  },
+
+  /**
+   * Menyimpan hasil SATU jawaban latihan (nilai server, bukan self-report).
+   * Jawaban salah tercatat untuk riset, tapi tidak pernah menimpa jawaban
+   * yang benar — peserta boleh mencoba ulang sampai paham; yang dihitung
+   * "lulus" adalah kondisi SEMUA soal benar.
+   */
+  async simpanJawabanLatihan(userId, no, index, benar, konsep) {
+    return update((db) => {
+      const user = db.users.find((u) => u.id === userId);
+      if (!user) return null;
+      user.progress = user.progress ?? {};
+      user.progress.latihan = user.progress.latihan ?? {};
+      const entri = user.progress.latihan[no] ?? { jawaban: {} };
+      entri.jawaban = entri.jawaban ?? {};
+      const sebelumnya = entri.jawaban[index]?.benar === true;
+      entri.jawaban[index] = { benar: benar || sebelumnya, terakhir: new Date().toISOString() };
+
+      const total = totalSoal(no);
+      const benarCount = Object.values(entri.jawaban).filter((j) => j?.benar).length;
+      let baruLulus = false;
+      if (!entri.lulusPada && total > 0 && benarCount >= total) {
+        entri.lulusPada = new Date().toISOString();
+        baruLulus = true;
+      }
+      user.progress.latihan[no] = entri;
+
+      pushEvent(user, 'latihan_dijawab', { modul: no, soal: index, benar: Boolean(benar), konsep: konsep ?? null });
+      return { benarCount, total, lulus: Boolean(entri.lulusPada), baruLulus };
+    });
+  },
+
+  /**
+   * Soal tantangan AI tersimpan milik server (memuat kunci!) — sengaja
+   * TIDAK ikut publicUser, jadi peramban tidak pernah menerimanya.
+   */
+  async aturLatihanAI(userId, no, soal) {
+    return update((db) => {
+      const user = db.users.find((u) => u.id === userId);
+      if (!user) return null;
+      user.latihanAI = user.latihanAI ?? {};
+      user.latihanAI[no] = { ...soal, pada: new Date().toISOString(), sudahJawab: false, hasilBenar: null };
+      pushEvent(user, 'latihan_ai_dibuat', { modul: no });
+      return user.latihanAI[no];
+    });
+  },
+
+  async bacaLatihanAI(userId, no) {
+    return update((db) => db.users.find((u) => u.id === userId)?.latihanAI?.[no] ?? null);
+  },
+
+  async catatJawabanLatihanAI(userId, no, benar) {
+    return update((db) => {
+      const user = db.users.find((u) => u.id === userId);
+      if (!user?.latihanAI?.[no]) return null;
+      const soal = user.latihanAI[no];
+      if (soal.sudahJawab) return { sudahJawab: true, hasilBenar: soal.hasilBenar };
+      soal.sudahJawab = true;
+      soal.hasilBenar = Boolean(benar);
+      pushEvent(user, 'latihan_ai_dijawab', { modul: no, benar: Boolean(benar), konsep: soal.konsep ?? null });
+      return { sudahJawab: true, hasilBenar: soal.hasilBenar };
     });
   },
 
