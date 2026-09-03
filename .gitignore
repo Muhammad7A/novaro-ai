@@ -2,6 +2,12 @@
 .env
 *.env
 !.env.example
+# Kecuali dua berkas env yang WAJIB ada di konteks build deploy Emergent:
+!backend/.env
+!frontend/.env
+
+# Kredensial service-account (Google Vertex AI) — jangan pernah di-commit
+credentials/
 
 # Dependensi
 node_modules/
@@ -21,3 +27,8 @@ server/export/
 npm-debug.log*
 server/data/kode-akses-peserta.txt
 server/data/users-seed.json
+.env.*
+credentials.json
+*.pem
+*.key
+.credentials

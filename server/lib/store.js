@@ -163,10 +163,7 @@ async function flush(dbToFlush) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      if (db.users.length > 0) {
-        const ids = db.users.map((u) => u.id);
-        await client.query('DELETE FROM users WHERE NOT (id = ANY($1))', [ids]);
-        for (const user of db.users) {
+      for (const user of db.users) {
           const { id, name, business, batch, codeHash, createdAt, mulaiPada, consent, progress, recommendations, ...rest } = user;
           await client.query(
             `
@@ -199,9 +196,6 @@ async function flush(dbToFlush) {
               JSON.stringify(rest ?? {}),
             ]
           );
-        }
-      } else {
-        await client.query('DELETE FROM users');
       }
       await client.query('COMMIT');
     } catch (err) {
