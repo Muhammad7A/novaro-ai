@@ -5,10 +5,23 @@
  * Kunci API hanya ada di server; browser tidak pernah melihatnya.
  */
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import 'dotenv/config';
 import express from 'express';
+
+if (process.env.GOOGLE_CREDENTIALS_B64 && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  try {
+    const credPath = path.join(os.tmpdir(), 'gcp-sa-key.json');
+    const decoded = Buffer.from(process.env.GOOGLE_CREDENTIALS_B64.trim(), 'base64').toString('utf8');
+    fs.writeFileSync(credPath, decoded, { encoding: 'utf8', mode: 0o600 });
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = credPath;
+  } catch (e) {
+    console.error('Gagal mendekode GOOGLE_CREDENTIALS_B64:', e.message);
+  }
+}
 
 import {
   JENIS,
