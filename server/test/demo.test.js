@@ -60,9 +60,22 @@ test('ekonomi persona masuk akal: laba positif, margin 10–60 persen', () => {
   const hariIni = tanggalWIB();
   for (const persona of PERSONA_DEMO) {
     const d = isiDemoPenuh(persona, hariIni);
-    const bulan = hariIni.slice(0, 7);
-    const r = ringkasBulan(d.transactions, bulan);
-    assert.ok(r.penjualan > 1_000_000, `${persona.nama}: omzet bulan berjalan terlalu kecil`);
+
+    /*
+     * Ekonomi dinilai di bulan yang SUDAH HABIS, bukan bulan berjalan.
+     * Hari-hari pertama bulan otomatis dipenuhi biaya tetap kepala bulan
+     * (upah mingguan, listrik tgl 1) sehingga margin bulan berjalan sempit —
+     * itu artefak kalender penempatan biaya, bukan ekonomi persona yang
+     * sedang diuji. Riwayat 92 hari selalu memuat minimal satu bulan penuh.
+     */
+    const bulanBerjalan = hariIni.slice(0, 7);
+    const bulanUji = [...new Set(d.transactions.map((t) => t.tanggal.slice(0, 7)))]
+      .filter((b) => b !== bulanBerjalan)
+      .sort()
+      .pop();
+    assert.ok(bulanUji, persona.nama + ': riwayat harus memuat bulan lengkap');
+    const r = ringkasBulan(d.transactions, bulanUji);
+    assert.ok(r.penjualan > 1_000_000, `${persona.nama}: omzet bulan terlalu kecil`);
     assert.ok(r.laba > 0, `${persona.nama}: demo tidak boleh rugi`);
     assert.ok(r.margin >= 10 && r.margin <= 60, `${persona.nama}: margin ${r.margin.toFixed(1)}% di luar rentang wajar`);
   }
