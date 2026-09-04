@@ -11,8 +11,23 @@
  * yang paling penting — untuk memulihkan.
  */
 import { KEEP, BACKUP_DIR, listBackups, listSnapshots, restoreBackup, runBackup } from '../lib/backup.js';
+import { JENIS_PENYIMPANAN } from '../lib/db.js';
 
 const [, , perintah = 'create', ...args] = process.argv;
+
+/*
+ * Cadangan berbasis berkas hanya bermakna di penyimpanan JSON. Di jalur
+ * mongo/postgres, users.json bukan lagi sumber kebenaran — mencadangkannya
+ * diam-diam berarti mengarsipkan berkas basi dan mengira data sudah aman.
+ */
+if (JENIS_PENYIMPANAN !== 'json' && (perintah === 'create' || perintah === 'restore')) {
+  console.error(`
+Penyimpanan aktif: ${JENIS_PENYIMPANAN} — alat cadangan ini hanya untuk penyimpanan berkas JSON.
+Untuk ${JENIS_PENYIMPANAN}, buat cadangan di sisi servernya (mis. dump mongod / pg_dump),
+atau jalankan perintah ini dengan lingkungan tanpa MONGO_URI/DATABASE_URL.
+`);
+  process.exit(1);
+}
 const rupiahBytes = (n) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${(n / 1024).toFixed(1)} KB`);
 const baris = (b) => {
   const jumlah = b.pengguna === null ? 'RUSAK — tidak bisa dibaca' : `${b.pengguna} pengguna`;

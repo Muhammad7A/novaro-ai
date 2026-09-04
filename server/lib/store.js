@@ -14,7 +14,8 @@ import { fileURLToPath } from 'node:url';
 import { hitungToken, pangkasLog } from './anggaran.js';
 import { tanggalWIB } from './cashbook.js';
 import { totalSoal } from './latihan.js';
-import { pool, initDb } from './db.js';
+import { pool, initDb, JENIS_PENYIMPANAN, mongoCollection } from './db.js';
+import { muatAtauSeed, simpanSemua as simpanSemuaMongo } from './mongo-store.js';
 import { denganKunci } from './kunci.js';
 
 let dbInitialized = false;
@@ -92,29 +93,43 @@ async function sidikBerkas() {
 }
 
 /**
+ * Sumber taburan basis data eksternal yang masih kosong: berkas JSON di
+ * NOVA_DATA_DIR, lalu berkas seed bawaan — urutan yang sama untuk jalur
+ * PostgreSQL maupun Mongo. Mengembalikan daftar pengguna (boleh kosong).
+ */
+async function bacaSeedDariBerkas() {
+  try {
+    const raw = await readFile(DB_PATH, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed?.users) && parsed.users.length > 0) {
+      return parsed.users;
+    }
+  } catch {}
+  try {
+    const rawSeed = await readFile(path.join(HERE, '..', 'data', 'users-seed.json'), 'utf8');
+    const parsedSeed = JSON.parse(rawSeed);
+    if (Array.isArray(parsedSeed?.users)) return parsedSeed.users;
+  } catch {}
+  return [];
+}
+
+/**
  * Memuat basis data, memakai cache HANYA bila berkasnya belum berubah.
- * Jika DATABASE_URL terpasang, membaca dari Cloud SQL / PostgreSQL.
+ * Jika DATABASE_URL terpasang, membaca dari Cloud SQL / PostgreSQL;
+ * jika MONGO_URI terpasang, dari MongoDB terkelola (Emergent produksi).
  */
 async function load() {
+  if (JENIS_PENYIMPANAN === 'mongo') {
+    const col = await mongoCollection();
+    const { users } = await muatAtauSeed(col, bacaSeedDariBerkas);
+    return { version: 1, users };
+  }
+
   if (pool) {
     await ensureDb();
     let res = await pool.query('SELECT * FROM users');
     if (res.rows.length === 0) {
-      let seedUsers = [];
-      try {
-        const raw = await readFile(DB_PATH, 'utf8');
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed?.users) && parsed.users.length > 0) {
-          seedUsers = parsed.users;
-        }
-      } catch {}
-      if (seedUsers.length === 0) {
-        try {
-          const rawSeed = await readFile(path.join(HERE, '..', 'data', 'users-seed.json'), 'utf8');
-          const parsedSeed = JSON.parse(rawSeed);
-          if (Array.isArray(parsedSeed?.users)) seedUsers = parsedSeed.users;
-        } catch {}
-      }
+      const seedUsers = await bacaSeedDariBerkas();
       if (seedUsers.length > 0) {
         await flush({ version: 1, users: seedUsers });
         res = await pool.query('SELECT * FROM users');
@@ -158,6 +173,10 @@ async function load() {
 
 async function flush(dbToFlush) {
   const db = dbToFlush ?? cache ?? (await load());
+  if (JENIS_PENYIMPANAN === 'mongo') {
+    await simpanSemuaMongo(await mongoCollection(), db.users);
+    return;
+  }
   if (pool) {
     await ensureDb();
     const client = await pool.connect();
@@ -197,6 +216,20 @@ async function flush(dbToFlush) {
             ]
           );
       }
+      /*
+       * Penghapusan menjalar: baris yang id-nya tidak lagi ada di memori
+       * dihapus, supaya deleteUser benar-benar menghapus. Aman dari
+       * pengosongan tak sengaja karena flush hanya pernah dipanggil
+       * SETELAH load() dari backend yang sama dalam proses ini — memori
+       * kosong berarti basis datanya memang kosong. (Blok ini pernah
+       * dihapus demi mencegah pengosongan; tanpaunya, pengguna yang
+       * dihapus hidup lagi setiap restart.)
+       */
+      const ids = db.users.map((u) => u.id);
+      await client.query(
+        ids.length ? 'DELETE FROM users WHERE NOT (id = ANY($1))' : 'DELETE FROM users',
+        ids.length ? [ids] : [],
+      );
       await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK');

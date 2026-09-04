@@ -6,8 +6,24 @@ Novaro (formerly "Nova Explorer") — an Indonesian UMKM financial-coaching web 
 in `/app/server` (`server.js`, `lib/`, `public/index.html`) that serves both the HTML SPA and all
 `/api/*` endpoints, including SSE streaming on `/api/chat`.
 
-- Storage: JSON files under `NOVA_DATA_DIR` (`/app/server/data`). Auto-seeds 20 demo accounts
-  (access codes 101–120) on first boot. Data is ephemeral on redeploy (accepted). Never manually reseed.
+- Storage — THREE backends, one priority order (first set wins):
+  1. `DATABASE_URL` → PostgreSQL (Cloud SQL / own server)
+  2. `MONGO_URI` (or MONGODB_URI/MONGO_URL/MONGODB_URL) → MongoDB — the MANAGED DB Emergent
+     provides in production Publish. One document per user in the `users` collection
+     (`_id` = user id, whole user object stored as-is). Empty collection seeds once from
+     JSON/users-seed.json, same as the Postgres path.
+  3. neither → JSON files under `NOVA_DATA_DIR` (`/app/server/data`) — dev/test/CLI/preview.
+     EPHEMERAL on redeploy: accepted for the contest demo (demo accounts reseed), NOT for real users.
+- Production safety: set `NOVA_REQUIRE_PERSISTENT_STORE=1` in Emergent Deploy env vars. With it set
+  and no DATABASE_URL/MONGO_URI, the server REFUSES TO START (exit 1, loud banner) instead of
+  silently writing to ephemeral disk. `GET /api/health` reports the active backend as
+  `penyimpanan.jenis` (`json|mongo|postgres`) and pings the DB for real on non-json backends.
+- Write semantics on mongo/postgres: load-all into memory cache → flush = upsert all users +
+  delete rows/docs absent from memory (so deleteUser really deletes). SINGLE-WRITER app: run ONE
+  Node instance only (in-process write queue + per-pod file lock do not span replicas).
+  Redeploy: data survives (DB is external); boot re-reads from DB; backups (`npm run backup`)
+  are JSON-only — for mongo/postgres, back up server-side (mongodump/pg_dump); the CLI refuses
+  and says so on non-json backends.
 - Auth: access-code based — `Authorization: Bearer <code>`. `POST /api/demo` logs in a rotating demo account.
 - AI: **Gemini on Google Vertex AI** (`NOVA_AI_BACKEND=gemini`, `GEMINI_MODEL=gemini-2.5-flash`,
   `CLOUD_ML_REGION=us-central1`, project `project-421f02fa-4c0b-4b27-b30`), authenticated by a Google

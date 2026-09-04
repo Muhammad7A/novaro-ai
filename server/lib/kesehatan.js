@@ -33,6 +33,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { log } from './log.js';
+import { JENIS_PENYIMPANAN, pingPenyimpanan, pilihPenyimpanan } from './db.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = process.env.NOVA_DATA_DIR
@@ -171,15 +172,36 @@ async function bisaMembaca({ menyeluruh = false } = {}) {
 /**
  * Status kesehatan penyimpanan.
  *
- * @returns {Promise<{sehat: boolean, baca: object, tulis: object, peserta: number|null}>}
+ * Jalur json diperiksa lewat berkas (baca+tulis, seperti sejak awal).
+ * Jalur postgres/mongo diperiksa lewat PING SUNGGUHAN ke server — probe
+ * yang menyatakan sehat tanpa menyentuh penyimpanannya adalah probe yang
+ * menyesatkan, dan di produksi penyimpanan justru satu-satunya hal yang
+ * tidak boleh diam-diam rusak.
+ *
+ * @returns {Promise<{sehat: boolean, jenis: string, baca: object, tulis: object, peserta: number|null}>}
  */
 export async function periksaPenyimpanan({ menyeluruh = false } = {}) {
   if (!menyeluruh && terakhir && terakhir.hasil.sehat && Date.now() - terakhir.pada < CACHE_MS) {
     return terakhir.hasil;
   }
 
+  if (JENIS_PENYIMPANAN !== 'json') {
+    const ping = await pingPenyimpanan();
+    const hasil = {
+      jenis: JENIS_PENYIMPANAN,
+      sehat: Boolean(ping?.ok),
+      baca: ping?.ok ? 'ok' : (ping?.alasan ?? 'tidak-terjangkau'),
+      tulis: ping?.ok ? 'ok' : (ping?.alasan ?? 'tidak-terjangkau'),
+      peserta: ping?.ok ? (ping.peserta ?? 0) : null,
+      pesertaDiukurPada: ping?.ok ? new Date().toISOString() : null,
+    };
+    if (hasil.sehat) terakhir = { pada: Date.now(), hasil };
+    return hasil;
+  }
+
   const [baca, tulis] = await Promise.all([bisaMembaca({ menyeluruh }), bisaMenulis()]);
   const hasil = {
+    jenis: 'json',
     sehat: baca.ok && tulis.ok,
     baca: baca.ok ? 'ok' : baca.alasan,
     tulis: tulis.ok ? 'ok' : tulis.alasan,
@@ -192,6 +214,33 @@ export async function periksaPenyimpanan({ menyeluruh = false } = {}) {
 
   terakhir = { pada: Date.now(), hasil };
   return hasil;
+}
+
+/**
+ * Syarat produksi: ketika NOVA_REQUIRE_PERSISTENT_STORE=1, penyimpanan
+ * berkas JSON (fana di container) TIDAK BOLEH dipakai — server memilih
+ * berhenti daripada menerima catatan pengguna yang pasti lenyap saat
+ * redeploy. Murni dan membaca env saat DIPANGGIL, supaya teruji langsung.
+ *
+ * @returns {{lulus: boolean, jenis: string, pesan?: string}}
+ */
+export function cekSyaratProduksi(env = process.env) {
+  const jenis = pilihPenyimpanan(env);
+  if (String(env.NOVA_REQUIRE_PERSISTENT_STORE ?? '').trim() !== '1') {
+    return { lulus: true, jenis };
+  }
+  if (jenis === 'json') {
+    return {
+      lulus: false,
+      jenis,
+      pesan:
+        'NOVA_REQUIRE_PERSISTENT_STORE=1 tetapi tidak ada DATABASE_URL/MONGO_URI — ' +
+        'sistem berkas container FANA: seluruh data lenyap saat redeploy. ' +
+        'Isi MONGO_URI (MongoDB terkelola Emergent) atau DATABASE_URL, ' +
+        'atau kosongkan NOVA_REQUIRE_PERSISTENT_STORE bila ini memang lingkungan demo.',
+    };
+  }
+  return { lulus: true, jenis };
 }
 
 /**
@@ -209,20 +258,60 @@ export async function periksaPenyimpanan({ menyeluruh = false } = {}) {
  * kehilangan pembukuan tiga bulan.
  */
 export async function wajibBisaMenyimpan() {
+  // Pagar produksi lebih dulu: JSON fana + syarat persisten = jangan menyala.
+  const syarat = cekSyaratProduksi();
+  if (!syarat.lulus) {
+    log.error('kesehatan', 'penyimpanan persisten wajib tapi tidak terpasang — server tidak dinyalakan', {
+      jenis: syarat.jenis,
+    });
+    console.error(`
+  ────────────────────────────────────────────────────────────────
+  SERVER TIDAK DINYALAKAN — penyimpanan persisten tidak terpasang.
+
+    Jenis aktif : ${syarat.jenis} (berkas JSON — fana di container)
+    Penyebab    : ${syarat.pesan}
+
+  Produksi dengan pengguna sungguhan tidak boleh menulis ke sistem
+  berkas yang lenyap saat redeploy. Menyalakan server dalam keadaan ini
+  berarti menerima catatan yang pasti hilang tanpa memberi tahu siapa pun.
+  ────────────────────────────────────────────────────────────────
+`);
+    process.exit(1);
+  }
+
+  /*
+   * Peringatan (bukan penghentian) untuk produksi JSON tanpa syarat
+   * eksplisit: preview/demo memang sengaja begini, tetap boleh menyala —
+   * tapi keputusan itu berhak terbaca di log, bukan berlalu diam-diam.
+   */
+  if (String(process.env.NODE_ENV ?? '') === 'production' && JENIS_PENYIMPANAN === 'json') {
+    log.warn('kesehatan', 'NODE_ENV=production dengan penyimpanan JSON fana — data lenyap saat redeploy', {
+      jenis: 'json',
+    });
+    console.warn(`
+  ⚠  PRODUKSI MENYIMPAN KE BERKAS JSON (fana di container).
+     Setiap redeploy mengganti container dan menghapus seluruh data.
+     Untuk pengguna sungguhan: pasang MONGO_URI/DATABASE_URL dan
+     NOVA_REQUIRE_PERSISTENT_STORE=1. Untuk demo/preview: abaikan.
+`);
+  }
+
   // Menyeluruh: saat start adalah satu-satunya saat berkas rusak paling perlu
   // ketahuan, sebelum satu peserta pun sempat masuk.
   const hasil = await periksaPenyimpanan({ menyeluruh: true });
   if (hasil.sehat) return hasil;
 
-  log.error('kesehatan', 'folder data tidak bisa dipakai — server tidak dinyalakan', {
+  log.error('kesehatan', 'penyimpanan tidak bisa dipakai — server tidak dinyalakan', {
+    jenis: hasil.jenis,
     dataDir: DATA_DIR,
     baca: hasil.baca,
     tulis: hasil.tulis,
   });
   console.error(`
   ────────────────────────────────────────────────────────────────
-  SERVER TIDAK DINYALAKAN — folder data tidak bisa dipakai.
+  SERVER TIDAK DINYALAKAN — penyimpanan tidak bisa dipakai.
 
+    Jenis  : ${hasil.jenis}
     Folder : ${DATA_DIR}
     Baca   : ${hasil.baca}
     Tulis  : ${hasil.tulis}
@@ -232,6 +321,8 @@ export async function wajibBisaMenyimpan() {
     - disk/volume belum ter-mount di jalur itu
     - folder milik pengguna lain (periksa: ls -ld ${DATA_DIR})
     - disk penuh (periksa: df -h)
+    - untuk mongo/postgres: URI salah, server tidak terjangkau, atau
+      kredensial ditolak — periksa MONGO_URI / DATABASE_URL
 
   Perbaiki dulu. Menyalakan server dengan penyimpanan yang tidak bisa
   ditulis berarti menerima catatan peserta yang tidak akan pernah tersimpan.

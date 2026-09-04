@@ -42,6 +42,7 @@ import {
 } from './lib/cashbook.js';
 import { PERKIRAAN, cekAnggaran, ringkasAnggaran } from './lib/anggaran.js';
 import { scheduleBackups } from './lib/backup.js';
+import { JENIS_PENYIMPANAN } from './lib/db.js';
 import { analyzeCheckup, analyzeLatihanAi, analyzeNota, backendAI, describeError, generateRecommendations, isConfigured, modelAktif, streamChat } from './lib/ai.js';
 import { CONSENT_TEXT, CONSENT_VERSION, hasConsented } from './lib/consent.js';
 import { asetDariBerkas, asetDariNilai, sajikanAset } from './lib/aset.js';
@@ -385,7 +386,7 @@ app.get('/api/health', async (req, res) => {
     ok: penyimpanan.sehat,
     model: modelAktif(),
     aiConfigured: isConfigured(),
-    penyimpanan: { baca: penyimpanan.baca, tulis: penyimpanan.tulis, peserta: penyimpanan.peserta },
+    penyimpanan: { jenis: penyimpanan.jenis ?? 'json', baca: penyimpanan.baca, tulis: penyimpanan.tulis, peserta: penyimpanan.peserta },
   });
 });
 
@@ -2179,7 +2180,7 @@ if (dijalankanLangsung) {
       : `  Layanan AI  : ${backendAI() === 'gemini' ? 'Gemini' : 'Claude'} di Vertex AI (project ${process.env.GOOGLE_CLOUD_PROJECT}, region ${process.env.CLOUD_ML_REGION || 'global'})`,
   );
   console.log(`  Batas AI    : ${RATE_LIMIT} permintaan/jam per pengguna`);
-  console.log(`  Data        : ${store.DB_PATH}`);
+  console.log(`  Data        : ${JENIS_PENYIMPANAN === 'json' ? store.DB_PATH : `${JENIS_PENYIMPANAN} (persisten)`}`);
   console.log(
     `  Validasi    : ${kodeValidasi() ? `aktif di /validasi (hasil di ${validasiStore.FILE_PATH})` : 'nonaktif — isi VALIDASI_KODE di .env bila lembar validasi materi akan dipakai'}`,
     /*
