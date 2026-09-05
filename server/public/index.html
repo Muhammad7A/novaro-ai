@@ -533,7 +533,9 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
 .report-sign .line{margin-top:56px;border-top:1px solid var(--ink);padding-top:6px}
 
 /* ---------- Navigasi bawah (ponsel) ---------- */
-.tabbar{
+.tabbar{display:none}
+@media (max-width:640px){
+  .tabbar{
     /* `top:auto` wajib: aturan `nav{position:sticky;top:0}` di atas ikut
        terpakai di sini, dan `top:0` + `bottom:0` membuat bilah ini setinggi
        satu layar penuh sehingga menutupi seluruh halaman. */
@@ -551,6 +553,10 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
   .tabbar button.active{color:var(--blue-deep)}
   .tabbar button.active .ic{transform:translateY(-1px)}
   #toast{bottom:88px}
+  /* Grid multi-kolom jatuh ke satu kolom agar tidak meluber di layar ~390px. */
+  .hero-row,.grid-2,.grid-3,.form-grid,.mod-grid,.report-sign{grid-template-columns:1fr}
+  .kas-summary{grid-template-columns:repeat(2,1fr)}
+  .score-card{flex-wrap:wrap}
 }
 
 /* ---------- Putar Ulang (film buku kas) ---------- */
