@@ -40,8 +40,18 @@ import pg from 'pg';
  * Selektor murni — dibaca dari objek env, bukan dari process.env langsung,
  * supaya uji bisa memeriksa prioritas tanpa menyentuh lingkungan proses
  * dan tanpa memicu pembuatan koneksi apa pun.
+ *
+ * NOVA_STORAGE adalah PENGATURAN eksplisit tertinggi: platform deployment
+ * (Emergent) menyuntikkan MONGO_URL otomatis ke setiap deployment, sehingga
+ * menghapus berkas .env tidak pernah cukup untuk memilih jalur json.
+ * `NOVA_STORAGE=json` menang atas injeksi apa pun — itu cara sah untuk
+ * memaksa jalur berkas tanpa menyentuh konfigurasi platform.
  */
 export function pilihPenyimpanan(env = process.env) {
+  const eksplisit = String(env.NOVA_STORAGE ?? '').trim().toLowerCase();
+  if (eksplisit === 'json' || eksplisit === 'mongo' || eksplisit === 'postgres') {
+    return eksplisit;
+  }
   if (String(env.DATABASE_URL ?? '').trim()) return 'postgres';
   const mongo = [
     'MONGO_URI',

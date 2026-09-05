@@ -48,6 +48,19 @@ test('prioritas: DATABASE_URL menang, lalu Mongo, lalu json', () => {
   assert.equal(pilihPenyimpanan({ DATABASE_URL: 'postgres://x', MONGO_URI: 'mongodb://x' }), 'postgres');
 });
 
+test('NOVA_STORAGE eksplisit menang atas injeksi platform (MONGO_URL otomatis)', () => {
+  assert.equal(
+    pilihPenyimpanan({ NOVA_STORAGE: 'json', MONGO_URL: 'mongodb://dari-platform' }),
+    'json',
+    'penghapus env di .env tidak cukup saat platform menyuntik MONGO_URL — override ini jalurnya',
+  );
+  assert.equal(pilihPenyimpanan({ NOVA_STORAGE: 'mongo', DATABASE_URL: 'postgres://x' }), 'mongo');
+  assert.equal(pilihPenyimpanan({ NOVA_STORAGE: 'postgres', MONGO_URI: 'mongodb://x' }), 'postgres');
+  assert.equal(pilihPenyimpanan({ NOVA_STORAGE: 'JSON' }), 'json', 'huruf besar dinormalkan');
+  // nilai asing diabaikan — jatuh ke prioritas normal
+  assert.equal(pilihPenyimpanan({ NOVA_STORAGE: 'mysql', MONGO_URI: 'mongodb://x' }), 'mongo');
+});
+
 test('semua nama env Mongo yang lazim dikenali; spasi kosong tidak dihitung', () => {
   for (const k of ['MONGO_URI', 'MONGODB_URI', 'MONGO_URL', 'MONGODB_URL']) {
     assert.equal(pilihPenyimpanan({ [k]: 'mongodb+srv://user:pass@h/db' }), 'mongo', k);
