@@ -1,3 +1,6 @@
+> **2026-06 sync (HEAD 09b5b90):** Codebase now on upstream main with MongoDB adapter (`server/lib/mongo-store.js`; `lib/db.js` selects `mongo` when MONGO_URI/MONGO_URL is set). `frontend/.env` (loaded by Node via dotenv) has `MONGO_URI=mongodb://localhost:27017/novaro` (Emergent-managed Mongo = backend/.env MONGO_URL + DB_NAME) and `NOVA_REQUIRE_PERSISTENT_STORE=1` (fail-closed: server exits if Mongo unreachable — intentional, do not remove). `/api/health` reports `penyimpanan.jenis:"mongo"`, `peserta:20`. Persistence verified across supervisor restart via `GET /api/cashbook` (`/api/me` does not list transactions by design). Old "JSON-only storage" rule is superseded.
+
+
 # Novaro — PRD / Deployment Adaptation Notes
 
 ## What this is
