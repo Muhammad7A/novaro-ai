@@ -4363,6 +4363,16 @@ function updateProgress() {
    Mulai
 ============================================================ */
 (async function init() {
+  /*
+   * Etalase dulu, aplikasi kemudian: pengunjung yang membuka root tanpa
+   * sesi diarahkan ke halaman landing (Novaro) — bukan langsung formulir
+   * kode. Yang sudah punya kode tersimpan (peserta/penguji/juri yang
+   * pernah masuk) tetap langsung masuk aplikasi.
+   */
+  if (!token && (location.pathname === '/' || location.pathname === '/index.html')) {
+    location.replace('/landing.html');
+    return;
+  }
   if (!token) return;
   try {
     const data = await api('/me');
