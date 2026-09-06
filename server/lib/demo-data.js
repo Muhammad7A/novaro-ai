@@ -183,15 +183,24 @@ const DAFTAR_PERSONA = [
       const faktor = hariKe % 7 >= 5 ? 1.25 : 1;
       return bulat(dasar * faktor * 1000);
     },
-    belanjaBahan() {
-      return null; // kelontong belanja besar dua mingguan, bukan harian
+    /*
+     * Belanja HARIAN, bukan borongan dua-mingguan. Kulakan besar membuat
+     * bulan kalender bergantian memuat satu vs dua pembelian — margin
+     * bergelombang 25%↔70%, dan pada benih tanggal tertentu warung contoh
+     * ini tampak RUGI (pernah −11%). Belanja harian pada porsi 62–68% omzet
+     * menempel pada profil persona (belanja 11,8 jt dari omzet 15 jt) dan
+     * menghasilkan margin sehat yang stabil di setiap bulan dan setiap
+     * benih tanggal. Kisah "borongan membuat laporan bergelombang" tetap
+     * diajarkan Modul 11 — lewat materinya, bukan lewat akun contoh yang
+     * harus selalu sehat.
+     */
+    belanjaBahan(omzet, rng) {
+      return bulat(omzet * antar(rng, 0.62, 0.68));
     },
     tetap: [
       { kategori: 'operasional', jumlah: 260000, tiapHari: 30, keterangan: 'Listrik toko' },
       { kategori: 'operasional', jumlah: 30000, tiapHari: 7, keterangan: 'Kantong & plastik' },
     ],
-    // Kirim stok dua mingguan: kategori belanja-bahan, jumlah besar.
-    belanjaBesar: { tiapHari: 14, porsi: [0.92, 0.98], keterangan: 'Kulakan stok grosir' },
     prive(rng) {
       return rng() < 0.5 ? bulat(antar(rng, 120, 180) * 1000) : null;
     },
@@ -392,7 +401,15 @@ function transaksiHari(persona, hariKe, tanggal, rng) {
   }
 
   if (persona.belanjaBesar && hariKe % persona.belanjaBesar.tiapHari === 0 && hariKe > 0) {
-    const acuan = omzet * persona.belanjaBesar.tiapHari * 0.9; // stok untuk periode berikut
+    /*
+     * Faktor penyetel porsi bahan per persona (bawaan 0.9). Kelontong
+     * memakai 0.72: dengan 0.9, belanja borongannya menyerap 82–87% omzet —
+     * melampaui 70,7% yang dinyatakan profilnya sendiri — sehingga pada
+     * benih tanggal tertentu warung contoh ini RUGI, melanggar janji bahwa
+     * semua persona demo sehat. 0.72 menurunkan porsinya ke 65–70% omzet
+     * (margin ±12%) di benih tanggal berapa pun.
+     */
+    const acuan = omzet * persona.belanjaBesar.tiapHari * (persona.belanjaBesar.faktor ?? 0.9); // stok untuk periode berikut
     dorong('keluar', 'belanja-bahan', bulat(acuan * antar(rng, persona.belanjaBesar.porsi[0], persona.belanjaBesar.porsi[1])), persona.belanjaBesar.keterangan);
   }
 
