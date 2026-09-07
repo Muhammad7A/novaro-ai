@@ -45,7 +45,17 @@ body{
 }
 .starfield{
   position:fixed;inset:0;z-index:0;pointer-events:none;opacity:var(--stars);transition:opacity .4s ease;
-  background-image: url('bg-stars.png');
+  background-image:
+    radial-gradient(1100px 620px at 85% -12%, rgba(59,130,246,.20), transparent 60%),
+    radial-gradient(900px 520px at -12% 18%, rgba(245,166,35,.09), transparent 55%),
+    radial-gradient(820px 520px at 50% 112%, rgba(29,78,216,.20), transparent 62%),
+    radial-gradient(1.6px 1.6px at 12% 22%, rgba(255,255,255,.55), transparent 60%),
+    radial-gradient(1.4px 1.4px at 34% 62%, rgba(147,197,253,.45), transparent 60%),
+    radial-gradient(1.8px 1.8px at 56% 18%, rgba(255,255,255,.40), transparent 60%),
+    radial-gradient(1.2px 1.2px at 72% 55%, rgba(147,197,253,.40), transparent 60%),
+    radial-gradient(1.7px 1.7px at 88% 34%, rgba(255,255,255,.38), transparent 60%),
+    radial-gradient(1.3px 1.3px at 20% 86%, rgba(147,197,253,.35), transparent 60%),
+    radial-gradient(1.5px 1.5px at 94% 82%, rgba(255,255,255,.30), transparent 60%);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
