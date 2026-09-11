@@ -1,0 +1,113 @@
+{
+  "alat": "uji-hidup",
+  "versiAlat": "1.0.0",
+  "schemaVersi": 1,
+  "mulai": "2026-09-11T15:34:19.327Z",
+  "hasil": "LULUS",
+  "ruteAi": "chat",
+  "sasaran": {
+    "baseUrl": "https://novaexplorer-532597100979.asia-southeast2.run.app",
+    "layanan": "novaexplorer",
+    "region": "asia-southeast2",
+    "project": "project-421f02fa-4c0b-4b27-b30",
+    "revision": null
+  },
+  "identitasRuntime": null,
+  "konfigurasiTerbaca": null,
+  "langkah": {
+    "kesehatan": {
+      "langkah": "kesehatan",
+      "lulus": true,
+      "status": 200,
+      "ms": 349,
+      "model": "gemini-2.5-flash",
+      "aiConfigured": true,
+      "penyimpanan": {
+        "baca": "ok",
+        "tulis": "ok",
+        "peserta": 0
+      }
+    },
+    "demo": {
+      "langkah": "demo",
+      "lulus": true,
+      "status": 200,
+      "ms": 1413,
+      "demoUserId": "usr_1bd3cd789833",
+      "akunDemo": "Warung Nasi Bu Rina",
+      "anggaranSebelum": {
+        "harian": {
+          "terpakai": 0,
+          "batas": 60000,
+          "sisa": 60000
+        },
+        "mingguan": {
+          "terpakai": 0,
+          "batas": 300000,
+          "sisa": 300000
+        },
+        "sisa": 60000,
+        "hariIni": "2026-09-11",
+        "mingguMulai": "2026-09-07"
+      },
+      "kode": "DIREDAKSI — kode akses tidak pernah direkam"
+    },
+    "pembersihan": {
+      "langkah": "pembersihan",
+      "lulus": true,
+      "status": 200,
+      "ms": 502
+    },
+    "percakapan": {
+      "langkah": "percakapan",
+      "lulus": true,
+      "status": 200,
+      "ms": 39014,
+      "model": "gemini-2.5-flash",
+      "potonganMengalir": 3,
+      "panjangJawaban": 80,
+      "terpotong": false,
+      "anggaranSesudah": {
+        "harian": {
+          "terpakai": 3029,
+          "batas": 60000,
+          "sisa": 56971
+        },
+        "mingguan": {
+          "terpakai": 3029,
+          "batas": 300000,
+          "sisa": 296971
+        },
+        "sisa": 56971,
+        "hariIni": "2026-09-11",
+        "mingguMulai": "2026-09-07"
+      },
+      "pesan": "Ini uji kesehatan sistem. Balas dengan SATU kalimat pendek: sebutkan satu manfaat mencatat kas harian.",
+      "tokenTerpakai": {
+        "harian": 3029,
+        "mingguan": 3029,
+        "sumber": "anggaran server sebelum/sesudah (hitungToken)"
+      }
+    }
+  },
+  "perkiraanBiaya": {
+    "usd": 0.007573,
+    "idrPerkiraan": 125,
+    "tarif": {
+      "input": 0.3,
+      "output": 2.5,
+      "cacheBuat": 0,
+      "cacheBaca": 0.3,
+      "asal": "Google — Gemini 2.5 Flash, tarif standar Vertex AI/Gemini API",
+      "asOf": "2026-09-11",
+      "catatan": "cache_read dihargai setara input (diskon cache tidak diterapkan — batas atas)"
+    },
+    "basis": "delta anggaran 3029 token unit-anggaran, dihargai dengan tarif output"
+  },
+  "catatan": [
+    "gcloud run gagal: spawn EINVAL",
+    "gcloud projects gagal: spawn EINVAL",
+    "gcloud services gagal: spawn EINVAL"
+  ],
+  "selesai": "2026-09-11T15:35:00.611Z"
+}

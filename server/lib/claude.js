@@ -24,7 +24,6 @@ import {
 } from './prompts.js';
 
 import { parseNotaJson } from './nota.js';
-import { sanitasiCheckup } from './checkup.js';
 
 export function getModel() {
   return backendAI() === 'vertex' ? 'claude-3-5-sonnet-v2@20241022' : 'claude-3-5-sonnet-20241022';

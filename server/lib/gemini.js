@@ -39,7 +39,6 @@ import {
 } from './prompts.js';
 
 import { parseNotaJson } from './nota.js';
-import { sanitasiCheckup } from './checkup.js';
 
 /**
  * Model bawaan.

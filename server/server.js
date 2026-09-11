@@ -37,6 +37,7 @@ import {
   saringTransaksi,
   summarizeMonth,
   summarizeRange,
+  tanggalTerlama,
   todayISO,
   transactionsForMonth,
 } from './lib/cashbook.js';
@@ -57,10 +58,11 @@ import { susunKonteksUsaha } from './lib/konteks-usaha.js';
 import { susunFokusHarian } from './lib/fokus-harian.js';
 import { modulPraktikTerverifikasi } from './lib/praktik.js';
 import { adaLatihan, periksa, sanitasiLatihanAI, soalPublik } from './lib/latihan.js';
-import { store } from './lib/store.js';
+import { GalatMutasi, store } from './lib/store.js';
 import { KODE_DEMO, isiDemoPenuh, lanjutkanDemo, personaDemo, PERSONA_DEMO } from './lib/demo-data.js';
 import { kenaliGambar, sanitasiHasilNota } from './lib/nota.js';
 import { sanitasiCheckup } from './lib/checkup.js';
+import { sanitasiRekomendasi } from './lib/rekomendasi.js';
 import { hitungHasil, instrumen, periksaPengiriman, rekapValidasi } from './lib/validasi.js';
 import { hitungHasilIT, instrumenIT, periksaPengirimanIT, rekapValidasiIT } from './lib/validasi-it.js';
 import { validasiStore } from './lib/validasi-store.js';
@@ -323,19 +325,11 @@ const asNumber = (v, max) => {
 };
 
 /*
- * Batas bawah tanggal transaksi.
- *
- * Batas atas sudah ada (tidak boleh di masa depan), tapi tanpa batas bawah satu
- * salah ketik tahun — "2016" alih-alih "2026" — menyelipkan bulan asing ke
- * daftar pilihan bulan dan ke riwayat yang dibaca AI, dan peserta tidak punya
- * cara mudah menyadarinya. Lima tahun jauh melampaui kebutuhan KUR (3–6 bulan).
+ * Batas bawah tanggal transaksi kini tinggal DI lib/cashbook.js — dipakai rute
+ * ini untuk kalimat galat yang ramah, dan dipakai MUTATOR penyimpan sebagai
+ * penegak terakhirnya. Dua tempat pernah menyalin konstanta ini sendiri-
+ * sendiri; konstanta kembar itulah yang paling mudah saling tertinggal.
  */
-const TAHUN_TERLAMA = 5;
-const tanggalTerlama = () => {
-  const [y, m, d] = todayISO().split('-').map(Number);
-  return `${y - TAHUN_TERLAMA}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-};
-const BULAN_TERLAMA = tanggalTerlama().slice(0, 7);
 
 function sanitizeProfile(body = {}) {
   const errors = [];
@@ -833,9 +827,16 @@ app.post('/api/recommendations', authenticate, requireConsent, anggaranToken('re
       belajar: { kemajuan: `${ringkasKemajuan(req.user.progress?.done ?? {})}\n${jadwalUntukAI(req.user)}` },
       signal: controller.signal,
     });
+    /*
+     * Janji `json_schema` penyedia diverifikasi ulang di server sebelum disimpan
+     * (lib/rekomendasi.js). Ini satu-satunya keluaran AI yang persisten dan dibaca
+     * ulang tiga permukaan (Saran, fokus harian, kartu publik) — tubuh yang
+     * rusak dari penyedia gagal 502 di sini, bukan tersimpan apa adanya.
+     */
+    const bersih = sanitasiRekomendasi(data);
     // Satu penulisan, bukan dua: rekomendasi dan pemakaian tokennya mengubah
     // pengguna yang sama pada momen yang sama.
-    const saved = await store.simpanRekomendasi(req.user.id, data, usage);
+    const saved = await store.simpanRekomendasi(req.user.id, bersih, usage);
     res.json({ recommendations: saved, metrics, anggaran: await anggaranUntuk(req.user) });
   } catch (err) {
     /*
@@ -1099,7 +1100,8 @@ function bulanDiminta(raw) {
   if (!/^\d{4}-\d{2}$/.test(raw ?? '')) return ini;
   // Bulan depan tidak pernah punya isi; melayaninya cuma menggambar sebulan kosong.
   if (raw > ini) return ini;
-  return raw < BULAN_TERLAMA ? BULAN_TERLAMA : raw;
+  const terlama = tanggalTerlama().slice(0, 7);
+  return raw < terlama ? terlama : raw;
 }
 
 /* ------------------------------------------------- Garis waktu kesehatan */
@@ -1382,7 +1384,42 @@ app.post('/api/cashbook', authenticate, requireConsent, async (req, res) => {
     return res.status(400).json({ error: `Tanggal terlalu lama. Periksa tahunnya — paling lama ${tanggalTerlama()}.` });
   }
 
-  const row = await store.addTransaction(req.user.id, { tanggal, jenis, kategori, keterangan, jumlah });
+  /*
+   * Id permintaan OPSIONAL dari peramban (`X-Request-Id`): ketukan ganda dan
+   * kirim ulang otomatis yang membawa id yang sama ditolak mutator sebagai
+   * `duplikat` (409) — satu niat tidak lagi bisa menjadi dua baris. Tanpa
+   * header, permintaan berjalan persis seperti dulu dan pengulangan tidak
+   * terdeteksi (kelemahan yang diakui, dijelaskan di kontrak mutator).
+   * VALIDASINYA TIDAK DI SINI: header apa adanya diteruskan, dan mutator —
+   * penegak terakhir — yang menolak bentuk asing. Satu aturan, satu tempat.
+   */
+  const idPermintaan = String(req.get('x-request-id') ?? '').trim();
+
+  let row;
+  try {
+    row = await store.addTransaction(
+      req.user.id,
+      { tanggal, jenis, kategori, keterangan, jumlah },
+      { aktor: 'manusia', requestId: idPermintaan || undefined },
+    );
+  } catch (err) {
+    /*
+     * Penolakan bertipe dari batas tulis diteruskan apa adanya — bentuk galat
+     * tetap `{error}` + ekstra bertipe. Yang bisa sampai ke sini dari rute
+     * ini: id permintaan tidak sah (400), id permintaan kembar (409); semua
+     * pemeriksaan medan sudah lolos di atas, tapi mutator tetap lapisan
+     * terakhir kalau suatu hari pemeriksaan rute berubah.
+     */
+    if (err instanceof GalatMutasi) {
+      return res.status(err.status).json({ error: err.message, kode: err.kode });
+    }
+    throw err;
+  }
+  if (!row) {
+    // Pengguna lenyap di antara autentikasi dan penulisan — 201 dengan
+    // `transaction: null` pernah terjadi di sini; itu bukan keberhasilan.
+    return res.status(404).json({ error: 'Peserta tidak ditemukan.' });
+  }
   const transactions = await store.getTransactions(req.user.id);
   const month = tanggal.slice(0, 7);
   const thisMonth = currentMonth();

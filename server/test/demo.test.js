@@ -327,7 +327,7 @@ test('akun demo tidak saling membuka dan tidak melihat data peserta', async () =
 
   // Dan peserta sungguhan tidak pernah bisa dijamah kode demo.
   const { user: peserta } = await store.createUser({ name: 'P', business: '', batch: 'B1' });
-  await store.addTransaction(peserta.id, { tanggal: tanggalWIB(), jenis: 'masuk', kategori: 'penjualan', keterangan: 'trx rahasia', jumlah: 999999 });
+  await store.addTransaction(peserta.id, { tanggal: tanggalWIB(), jenis: 'masuk', kategori: 'penjualan', keterangan: 'trx rahasia', jumlah: 999999 }, { aktor: 'manusia' });
   const curi = await minta('/api/me', { kode: '101' }).then((r) => r.json());
   assert.notEqual(curi.user.id, peserta.id);
   assert.ok(!JSON.stringify(curi).includes('trx rahasia'), 'kode demo tidak boleh melihat data peserta');

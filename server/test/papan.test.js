@@ -66,9 +66,9 @@ const buatAkun = async (nama, batch, profil, denganRiwayat) => {
   await store.saveProfile(user.id, profil);
   if (denganRiwayat) {
     // Dua bulan tercatat — cukup untuk titik delta di garis waktunya.
-    await store.addTransaction(user.id, { tanggal: bulanLaluISO, jenis: 'masuk', kategori: 'penjualan', keterangan: 'Penjualan bulan lalu', jumlah: 8_000_000 });
-    await store.addTransaction(user.id, { tanggal: bulanLaluISO, jenis: 'keluar', kategori: 'belanja-bahan', keterangan: 'Bahan bulan lalu', jumlah: 3_000_000 });
-    await store.addTransaction(user.id, { tanggal: bulanIniISO, jenis: 'masuk', kategori: 'penjualan', keterangan: 'Penjualan bulan ini', jumlah: 2_000_000 });
+    await store.addTransaction(user.id, { tanggal: bulanLaluISO, jenis: 'masuk', kategori: 'penjualan', keterangan: 'Penjualan bulan lalu', jumlah: 8_000_000 }, { aktor: 'manusia' });
+    await store.addTransaction(user.id, { tanggal: bulanLaluISO, jenis: 'keluar', kategori: 'belanja-bahan', keterangan: 'Bahan bulan lalu', jumlah: 3_000_000 }, { aktor: 'manusia' });
+    await store.addTransaction(user.id, { tanggal: bulanIniISO, jenis: 'masuk', kategori: 'penjualan', keterangan: 'Penjualan bulan ini', jumlah: 2_000_000 }, { aktor: 'manusia' });
   }
   return { user, accessCode };
 };

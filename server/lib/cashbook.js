@@ -95,6 +95,27 @@ export function todayISO(now = new Date()) {
   return tanggalWIB(now);
 }
 
+/*
+ * Batas bawah tanggal transaksi — SATU sumber untuk seluruh aplikasi.
+ *
+ * Batas atasnya sudah ada (tidak boleh di masa depan), tapi tanpa batas bawah
+ * satu salah ketik tahun — "2016" alih-alih "2026" — menyelipkan bulan asing
+ * ke daftar pilihan bulan dan ke riwayat yang dibaca AI. Dua tempat pernah
+ * menyalin konstanta ini sendiri-sendiri (rute cashbook dan pembersih hasil
+ * nota) dan keduanya harus tetap sepakat selamanya; karena penegakan batas
+ * ini pindah ke mutator penyimpan, konstantanya ikut pindah ke sini — tempat
+ * semua logika tanggal buku kas berada.
+ *
+ * Lima tahun jauh melampaui kebutuhan KUR (3–6 bulan).
+ */
+export const TAHUN_TERLAMA = 5;
+
+/** Tanggal kalender terlama yang masih boleh dicatat, sebagai YYYY-MM-DD. */
+export function tanggalTerlama(now = new Date()) {
+  const [y, m, d] = todayISO(now).split('-').map(Number);
+  return `${y - TAHUN_TERLAMA}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
 /** Jumlah hari dalam sebuah bulan YYYY-MM. */
 export function daysInMonth(month) {
   const [y, m] = month.split('-').map(Number);

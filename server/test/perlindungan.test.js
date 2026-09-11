@@ -144,7 +144,7 @@ test('unduhan data peserta tidak memuat hash kode akses', async () => {
   const { user } = await store.createUser({ name: 'Bu Sari', business: 'Warung' });
   await store.addTransaction(user.id, {
     tanggal: '2026-07-20', jenis: 'masuk', kategori: 'penjualan', jumlah: 400_000, keterangan: '',
-  });
+  }, { aktor: 'manusia' });
 
   const data = await store.exportUser(user.id);
   assert.ok(data, 'peserta harus bisa mengambil datanya sendiri');
@@ -159,7 +159,7 @@ test('menarik diri benar-benar menghapus, bukan menandai nonaktif', async () => 
   await store.saveConsent(user.id, CONSENT_VERSION);
   await store.addTransaction(user.id, {
     tanggal: '2026-07-20', jenis: 'masuk', kategori: 'penjualan', jumlah: 400_000, keterangan: '',
-  });
+  }, { aktor: 'manusia' });
 
   assert.ok(await store.findByAccessCode(accessCode));
   assert.equal(await store.deleteUser(user.id), true);
@@ -181,7 +181,7 @@ test('cadangan bisa dibuat, didaftar, dan dipulihkan', async () => {
   const { user } = await store.createUser({ name: 'Bu Sari' });
   await store.addTransaction(user.id, {
     tanggal: '2026-07-20', jenis: 'masuk', kategori: 'penjualan', jumlah: 400_000, keterangan: '',
-  });
+  }, { aktor: 'manusia' });
 
   const dibuat = await runBackup({ quiet: true });
   assert.equal(dibuat.pengguna, 1);

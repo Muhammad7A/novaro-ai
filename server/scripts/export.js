@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 
 import { isMonthComplete, monthsWithData, summarizeMonth, tanggalWIB } from '../lib/cashbook.js';
 import { computeMetrics } from '../lib/metrics.js';
+import { bangMetaAnonim } from '../lib/jejak.js';
 import { store } from '../lib/store.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -224,15 +225,25 @@ for (const u of users) {
     });
   }
 
-  /* events.csv — garis waktu perilaku */
+  /* events.csv — garis waktu perilaku.
+   *
+   * Mode anonim: meta peristiwa disaring lewat lib/jejak.js — persis medan
+   * yang terdaftar sebagai teks bebas (nama peserta di peserta_dinamai,
+   * alasan umpan balik, konsep AI) dibuang, sisanya utuh. Dulu meta ditulis
+   * apa adanya di kedua mode, padahal BACA-DULU.txt menjanjikan "teks bebas
+   * sudah dihapus" — janji yang tidak pernah benar untuk events.csv ini.
+   * Skema medannya SATU SUMBER dengan uji struktural jejak; medan teks bebas
+   * baru otomatis ikut tersaring begitu terdaftar di sana.
+   */
   for (const e of u.events ?? []) {
+    const metaBersih = anonymize ? bangMetaAnonim(e.type, e.meta) : e.meta;
     barisPeristiwa.push({
       userId: u.id,
       batch,
       ts: e.ts,
       tanggal: String(e.ts).slice(0, 10),
       type: e.type,
-      meta: e.meta ? JSON.stringify(e.meta) : '',
+      meta: metaBersih ? JSON.stringify(metaBersih) : '',
     });
   }
 
@@ -333,7 +344,7 @@ Catatan analisis:
   yang tercatat rapat. Angka nyata dirata-rata dari bulan-bulan itu saja.
 - transactions.csv: hariTundaCatat=0 berarti dicatat di hari kejadian.
 
-${anonymize ? 'Mode anonim: nama, usaha, lokasi, produk, teks bebas, dan percakapan sudah dihapus.\nusr_xxx bersifat acak dan tetap dipakai agar baris antar tabel bisa disambungkan.' : 'PERINGATAN: berkas ini memuat nama, lokasi, dan percakapan peserta.\nJangan dibagikan. Untuk analisis atau publikasi, pakai: npm run export -- --anonymize'}
+${anonymize ? 'Mode anonim: nama, usaha, lokasi, keterangan transaksi, tantangan, teks bebas pada\njejak peristiwa (nama peserta, alasan umpan balik), konsep AI, dan percakapan sudah dihapus.\nusr_xxx bersifat acak dan tetap dipakai agar baris antar tabel bisa disambungkan.' : 'PERINGATAN: berkas ini memuat nama, lokasi, dan percakapan peserta.\nJangan dibagikan. Untuk analisis atau publikasi, pakai: npm run export -- --anonymize'}
 `,
   'utf8',
 );

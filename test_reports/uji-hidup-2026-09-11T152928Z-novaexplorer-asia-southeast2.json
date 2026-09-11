@@ -1,0 +1,37 @@
+{
+  "alat": "uji-hidup",
+  "versiAlat": "1.0.0",
+  "schemaVersi": 1,
+  "mulai": "2026-09-11T15:29:27.819Z",
+  "hasil": "LULUS (health-only — tanpa panggilan AI; ini BUKAN bukti jalur AI)",
+  "sasaran": {
+    "baseUrl": "https://novaexplorer-532597100979.asia-southeast2.run.app",
+    "layanan": "novaexplorer",
+    "region": "asia-southeast2",
+    "project": "project-421f02fa-4c0b-4b27-b30",
+    "revision": null
+  },
+  "identitasRuntime": null,
+  "konfigurasiTerbaca": null,
+  "langkah": {
+    "kesehatan": {
+      "lulus": true,
+      "status": 200,
+      "ms": 392,
+      "model": "gemini-2.5-flash",
+      "aiConfigured": true,
+      "penyimpanan": {
+        "baca": "ok",
+        "tulis": "ok",
+        "peserta": 0
+      }
+    }
+  },
+  "perkiraanBiaya": null,
+  "catatan": [
+    "gcloud run gagal: spawn EINVAL",
+    "gcloud projects gagal: spawn EINVAL",
+    "gcloud services gagal: spawn EINVAL"
+  ],
+  "selesai": "2026-09-11T15:29:28.215Z"
+}

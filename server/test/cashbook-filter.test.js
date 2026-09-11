@@ -37,10 +37,10 @@ const { user, accessCode } = await store.createUser({ name: 'Bu Cari', business:
 await store.saveConsent(user.id, 2);
 
 const hariIni = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
-await store.addTransaction(user.id, { tanggal: hariIni, jenis: 'masuk', kategori: 'penjualan', keterangan: 'Jual Nasi Rames', jumlah: 25_000 });
-await store.addTransaction(user.id, { tanggal: hariIni, jenis: 'keluar', kategori: 'belanja-bahan', keterangan: 'Belanja sayur di pasar', jumlah: 60_000 });
-await store.addTransaction(user.id, { tanggal: hariIni, jenis: 'keluar', kategori: 'operasional', keterangan: 'Gas 3 kg', jumlah: 22_000 });
-await store.addTransaction(user.id, { tanggal: hariIni, jenis: 'keluar', kategori: 'prive', keterangan: 'Ambil untuk bensin', jumlah: 15_000 });
+await store.addTransaction(user.id, { tanggal: hariIni, jenis: 'masuk', kategori: 'penjualan', keterangan: 'Jual Nasi Rames', jumlah: 25_000 }, { aktor: 'manusia' });
+await store.addTransaction(user.id, { tanggal: hariIni, jenis: 'keluar', kategori: 'belanja-bahan', keterangan: 'Belanja sayur di pasar', jumlah: 60_000 }, { aktor: 'manusia' });
+await store.addTransaction(user.id, { tanggal: hariIni, jenis: 'keluar', kategori: 'operasional', keterangan: 'Gas 3 kg', jumlah: 22_000 }, { aktor: 'manusia' });
+await store.addTransaction(user.id, { tanggal: hariIni, jenis: 'keluar', kategori: 'prive', keterangan: 'Ambil untuk bensin', jumlah: 15_000 }, { aktor: 'manusia' });
 
 /* ================================================== Murni: saringTransaksi */
 

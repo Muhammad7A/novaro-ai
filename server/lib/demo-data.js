@@ -604,7 +604,10 @@ function bangunEvents(persona, hariIni, jumlahTrx) {
 
   dorong('user_created', waktu(persona.hariMulaiLalu + 1), { batch: 'DEMO', seed: true });
   for (let s = 1; s <= persona.sesiSelesai; s += 1) {
-    dorong('module_completed', waktu(persona.hariMulaiLalu - s + 1, 21), { modul: nomorSesi(s) });
+    // Bentuk meta mengikuti store.saveProgress: modul adalah DAFTAR angka,
+    // bukan skalar — satu jenis peristiwa, satu bentuk meta (penelitian.test
+    // membacanya sebagai daftar).
+    dorong('module_completed', waktu(persona.hariMulaiLalu - s + 1, 21), { modul: [nomorSesi(s)] });
   }
   for (let i = persona.hariMulaiLalu; i > 0; i -= 3) dorong('login', waktu(i, 7));
   dorong('report_viewed', waktu(3, 10), { bulan: 3 });

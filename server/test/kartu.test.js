@@ -174,7 +174,7 @@ test('halaman /kartu/<token> disajikan tanpa login dan tanpa data pengguna di HT
 /* ================================================== Dasbor tak berubah */
 
 test('dasbor & buku kas tetap bekerja seperti sebelum fitur kartu', async () => {
-  await store.addTransaction(user.id, { tanggal: new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10), jenis: 'masuk', kategori: 'penjualan', keterangan: 'jual pagi', jumlah: 150_000 });
+  await store.addTransaction(user.id, { tanggal: new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10), jenis: 'masuk', kategori: 'penjualan', keterangan: 'jual pagi', jumlah: 150_000 }, { aktor: 'manusia' });
   const kas = await minta('/api/cashbook', { kode: accessCode }).then((r) => r.json());
   assert.ok(kas.transactions.length >= 1, 'buku kas tetap membaca transaksi');
   assert.ok(kas.summary.penjualan >= 150_000, 'ringkasan tetap dihitung');

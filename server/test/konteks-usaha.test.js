@@ -170,7 +170,7 @@ test('pengguna dengan profil: bentuk utuh, angka dari metrik yang sama dengan da
   await store.addTransaction(user.id, {
     tanggal: new Date().toISOString().slice(0, 10),
     jenis: 'masuk', kategori: 'penjualan', keterangan: 'Penjualan hari ini', jumlah: 450_000,
-  });
+  }, { aktor: 'manusia' });
 
   const res = await fetch(BASE + '/api/konteks', { headers: { Authorization: `Bearer ${accessCode}` } });
   assert.equal(res.status, 200);

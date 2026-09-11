@@ -1,0 +1,69 @@
+{
+  "alat": "uji-hidup",
+  "versiAlat": "1.0.0",
+  "schemaVersi": 1,
+  "mulai": "2026-09-11T15:30:02.191Z",
+  "hasil": "GAGAL",
+  "sasaran": {
+    "baseUrl": "https://novaexplorer-532597100979.asia-southeast2.run.app",
+    "layanan": "novaexplorer",
+    "region": "asia-southeast2",
+    "project": "project-421f02fa-4c0b-4b27-b30",
+    "revision": null
+  },
+  "identitasRuntime": null,
+  "konfigurasiTerbaca": null,
+  "langkah": {
+    "kesehatan": {
+      "langkah": "kesehatan",
+      "lulus": true,
+      "status": 200,
+      "ms": 281,
+      "model": "gemini-2.5-flash",
+      "aiConfigured": true,
+      "penyimpanan": {
+        "baca": "ok",
+        "tulis": "ok",
+        "peserta": 0
+      }
+    },
+    "demo": {
+      "langkah": "demo",
+      "lulus": true,
+      "status": 200,
+      "ms": 1264,
+      "demoUserId": "usr_929ae3420f35",
+      "akunDemo": "Warung Nasi Bu Rina",
+      "anggaranSebelum": {
+        "harian": {
+          "terpakai": 0,
+          "batas": 60000,
+          "sisa": 60000
+        },
+        "mingguan": {
+          "terpakai": 0,
+          "batas": 300000,
+          "sisa": 300000
+        },
+        "sisa": 60000,
+        "hariIni": "2026-09-11",
+        "mingguMulai": "2026-09-07"
+      },
+      "kode": "DIREDAKSI — kode akses tidak pernah direkam"
+    },
+    "checkup": {
+      "langkah": "checkup",
+      "status": 500,
+      "lulus": false,
+      "alasan": "status 500: {\"error\":\"Terjadi kesalahan tak terduga di server.\"}",
+      "ms": 145
+    }
+  },
+  "perkiraanBiaya": null,
+  "catatan": [
+    "gcloud run gagal: spawn EINVAL",
+    "gcloud projects gagal: spawn EINVAL",
+    "gcloud services gagal: spawn EINVAL"
+  ],
+  "selesai": "2026-09-11T15:30:03.888Z"
+}

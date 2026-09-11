@@ -51,7 +51,7 @@ const tanggalDiBulan = (mundur, tanggal) => {
 };
 
 const tambahPenjualan = async (tanggal, jumlah) =>
-  store.addTransaction(user.id, { tanggal, jenis: 'masuk', kategori: 'penjualan', keterangan: 'jualan', jumlah });
+  store.addTransaction(user.id, { tanggal, jenis: 'masuk', kategori: 'penjualan', keterangan: 'jualan', jumlah }, { aktor: 'manusia' });
 
 const mintaTimeline = () => fetch(BASE + '/api/timeline', { headers: { Authorization: `Bearer ${accessCode}` } });
 
@@ -65,7 +65,11 @@ test('tanpa catatan sama sekali: garis waktu kosong yang jujur', async () => {
 
 test('bulan tanpa catatan dilewati, bulan berisi tampil kronologis', async () => {
   // Bulan ini dan dua bulan lalu tercatat; satu bulan lalu SENGAJA kosong.
-  for (let i = 1; i <= 12; i += 1) await tambahPenjualan(tanggalDiBulan(0, i), 400_000);
+  // Hari bulan berjalan tidak boleh melewati HARI INI — mutator buku kas
+  // menolak tanggal masa depan, dan itu perilaku yang benar: fixture lama
+  // diam-diam menyuntik baris "besok" ketika dijalankan tanggal 1–11.
+  const hariTerisi = Math.min(12, Number(hariIni.slice(8, 10)));
+  for (let i = 1; i <= hariTerisi; i += 1) await tambahPenjualan(tanggalDiBulan(0, i), 400_000);
   for (let i = 1; i <= 14; i += 1) await tambahPenjualan(tanggalDiBulan(2, i), 420_000);
 
   const data = await mintaTimeline().then((r) => r.json());

@@ -14,7 +14,7 @@
  *
  * TIDAK menyentuh data peserta: profil dan buku kas contoh dibuat di memori.
  */
-import { generateRecommendations, isConfigured, modelAktif, streamChat } from '../lib/ai.js';
+import { backendAI, generateRecommendations, isConfigured, modelAktif, streamChat } from '../lib/ai.js';
 import { summarizeMonth, currentMonth, todayISO } from '../lib/cashbook.js';
 import { computeMetrics } from '../lib/metrics.js';
 import { cashbookContext } from '../lib/prompts.js';
@@ -61,15 +61,52 @@ const ringkas = summarizeMonth(transaksi, currentMonth());
 const metrics = computeMetrics(PROFIL, ringkas, ringkas);
 const cashbook = cashbookContext(transaksi);
 
-const rupiah = (n) => 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(n));
-// Tarif perkenalan Sonnet 5 sampai 31 Agustus 2026: $2 / $10 per juta token.
+const rupiah = (n) =>
+  n === null ? '(tarif jalur ini belum dipusat — token di atas adalah catatan sebenarnya)' : 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(n));
+
+/*
+ * Tarif per juta token, per jalur AI, dengan sumber dan tanggal berlakunya.
+ *
+ * Dulu blok ini menghitung SEMUA jalur dengan tarif promosi $2/$10 — angka
+ * yang berlaku untuk pengenalan Sonnet 5 (berakhir 31 Agustus 2026), bukan
+ * untuk claude-3-5-sonnet-20241022 yang dijalankan jalur anthropic ($3/$15),
+ * dan sama sekali bukan tarif Gemini yang dijalankan produksi ($0,30/$2,50).
+ * Hasilnya: perkiraan biaya tampil tenang dengan angka yang keliru. Jumlah
+ * token tidak mungkin salah — ia dilaporkan penyedia; yang berubah tanpa
+ * pengumuman adalah tarif, karena itu tarifnya diawasi di sini, per jalur.
+ */
+const TARIF = {
+  gemini: {
+    input: 0.3, output: 2.5, cacheBuat: 0, cacheBaca: 0.3,
+    asal: 'Gemini 2.5 Flash, tarif standar Vertex AI / Gemini API',
+    catatan: 'cache_read dihargai setara input (diskon cache tidak diterapkan) — batas atas',
+    asOf: '2026-09-11',
+  },
+  anthropic: {
+    input: 3, output: 15, cacheBuat: 3.75, cacheBaca: 0.3,
+    asal: 'daftar harga Anthropic untuk claude-3-5-sonnet-20241022',
+    catatan: 'cache 1.25x / 0.1x dari tarif input standar',
+    asOf: '2026-09-11',
+  },
+  vertex: {
+    input: 3, output: 15, cacheBuat: 3.75, cacheBaca: 0.3,
+    asal: 'ASUMSI = daftar harga Anthropic untuk Claude di Vertex (partner model)',
+    catatan: 'verifikasi sendiri sebelum dipakai untuk keputusan biaya',
+    asOf: '2026-09-11',
+  },
+};
+
 const KURS = 16_500;
+const tarif = TARIF[backendAI()];
 const biaya = (u) =>
-  ((Number(u?.input_tokens) || 0) * 2 +
-    (Number(u?.cache_creation_input_tokens) || 0) * 2.5 +
-    (Number(u?.cache_read_input_tokens) || 0) * 0.2 +
-    (Number(u?.output_tokens) || 0) * 10) /
-  1e6 * KURS;
+  tarif
+    ? ((Number(u?.input_tokens) || 0) * tarif.input +
+        (Number(u?.cache_creation_input_tokens) || 0) * tarif.cacheBuat +
+        (Number(u?.cache_read_input_tokens) || 0) * tarif.cacheBaca +
+        (Number(u?.output_tokens) || 0) * tarif.output) /
+      1e6 *
+      KURS
+    : null;
 
 console.log(`\n  Uji nyala layanan AI — ${modelAktif()}`);
 console.log(`  Tanggal: ${todayISO()} (WIB)\n`);
@@ -94,7 +131,7 @@ try {
 
   const detik = ((Date.now() - mulai) / 1000).toFixed(1);
   const rp = biaya(usage);
-  totalBiaya += rp;
+  if (rp !== null) totalBiaya += rp;
 
   if (!text) throw new Error('jawaban kosong');
   if (keluar.length === 0) throw new Error('tidak ada satu pun potongan yang mengalir (streaming tidak jalan)');
@@ -121,7 +158,7 @@ if (hanyaChat) {
     const { data, usage } = await generateRecommendations({ profile: PROFIL, metrics, cashbook });
     const detik = ((Date.now() - mulai) / 1000).toFixed(1);
     const rp = biaya(usage);
-    totalBiaya += rp;
+    if (rp !== null) totalBiaya += rp;
 
     // Skema JSON dijanjikan valid oleh structured outputs — dibuktikan di sini.
     const wajib = ['ringkasan', 'rekomendasi', 'peringatan', 'targetBulanIni'];
@@ -146,7 +183,11 @@ if (hanyaChat) {
 
 /* ------------------------------------------------------------- Kesimpulan */
 
-console.log(`  Perkiraan biaya uji ini: ~${rupiah(totalBiaya)}`);
+console.log(
+  tarif
+    ? `  Perkiraan biaya uji ini: ~${rupiah(totalBiaya)}\n  Tarif: ${tarif.asal} (per ${tarif.asOf}; ${tarif.catatan})`
+    : '  Perkiraan biaya: tidak tersedia — jalur AI ini belum punya tabel tarif di skrip ini.',
+);
 if (gagal === 0) {
   console.log('\n  SEMUA LULUS. Jalur AI berfungsi dengan kunci API yang terpasang.');
   console.log('  Cek juga batas biaya di console.anthropic.com sebelum peserta masuk.\n');

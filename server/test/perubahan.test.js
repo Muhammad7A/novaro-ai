@@ -64,13 +64,17 @@ await store.saveProfile(user.id, {
 
 const hariIni = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
 const bulanIni = hariIni.slice(0, 7);
+/** Tanggal bulan berjalan yang PASTI sudah lewat — mutator menolak masa depan. */
+const tanggalBulanIni = (tanggal) =>
+  tanggalDiBulan(0, Math.min(tanggal, Number(hariIni.slice(8, 10))));
+
 const tanggalDiBulan = (mundur, tanggal) => {
   const [y, m] = bulanIni.split('-').map(Number);
   const d = new Date(Date.UTC(y, m - 1 - mundur, 1));
   return `${d.toISOString().slice(0, 7)}-${String(tanggal).padStart(2, '0')}`;
 };
 const tambah = (tanggal, jenis, kategori, jumlah, ket) =>
-  store.addTransaction(user.id, { tanggal, jenis, kategori, keterangan: ket, jumlah });
+  store.addTransaction(user.id, { tanggal, jenis, kategori, keterangan: ket, jumlah }, { aktor: 'manusia' });
 
 test('tanpa kode akses: 401', async () => {
   const res = await fetch(BASE + '/api/perubahan');
@@ -85,8 +89,8 @@ test('data dua bulan: omzet, pengeluaran, laba, dan pencatatan dibandingkan bena
   }
   // Bulan ini: omzet 12jt (+20%), biaya 5jt (−16.7%), laba 7jt (+75%), 16 catatan.
   for (let i = 1; i <= 8; i += 1) {
-    await tambah(tanggalDiBulan(0, i), 'masuk', 'penjualan', 1_500_000, 'jualan');
-    await tambah(tanggalDiBulan(0, i + 8), 'keluar', 'belanja-bahan', 625_000, 'belanja');
+    await tambah(tanggalBulanIni(i), 'masuk', 'penjualan', 1_500_000, 'jualan');
+    await tambah(tanggalBulanIni(i + 8), 'keluar', 'belanja-bahan', 625_000, 'belanja');
   }
 
   const data = await fetch(BASE + '/api/perubahan', { headers: { Authorization: `Bearer ${accessCode}` } }).then((r) => r.json());
@@ -114,7 +118,7 @@ test('bulan lalu kosong: perubahan null dengan kalimat yang jujur', async () => 
     namaUsaha: 'Warung Baru', jenisUsaha: 'kuliner', pencatatan: 'aplikasi',
     tujuan: 'rapikan-keuangan', omzetBulanan: 3_000_000,
   });
-  await store.addTransaction(kosong.user.id, { tanggal: hariIni, jenis: 'masuk', kategori: 'penjualan', keterangan: 'jualan pertama', jumlah: 100_000 });
+  await store.addTransaction(kosong.user.id, { tanggal: hariIni, jenis: 'masuk', kategori: 'penjualan', keterangan: 'jualan pertama', jumlah: 100_000 }, { aktor: 'manusia' });
 
   const data = await fetch(BASE + '/api/perubahan', { headers: { Authorization: `Bearer ${kosong.accessCode}` } }).then((r) => r.json());
   assert.equal(data.lalu.ada, false);
@@ -140,11 +144,11 @@ test('laba negatif di kedua bulan: perbandingan tetap dihitung, tanpa NaN', asyn
     namaUsaha: 'Warung Rugi', jenisUsaha: 'kuliner', pencatatan: 'buku',
     tujuan: 'naikkan-laba', omzetBulanan: 1_000_000,
   });
-  const t1 = tanggalDiBulan(1, 5), t2 = tanggalDiBulan(0, 5);
-  await store.addTransaction(rugi.user.id, { tanggal: t1, jenis: 'masuk', kategori: 'penjualan', keterangan: 'jualan', jumlah: 1_000_000 });
-  await store.addTransaction(rugi.user.id, { tanggal: t1, jenis: 'keluar', kategori: 'operasional', keterangan: 'bahan mahal', jumlah: 1_400_000 }); // rugi 400rb
-  await store.addTransaction(rugi.user.id, { tanggal: t2, jenis: 'masuk', kategori: 'penjualan', keterangan: 'jualan', jumlah: 1_000_000 });
-  await store.addTransaction(rugi.user.id, { tanggal: t2, jenis: 'keluar', kategori: 'operasional', keterangan: 'bahan makin mahal', jumlah: 1_700_000 }); // rugi 700rb
+  const t1 = tanggalDiBulan(1, 5), t2 = tanggalBulanIni(5);
+  await store.addTransaction(rugi.user.id, { tanggal: t1, jenis: 'masuk', kategori: 'penjualan', keterangan: 'jualan', jumlah: 1_000_000 }, { aktor: 'manusia' });
+  await store.addTransaction(rugi.user.id, { tanggal: t1, jenis: 'keluar', kategori: 'operasional', keterangan: 'bahan mahal', jumlah: 1_400_000 }, { aktor: 'manusia' }); // rugi 400rb
+  await store.addTransaction(rugi.user.id, { tanggal: t2, jenis: 'masuk', kategori: 'penjualan', keterangan: 'jualan', jumlah: 1_000_000 }, { aktor: 'manusia' });
+  await store.addTransaction(rugi.user.id, { tanggal: t2, jenis: 'keluar', kategori: 'operasional', keterangan: 'bahan makin mahal', jumlah: 1_700_000 }, { aktor: 'manusia' }); // rugi 700rb
 
   const data = await fetch(BASE + '/api/perubahan', { headers: { Authorization: `Bearer ${rugi.accessCode}` } }).then((r) => r.json());
   assert.equal(data.kini.labaBersih, -700_000);

@@ -217,6 +217,20 @@ substitutions:
   # bawaan" yang menagih ke tempat lain.
   _AI_BACKEND: gemini
 
+  # Bukti hidup pasca-deploy (Batch 4, keputusan §18). Bawaan 0 = langkah
+  # uji-hidup LEWAT dan tidak menagih satu pun token. Nyalakan hanya pada
+  # build yang memang ingin membuktikan jalur AI-nya:
+  #
+  #   gcloud builds submit --config cloudbuild.yaml --substitutions=_TAG=$(git rev-parse --short HEAD),_UJI_HIDUP=1
+  #
+  # Satu build bernilai ini melakukan TIGA panggilan HTTPS ke layanan yang
+  # baru selesai dideploy: /api/health, /api/demo, /api/checkup. Yang ketiga
+  # adalah satu panggilan AI nyata atas akun demo fiktif (puluhan rupiah,
+  # tanpa menyentuh baris keuangan peserta). Artefaknya bertanggal, dicetak
+  # utuh ke log build (CLOUD_LOGGING_ONLY — tersimpan selama lognya), dan
+  # tertulis ke test_reports/ di workspace build.
+  _UJI_HIDUP: '0'
+
 options:
   # Wajib bila build memakai service account pilihan sendiri tanpa bucket log.
   logging: CLOUD_LOGGING_ONLY
@@ -260,52 +274,90 @@ steps:
   #
   #    max-instances=1 bukan soal biaya, min-instances justru sepenuhnya soal
   #    biaya — dua-duanya dijelaskan di kepala berkas.
+  #
+  #    Perintahnya TIDAK berubah sama sekali — hanya dibungkus bash agar
+  #    keluarannya ikut tertulis ke /workspace/deploy.log. Berkas itulah yang
+  #    dibaca langkah uji-hidup di bawah untuk tahu alamat dan revisi yang
+  #    baru selesai dideploy. `set -o pipefail` menjaga status gagal gcloud
+  #    tidak hilang karena di-tee.
   - id: deploy
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
-    entrypoint: gcloud
+    entrypoint: bash
     args:
-      - run
-      - deploy
-      - ${_SERVICE}
-      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_IMAGE_NAME}:${_TAG}
-      - --region=${_REGION}
-      - --platform=managed
-      - --max-instances=1
-      - --min-instances=${_MIN_INSTANCES}
-      - --concurrency=80
-      - --cpu=1
-      - --memory=512Mi
-      # Jawaban AI dialirkan sebagai SSE dan bisa berjalan lama.
-      - --timeout=300
-      # Sengaja TANPA --no-cpu-throttling.
-      #
-      # Kekhawatirannya dulu: penulisan yang mengantre tertahan saat CPU
-      # dicekik di luar permintaan. Setelah ditelusuri, setiap penulisan di
-      # server.js di-`await` sebelum responsnya dikirim — termasuk
-      # simpanGiliranChat, yang selesai sebelum `send('done')`. Tidak ada
-      # pekerjaan penting yang tersisa di antara permintaan, jadi cekikan CPU
-      # tidak bisa memotong apa pun. Menyalakannya hanya menambah tagihan.
-      # `--update-*`, BUKAN `--set-*`.
-      #
-      # `--set-env-vars` mengganti SELURUH daftar variabel, dan `--set-secrets`
-      # seluruh daftar rahasia. Apa pun yang dipasang di luar pipeline ini —
-      # GOOGLE_CLOUD_PROJECT untuk Vertex, NOVA_SEED_USERS_FILE untuk data awal —
-      # akan lenyap diam-diam pada rebuild berikutnya, dan layanan kembali ke
-      # perilaku lama tanpa satu baris pun di log yang menyebutkannya.
-      #
-      # NOVA_AI_BACKEND diset TEGAS, dan itu penting.
-      #
-      # Tanpa variabel ini, lib/backend.js memilih sendiri: begitu
-      # GOOGLE_CLOUD_PROJECT terisi ia memilih 'vertex', yang berarti Claude
-      # lewat Vertex AI — model pihak ketiga di Marketplace, yang tidak
-      # ditanggung kredit GCP dan harus dilanggan terpisah. Layanannya akan
-      # naik dengan tenang lalu menolak pada permintaan AI pertama peserta.
-      #
-      # GOOGLE_CLOUD_PROJECT diambil dari PROJECT_ID build ini, jadi tidak ada
-      # lagi langkah manual yang bisa terlewat.
-      - --update-env-vars=NODE_ENV=production,TZ=Asia/Jakarta,LOG_FORMAT=json,NOVA_DATA_DIR=/tmp/data,NOVA_AI_BACKEND=${_AI_BACKEND},GOOGLE_CLOUD_PROJECT=${PROJECT_ID}
-      - --update-secrets=ANTHROPIC_API_KEY=anthropic-api-key:latest
-      - --allow-unauthenticated
+      - -c
+      - |
+        set -o pipefail
+        gcloud run deploy ${_SERVICE} \
+          --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_IMAGE_NAME}:${_TAG} \
+          --region=${_REGION} \
+          --platform=managed \
+          --max-instances=1 \
+          --min-instances=${_MIN_INSTANCES} \
+          --concurrency=80 \
+          --cpu=1 \
+          --memory=512Mi \
+          --timeout=300 \
+          --update-env-vars=NODE_ENV=production,TZ=Asia/Jakarta,LOG_FORMAT=json,NOVA_DATA_DIR=/tmp/data,NOVA_AI_BACKEND=${_AI_BACKEND},GOOGLE_CLOUD_PROJECT=${PROJECT_ID},CLOUD_ML_REGION=us-central1 \
+          --update-secrets=ANTHROPIC_API_KEY=anthropic-api-key:latest \
+          --allow-unauthenticated \
+          2>&1 | tee /workspace/deploy.log
+
+        # Sengaja TANPA --no-cpu-throttling: setiap penulisan di server.js
+        # di-`await` sebelum responsnya dikirim, jadi cekikan CPU tidak bisa
+        # memotong apa pun. Menyalakannya hanya menambah tagihan.
+        #
+        # `--update-*`, BUKAN `--set-*`: `--set-env-vars` mengganti SELURUH
+        # daftar variabel, dan `--set-secrets` seluruh daftar rahasia. Apa pun
+        # yang dipasang di luar pipeline ini — NOVA_SEED_USERS_FILE, variabel
+        # lain dari deploy manual — akan lenyap diam-diam pada rebuild
+        # berikutnya tanpa satu baris pun di log yang menyebutkannya.
+        #
+        # NOVA_AI_BACKEND diset TEGAS: tanpa variabel ini lib/backend.js memilih
+        # sendiri (GOOGLE_CLOUD_PROJECT terisi → 'vertex' = Claude Marketplace,
+        # tidak ditanggung kredit GCP). GOOGLE_CLOUD_PROJECT diambil dari
+        # PROJECT_ID build ini.
+        #
+        # CLOUD_ML_REGION kini diset EKSPLISIT ke us-central1 — nilai yang
+        # SELAMA INI SUDAH dipakai secara implisit: gemini.js dan claude.js
+        # sama-sama memakai bawaan 'us-central1' bila variabel ini kosong.
+        # Deployed service lama pernah memasangnya sebagai VERTEX_LOCATION,
+        # nama yang tidak pernah dibaca kode — kebetulan nilainya sama. Diset
+        # di sini supaya region endpoint AI terbaca di konfigurasi layanan,
+        # bukan tersirat dari satu konstanta di dua berkas lib.
+
+  # ----------------------------------------------------------------
+  # 5. Uji hidup pasca-deploy (hanya bila _UJI_HIDUP=1, lihat substitutions).
+  #
+  #    Membaca /workspace/deploy.log dari langkah deploy untuk tahu alamat +
+  #    revisi yang BARU selesai dideploy, lalu melakukan satu panggilan AI
+  #    nyata lewat layanan itu (health → demo → checkup, akun demo fiktif).
+  #    Bukti yang dicari: service account runtime yang baru saja dideploy ini
+  #    benar-benar bisa memanggil penyedianya — bukan hanya mesin lokal.
+  #
+  #    node:22-slim tidak punya gcloud, jadi bukti identitas dari sisi
+  #    `gcloud describe` (service account, peran IAM) dilewati di CI; yang
+  #    menyisakan bukti terkuatnya tetap berdiri: panggilan AI itu sendiri.
+  #    Jalankan uji-hidup.js dari Cloud Shell / mesin dengan gcloud bila
+  #    artefak perlu memuat peran IAM eksplisit.
+  #
+  #    Artefak JSON dicetak utuh ke stdout → tersimpan dalam log build
+  #    (logging: CLOUD_LOGGING_ONLY), plus ditulis ke test_reports/ di
+  #    workspace build.
+  - id: uji-hidup
+    name: node:22-slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        if [ "${_UJI_HIDUP}" != "1" ]; then
+          echo "uji-hidup dilewati (_UJI_HIDUP != 1) — tidak ada panggilan AI yang ditagih"
+          exit 0
+        fi
+        node server/scripts/uji-hidup.js \
+          --project ${PROJECT_ID} \
+          --region ${_REGION} \
+          --service ${_SERVICE} \
+          --deploy-log /workspace/deploy.log
 
 images:
   - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_IMAGE_NAME}:${_TAG}

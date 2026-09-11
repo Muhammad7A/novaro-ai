@@ -202,7 +202,7 @@ test('antrean penulisan bisa ditunggu sampai kosong sebelum proses berhenti', as
   for (let i = 0; i < 10; i++) {
     store.addTransaction(user.id, {
       tanggal: '2026-08-01', jenis: 'masuk', kategori: 'penjualan', keterangan: `uji ${i}`, jumlah: 1000 + i,
-    });
+    }, { aktor: 'manusia' });
   }
 
   await store.selesaikanPenulisan();

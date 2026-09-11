@@ -79,7 +79,7 @@ test('penulisan bersamaan dari banyak proses tidak ada yang hilang', async () =>
       tugas.push(
         s.addTransaction(user.id, {
           tanggal: '2026-07-20', jenis: 'masuk', kategori: 'penjualan', jumlah: 1000, keterangan: `p${n}-${i}`,
-        }),
+        }, { aktor: 'manusia' }),
       );
     }
   }

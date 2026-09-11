@@ -100,7 +100,7 @@ test('peristiwa perilaku tercatat dengan waktunya', async () => {
   await store.saveProfile(user.id, PROFIL_AWAL);
   await store.addTransaction(user.id, {
     tanggal: '2026-07-20', jenis: 'masuk', kategori: 'penjualan', jumlah: 400_000, keterangan: '',
-  });
+  }, { aktor: 'manusia' });
   await store.saveProgress(user.id, { done: { 1: true, 3: true }, checks: {} });
   await store.logEvent(user.id, 'report_viewed', { bulan: 6 });
 
@@ -143,7 +143,7 @@ test('mencatat transaksi mundur ditandai — penting untuk analisis kebiasaan', 
   const kemarin = new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 10);
   await store.addTransaction(user.id, {
     tanggal: kemarin, jenis: 'masuk', kategori: 'penjualan', jumlah: 400_000, keterangan: '',
-  });
+  }, { aktor: 'manusia' });
 
   const ev = (await store.getEvents(user.id)).find((e) => e.type === 'transaction_added');
   assert.equal(ev.meta.mundur, true, 'transaksi bertanggal lampau harus ditandai menyusul');
@@ -217,7 +217,7 @@ test('jejak peristiwa tidak memuat nominal atau teks bebas', async () => {
   await store.addTransaction(user.id, {
     tanggal: '2026-07-20', jenis: 'keluar', kategori: 'operasional',
     jumlah: 987_654, keterangan: 'Bayar utang ke Pak Haji Soleh',
-  });
+  }, { aktor: 'manusia' });
 
   const teks = JSON.stringify(await store.getEvents(user.id));
   assert.doesNotMatch(teks, /987654/, 'nominal tidak boleh ikut ke jejak peristiwa');

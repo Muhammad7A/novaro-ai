@@ -12,7 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { hitungToken, pangkasLog } from './anggaran.js';
-import { tanggalWIB } from './cashbook.js';
+import { JENIS, isValidKategori, tanggalTerlama, tanggalWIB } from './cashbook.js';
 import { totalSoal } from './latihan.js';
 import { pool, initDb, JENIS_PENYIMPANAN, mongoCollection } from './db.js';
 import { muatAtauSeed, simpanSemua as simpanSemuaMongo } from './mongo-store.js';
@@ -43,6 +43,33 @@ let cache = null;
 /** Sidik jari berkas saat `cache` diisi — dipakai mendeteksi perubahan dari proses lain. */
 let cacheSidik = null;
 let writeQueue = Promise.resolve();
+
+/**
+ * Kegagalan mutasi yang DINOLAK di batas tulis — bukan kecelakaan 500.
+ *
+ * Lantai kepercayaan pembukuan menuntut kegagalan yang BERTIPE: penelepon
+ * internal yang mencoba menyelipkan baris tidak sah harus menerima penolakan
+ * yang bisa diperiksa (`kode` + `status`), bukan galat asing yang identik
+ * dengan kerusakan infrastruktur. Rute HTTP meneruskan `status` dan `kode`
+ * apa adanya; taksonomi `{error}` + ekstra bertipe tidak berubah.
+ *
+ * Melempar di dalam mutator `update()` aman untuk buku kas: cache dibuang
+ * dan TIDAK ADA yang tertulis ke disk — mutasi yang gagal tidak pernah
+ * meninggalkan baris setengah jadi atau peristiwa yatim.
+ */
+export class GalatMutasi extends Error {
+  /**
+   * @param {string} kode   penanda mesin, kebab-case — `duplikat`, `mesin-penghasilan`, dst.
+   * @param {number} status kode HTTP yang pantas untuk penolakan ini
+   * @param {string} message kalimat siap tampilkan untuk pemanggilnya
+   */
+  constructor(kode, status, message) {
+    super(message);
+    this.name = 'GalatMutasi';
+    this.kode = kode;
+    this.status = status;
+  }
+}
 
 function hashCode(code) {
   return createHash('sha256').update(String(code).trim().toUpperCase()).digest('hex');
@@ -453,14 +480,21 @@ export const store = {
    * belasan penulisan beruntun saat boot — dan tiap penulisannya menyalin
    * seluruh berkas data. Satu mutator, satu penulisan.
    *
-   * Khusus demo: TIDAK ada pembatasan meta penelitian di sini. Yang dijaga
-   * adalah pemanggilnya — hanya lib/demo-data.js yang boleh memanggil, dan ia
-   * sendiri hanya menyentuh batch DEMO.
+   * Khusus demo: TIDAK ada pemeriksaan medan di sini — hidrasi menyusun
+   * ratusan baris sekaligus di SATU penulisan. Yang dijaga adalah SIAPA yang
+   * boleh disentuh, dan penjagaannya kini di sini (di batas tulis), bukan
+   * hanya pada pemanggil: pengguna yang batch-nya bukan 'DEMO' ditolak dengan
+   * `GalatMutasi('bukan-demo')`. Tanpa ini, satu kekeliruan pemanggil cukup
+   * untuk menimpa pembukuan peserta sungguhan dengan data sintetis — jalur
+   * demo tidak boleh menjadi pintu belakang ke buku kas yang nyata.
    */
   async terapkanDemo(userId, patch) {
     return update((db) => {
       const user = db.users.find((u) => u.id === userId);
       if (!user) return null;
+      if (user.batch !== 'DEMO') {
+        throw new GalatMutasi('bukan-demo', 403, 'Hidrasi demo hanya boleh menyentuh akun batch DEMO.');
+      }
       Object.assign(user, patch);
       return publicUser(user);
     });
@@ -756,22 +790,60 @@ export const store = {
     return salin(db.users.find((u) => u.id === userId)?.transactions);
   },
 
-  async addTransaction(userId, transaction) {
+  /**
+   * Mencatat satu transaksi ke buku kas — SATU-SATUNYA pintu tulis uang.
+   *
+   * LANTAI KEPERCAYAAN: pemeriksaan yang dulu hanya hidup di rute HTTP
+   * (`server.js`) kini dipegang mutator ini. Rute boleh menolak lebih dulu
+   * demi kalimat galat yang ramah, tapi rute bukan penegak terakhir —
+   * pemanggil internal mana pun (alat CLI, otomasi, pemanggil AI masa depan)
+   * melewati pemeriksaan yang sama di sini. Rinciannya:
+   *
+   *   - Daftar putih medan: baris dirakit dari `tanggal, jenis, kategori,
+   *     keterangan, jumlah` SAJA. Apa pun lain di obyek masukan — termasuk
+   *     `id`, `origin`, `proposalId`, `requestId`, `voided` — dibuang, bukan
+   *     diwarisi. Medan siapa-punya-server tidak pernah bisa diselipkan dari
+   *     tubuh permintaan maupun dari pemanggil lalai.
+   *   - Aktor efektif WAJIB dinyatakan (`aktor: 'manusia' | 'mesin'`).
+   *     Tanpa pernyataan, tulisan ditolak — diam-diam menganggap semua
+   *     pemanggil manusia berarti invarian "mesin tak menulis penghasilan"
+   *     bisa dilanggar hanya dengan tidak mengirim opsi.
+   *   - MESIN TIDAK PERNAH MENULIS PENGHASILAN: baris `masuk` dari aktor
+   *     mesin ditolak (kode `mesin-penghasilan`). Pemasukan hanya sah lewat
+   *     konfirmasi manusia — prinsip "AI mengusulkan, manusia memutuskan".
+   *   - `origin` DITETAPKAN DI SINI (`'manual'`), bukan diterima. Asal lain
+   *     (`nota`, `rule`, `transfer`) menyusul bersama mesinya masing-masing
+   *     — rute konfirmasi nota kelak menyerahkan token yang diverifikasi DI
+   *     DALAM mutator ini, bukan string `origin` dari tubuh permintaan.
+   *   - `requestId` (opsional, dari pemanggil): bila diisi, baris yang sudah
+   *     membawa id permintaan yang sama pada pengguna yang sama membuat
+   *     mutasi ini ditolak (`duplikat`, 409) — ketukan ganda dan kirim ulang
+   *     tidak lagi bisa memalsukan dua baris dari satu niat. Tanpa id,
+   *     pengulangan tidak terdeteksi: itu kelemahan yang diakui, bukan
+   *     disembunyikan.
+   *
+   * Mengembalikan baris yang tersimpan, atau `null` bila penggunanya tidak
+   * ada. Semua penolakan melempar `GalatMutasi`.
+   *
+   * @param {string} userId
+   * @param {object} transaction { tanggal?, jenis, kategori, keterangan?, jumlah }
+   * @param {{aktor: 'manusia'|'mesin', requestId?: string}} opts
+   */
+  async addTransaction(userId, transaction, { aktor, requestId } = {}) {
     return update((db) => {
       const user = db.users.find((u) => u.id === userId);
       if (!user) return null;
-      const row = {
-        id: `trx_${randomBytes(6).toString('hex')}`,
-        ...transaction,
-        createdAt: new Date().toISOString(),
-      };
-      // push, bukan sebar — alasannya sama dengan pushEvent di atas.
+      const row = barisTransaksiSah(transaction, { aktor, requestId, transactionsLama: user.transactions });
+      // push, bukan sebar — alasannya sama dengan pushEvent di bawah.
       (user.transactions ??= []).push(row);
       pushEvent(user, 'transaction_added', {
         jenis: row.jenis,
         kategori: row.kategori,
         tanggal: row.tanggal,
         mundur: row.tanggal < row.createdAt.slice(0, 10),
+        // Asal mengikuti baris: jejak penelitian boleh memuat kosakata tertutup
+        // ini — ia bukan nominal dan bukan teks bebas (lihat uji penelitian).
+        origin: row.origin,
       });
       return row;
     });
@@ -960,6 +1032,117 @@ export const store = {
 };
 
 /* --------------------------------------------- Pembantu di dalam mutator */
+
+/*
+ * Bentuk sah satu baris buku kas. Konstanta di sini adalah KONTRAK, bukan
+ * rincian implementasi: jumlah maksimum dan format tanggal harus tetap identik
+ * dengan yang dijanjikan rute ke peramban — baris yang diterima mutator dan
+ * baris yang diterima rute tidak boleh bisa berbeda.
+ */
+const POLA_TANGGAL = /^\d{4}-\d{2}-\d{2}$/;
+const POLA_ID_PERMINTAAN = /^[A-Za-z0-9._:-]{1,128}$/;
+const JUMLAH_MAKS = 1e12;
+
+/**
+ * Memvalidasi masukan transaksi dan merakit baris yang sah — penegak terakhir
+ * sebelum uang menyentuh buku. Dipanggil DI DALAM mutator `addTransaction`,
+ * atas keadaan pengguna yang terkunci, supaya pemeriksaan id permintaan tidak
+ * punya jendela balapan dan kegagalan apa pun membuang seluruh mutasi.
+ *
+ * Urutan pemeriksaan disengaja: SIAPA penulisnya diperiksa SEBELUM APA yang
+ * ditulisnya — pemanggil mesin mendapat penolakan aktornya meski isinya
+ * kebetulan sah, karena pesan yang paling perlu sampai adalah "bukan jalurmu".
+ *
+ * Semantik angka sengaja sama dengan rute (`asNumber` di server.js): masukan
+ * yang tak terbaca sebagai angka atau bernilai negatif menjadi 0 — dan 0
+ * ditolak, bukan didiamkan.
+ *
+ * @param {object} masukan            medan mentah dari pemanggil
+ * @param {{aktor?: string, requestId?: string, transactionsLama?: Array}} opts
+ * @returns {object} baris lengkap siap dorong ke `user.transactions`
+ * @throws {GalatMutasi} pada aktor tak sah, medan tidak sah, atau id permintaan yang sudah terpakai
+ */
+function barisTransaksiSah(masukan, { aktor, requestId, transactionsLama = [] } = {}) {
+  if (aktor !== 'manusia' && aktor !== 'mesin') {
+    throw new GalatMutasi('aktor-tidak-sah', 400, 'Aktor mutasi wajib dinyatakan: "manusia" atau "mesin".');
+  }
+
+  if (aktor === 'mesin') {
+    // Invarian yang dijaga keras: PENGHASILAN hanya lewat konfirmasi manusia.
+    // Pengeluaran oleh mesin belum punya asal yang bisa ditetapkan mutator
+    // ('rule'/'transfer' menyusul bersama penulisnya masing-masing) — jadi
+    // keduanya ditolak, dengan kode terpisah supaya jejaknya bisa dibedakan.
+    if (masukan?.jenis === 'masuk') {
+      throw new GalatMutasi('mesin-penghasilan', 403, 'Mesin tidak boleh mencatat pemasukan. Pemasukan hanya sah lewat konfirmasi manusia.');
+    }
+    throw new GalatMutasi('mesin-tanpa-asal', 403, 'Penulisan pengeluaran oleh mesin belum punya asal yang sah di mutator ini.');
+  }
+
+  const jenis = JENIS.includes(masukan?.jenis) ? masukan.jenis : null;
+  if (!jenis) throw new GalatMutasi('jenis', 400, 'Jenis transaksi harus "masuk" atau "keluar".');
+  if (!isValidKategori(jenis, masukan?.kategori)) {
+    throw new GalatMutasi('kategori', 400, 'Kategori transaksi tidak dikenali.');
+  }
+
+  const angka = Number(masukan?.jumlah);
+  const jumlah = Number.isFinite(angka) && angka > 0 ? Math.min(angka, JUMLAH_MAKS) : 0;
+  if (jumlah <= 0) throw new GalatMutasi('jumlah', 400, 'Jumlah harus lebih dari 0.');
+
+  const hariIni = tanggalWIB();
+  /*
+   * Tanggal yang TIDAK diisi berarti hari ini — sama dengan rute. Tapi tanggal
+   * yang DIISI dalam bentuk asing ditolak, bukan didiamkan jadi hari ini: di
+   * lapisan rute, diam-jadi-hari-ini adalah perlakuan ramah untuk salah ketik
+   * manusia; di lantai mutator, bentuk asing dari pemanggil internal adalah
+   * cacat kontrak dan harus terlihat, bukan terselubung.
+   */
+  let tanggal;
+  const tanggalMasukan = masukan?.tanggal;
+  if (tanggalMasukan == null || tanggalMasukan === '') {
+    tanggal = hariIni;
+  } else if (typeof tanggalMasukan !== 'string' || !POLA_TANGGAL.test(tanggalMasukan)) {
+    throw new GalatMutasi('tanggal-bentuk', 400, 'Tanggal harus berbentuk YYYY-MM-DD.');
+  } else {
+    tanggal = tanggalMasukan;
+  }
+  if (tanggal > hariIni) {
+    throw new GalatMutasi('tanggal-masa-depan', 400, 'Tanggal tidak boleh di masa depan.');
+  }
+  if (tanggal < tanggalTerlama()) {
+    throw new GalatMutasi(
+      'tanggal-terlalulama',
+      400,
+      `Tanggal terlalu lama. Periksa tahunnya — paling lama ${tanggalTerlama()}.`,
+    );
+  }
+
+  const row = {
+    id: `trx_${randomBytes(6).toString('hex')}`,
+    tanggal,
+    jenis,
+    kategori: masukan.kategori,
+    keterangan: String(masukan?.keterangan ?? '').trim().slice(0, 120),
+    jumlah,
+    createdAt: new Date().toISOString(),
+    // Asal baris ditetapkan DI SINI dan hanya di sini. Tidak ada parameter
+    // yang bisa mengaturnya — satu-satunya asal yang sah hari ini adalah
+    // ketukan manusia di rute biasa.
+    origin: 'manual',
+  };
+
+  if (requestId != null && requestId !== '') {
+    const bersih = String(requestId);
+    if (!POLA_ID_PERMINTAAN.test(bersih)) {
+      throw new GalatMutasi('id-permintaan', 400, 'ID permintaan tidak sah (maksimal 128 karakter: huruf, angka, titik, garis, titik dua).');
+    }
+    if (transactionsLama.some((t) => t?.requestId === bersih)) {
+      throw new GalatMutasi('duplikat', 409, 'Permintaan ini sudah pernah dicatat. Periksa buku kas sebelum mengirim ulang.');
+    }
+    row.requestId = bersih;
+  }
+
+  return row;
+}
 
 /**
  * Menjumlahkan pemakaian token pada obyek pengguna yang sedang dimutasi.

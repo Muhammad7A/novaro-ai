@@ -1,0 +1,203 @@
+{
+  "alat": "uji-hidup",
+  "versiAlat": "1.0.0",
+  "schemaVersi": 1,
+  "mulai": "2026-09-11T15:38:04.204Z",
+  "hasil": "LULUS",
+  "ruteAi": "chat",
+  "sasaran": {
+    "baseUrl": "https://novaexplorer-532597100979.asia-southeast2.run.app",
+    "layanan": "novaexplorer",
+    "region": "asia-southeast2",
+    "project": "project-421f02fa-4c0b-4b27-b30",
+    "revision": "novaexplorer-00097-2vt"
+  },
+  "identitasRuntime": {
+    "serviceAccount": "532597100979-compute@developer.gserviceaccount.com",
+    "sumber": "gcloud run services describe (baca-saja)",
+    "peran": [
+      "roles/aiplatform.user",
+      "roles/artifactregistry.writer",
+      "roles/cloudsql.client",
+      "roles/developerconnect.readTokenAccessor",
+      "roles/iam.serviceAccountUser",
+      "roles/logging.logWriter",
+      "roles/run.admin",
+      "roles/secretmanager.secretAccessor",
+      "roles/storage.objectAdmin",
+      "roles/storage.objectViewer"
+    ],
+    "roles/aiplatform.user": true,
+    "apiVertexAktif": true
+  },
+  "konfigurasiTerbaca": {
+    "env": {
+      "GEMINI_MODEL": "gemini-2.5-flash",
+      "NOVA_AI_BACKEND": "gemini",
+      "NODE_ENV": "production"
+    },
+    "envLainHanyaNama": [
+      {
+        "nama": "NOVA_DATA_DIR",
+        "secret": false
+      },
+      {
+        "nama": "USE_POSTGRES",
+        "secret": false
+      },
+      {
+        "nama": "DATABASE_URL",
+        "secret": false
+      },
+      {
+        "nama": "VALIDASI_KODE",
+        "secret": false
+      },
+      {
+        "nama": "VALIDASI_PENGELOLA_KODE",
+        "secret": false
+      },
+      {
+        "nama": "LOG_FORMAT",
+        "secret": false
+      },
+      {
+        "nama": "AI_BACKEND",
+        "secret": false
+      },
+      {
+        "nama": "GEMINI_API_KEY",
+        "secret": false
+      },
+      {
+        "nama": "VERTEX_PROJECT_ID",
+        "secret": false
+      },
+      {
+        "nama": "VERTEX_LOCATION",
+        "secret": false
+      },
+      {
+        "nama": "RATE_LIMIT_PER_HOUR",
+        "secret": false
+      },
+      {
+        "nama": "MAX_DAILY_TOKENS_PER_USER",
+        "secret": false
+      },
+      {
+        "nama": "MAX_WEEKLY_TOKENS_PER_USER",
+        "secret": false
+      },
+      {
+        "nama": "UNLOCK_ALL_MODULES",
+        "secret": false
+      },
+      {
+        "nama": "GOOGLE_CLOUD_PROJECT",
+        "secret": false
+      },
+      {
+        "nama": "TZ",
+        "secret": false
+      },
+      {
+        "nama": "ANTHROPIC_API_KEY",
+        "secret": true
+      }
+    ],
+    "catatan": "nilai env lain sengaja TIDAK direkam; secret hanya dicatat sebagai nama"
+  },
+  "langkah": {
+    "kesehatan": {
+      "langkah": "kesehatan",
+      "lulus": true,
+      "status": 200,
+      "ms": 326,
+      "model": "gemini-2.5-flash",
+      "aiConfigured": true,
+      "penyimpanan": {
+        "baca": "ok",
+        "tulis": "ok",
+        "peserta": 0
+      }
+    },
+    "demo": {
+      "langkah": "demo",
+      "lulus": true,
+      "status": 200,
+      "ms": 1543,
+      "demoUserId": "usr_f979d7491a2e",
+      "akunDemo": "Warung Nasi Bu Rina",
+      "anggaranSebelum": {
+        "harian": {
+          "terpakai": 0,
+          "batas": 60000,
+          "sisa": 60000
+        },
+        "mingguan": {
+          "terpakai": 0,
+          "batas": 300000,
+          "sisa": 300000
+        },
+        "sisa": 60000,
+        "hariIni": "2026-09-11",
+        "mingguMulai": "2026-09-07"
+      },
+      "kode": "DIREDAKSI — kode akses tidak pernah direkam"
+    },
+    "pembersihan": {
+      "langkah": "pembersihan",
+      "lulus": true,
+      "status": 200,
+      "ms": 237
+    },
+    "percakapan": {
+      "langkah": "percakapan",
+      "lulus": true,
+      "status": 200,
+      "ms": 2296,
+      "model": "gemini-2.5-flash",
+      "potonganMengalir": 3,
+      "panjangJawaban": 94,
+      "terpotong": false,
+      "anggaranSesudah": {
+        "harian": {
+          "terpakai": 2996,
+          "batas": 60000,
+          "sisa": 57004
+        },
+        "mingguan": {
+          "terpakai": 2996,
+          "batas": 300000,
+          "sisa": 297004
+        },
+        "sisa": 57004,
+        "hariIni": "2026-09-11",
+        "mingguMulai": "2026-09-07"
+      },
+      "pesan": "Ini uji kesehatan sistem. Balas dengan SATU kalimat pendek: sebutkan satu manfaat mencatat kas harian.",
+      "tokenTerpakai": {
+        "harian": 2996,
+        "mingguan": 2996,
+        "sumber": "anggaran server sebelum/sesudah (hitungToken)"
+      }
+    }
+  },
+  "perkiraanBiaya": {
+    "usd": 0.00749,
+    "idrPerkiraan": 124,
+    "tarif": {
+      "input": 0.3,
+      "output": 2.5,
+      "cacheBuat": 0,
+      "cacheBaca": 0.3,
+      "asal": "Google — Gemini 2.5 Flash, tarif standar Vertex AI/Gemini API",
+      "asOf": "2026-09-11",
+      "catatan": "cache_read dihargai setara input (diskon cache tidak diterapkan — batas atas)"
+    },
+    "basis": "delta anggaran 2996 token unit-anggaran, dihargai dengan tarif output"
+  },
+  "catatan": [],
+  "selesai": "2026-09-11T15:38:19.057Z"
+}
