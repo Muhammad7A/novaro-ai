@@ -516,6 +516,31 @@ el('formKode').addEventListener('submit', async (e) => {
   }
 });
 
+/*
+ * Identitas model runtime untuk deskripsi lembar IT — diambil SEKALI dari
+ * /api/health (publik), pola yang sama dengan label chat di index.html.
+ * Tanpa jawaban yang bisa dipercaya, lembar tetap jujur: "identitas model
+ * tidak tersedia" — bukan nama penyedia/model karangan agar tampak lengkap.
+ */
+let MODEL_AI_RUNTIME = null;
+let MODEL_AI_SUDAH_DIMUAT = false;
+async function isiModelAIRuntime() {
+  if (!MODEL_AI_SUDAH_DIMUAT) {
+    MODEL_AI_SUDAH_DIMUAT = true;
+    try {
+      const res = await fetch('/api/health');
+      if (res.ok) MODEL_AI_RUNTIME = (await res.json()).model ?? null;
+    } catch { /* server tak terjangkau — tetap null, tampil tak-tersedia */ }
+  }
+  const tampungan = document.getElementById('modelAiRuntime');
+  if (!tampungan) return;
+  // textContent, bukan innerHTML: nama model apa pun dari konfigurasi server
+  // tidak pernah dipercaya sebagai markup.
+  tampungan.textContent = MODEL_AI_RUNTIME
+    ? 'model runtime: ' + MODEL_AI_RUNTIME
+    : 'identitas model tidak tersedia';
+}
+
 function pilihInstrumenAktif() {
   INSTRUMEN = JENIS_AKTIF === 'it' ? (INSTRUMEN_IT || INSTRUMEN_MATERI) : (INSTRUMEN_MATERI || INSTRUMEN_IT);
 
@@ -526,7 +551,12 @@ function pilihInstrumenAktif() {
     el('judulHalaman').textContent = 'Kesiapan & Kelayakan Infrastruktur Sistem Novaro';
     el('deskripsiHalaman').innerHTML =
       'Novaro dibangun dengan arsitektur Cloud Native (Google Cloud Run serverless & Managed Cloud SQL PostgreSQL) ' +
-      'serta integrasi AI Gemini melalui Google Vertex AI. Lembar ini mengevaluasi 6 dimensi: arsitektur, keamanan, integritas DB, efisiensi jaringan, keandalan AI, dan auditabilitas.';
+      // Identitas AI TIDAK statis — pola index.html: diisi dari /api/health.
+      // Klausul lama menyebut satu penyedia + satu jalur secara statis: dusta
+      // ganda pada konfigurasi runtime yang lain.
+      'serta integrasi AI (<span id="modelAiRuntime">memuat identitas model dari server…</span>). ' +
+      'Lembar ini mengevaluasi 6 dimensi: arsitektur, keamanan, integritas DB, efisiensi jaringan, keandalan AI, dan auditabilitas.';
+    isiModelAIRuntime();
     el('notePengantar').innerHTML =
       '<b>Cara mengisi.</b> Buka arsitektur/kode/modul yang dirujuk pada tiap butir, lalu beri skor 1–5 dan komentar seperlunya. ' +
       'Butir dengan skor 1 atau 2 <b>wajib</b> disertai komentar alasan/perbaikan teknis. Draf tersimpan otomatis.';
