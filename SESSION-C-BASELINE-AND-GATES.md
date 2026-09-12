@@ -122,3 +122,7 @@ Explicitly **not** touched by C: `store.js`, `server.js`, `cashbook.js`, `claude
 4. **Vocabulary pin works as intended.** While building the vocabulary pin, the gate immediately surfaced the two demo divergences (item 1 and `transactions_added`-plural). The plural name remains registered as-is with a comment flagging it for the demo owner — it is still a deliberate-rename decision, not something C normalized silently.
 
 Blocked / explicitly out of scope for C: jti/HMAC token gates (prerequisite 6 unbuilt — no interface to test against), `proposal_shown`/`proposal_rejected` event gates (unbuilt), calibration evidence (no tiers-in-production), consent v3.
+
+## Lanjutan 2026-09-12
+
+Laporan Session G dikomit apa adanya (`754cb50`), floor kanonik dinaikkan 446 → 535 di BASELINE.md setelah verifikasi ulang `npm test` 535/535 exit 0 pada HEAD `2ad3ea7` (Node v24 win32), dan skrip `test` vestigial di package.json root dihapus karena non-kanonik (tanpa `--test-concurrency=1`); README root diarahkan ke perintah kanonik `cd server && npm test` (`baa7f3e`). Tidak ada berkas server/lib, server.js, server/test, maupun cloudbuild.yaml yang tersentuh — kontradiksi tanggal-malformed yang ditandai pada §9 temuan 2 sudah diselesaikan Session A (`tanggal-bentuk` 400) dan kini tertutup.
