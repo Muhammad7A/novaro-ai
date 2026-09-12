@@ -222,3 +222,16 @@ Cut by this mission's review chain (with resurrection triggers): persisted Propo
 - **T2:** specified-but-absent; requires §8.4 + §20 + the pinned inbox shape. **T3: forbidden.**
 - **Live AI:** no environment currently exceeds "unknown, bounded above by L2"; no recommendation in this document may be read as relying on live reliability evidence that does not exist.
 - Nothing in this document authorizes product features, refactors, database changes, migrations, or Autopilot work. Each milestone requires its own explicit go-ahead.
+
+---
+
+**ADDENDUM 2026-09-12 — T1 surface #1 implementation authorized (owner; recorded before session G fase 4).**
+
+Owner meng-autorisi implementasi T1 **HANYA untuk surface #1 (scan-nota)** pada 2026-09-12, dengan kondisi:
+
+- **T2/T3 tetap terlarang** — T2 tetap specified-but-absent di balik gerbang §8.4/§20; T3 tetap forbidden. Addendum ini tidak menggerakkan keduanya.
+- **Surface #2 tetap butuh prasyarat 12** (user story bernama untuk permukaan proposal kedua). Addendum ini TIDAK mengautorisasi generalisasi rel proposal apa pun.
+- **Exposure tetap tertutup sampai rung live dijalankan**: fitur terkirim default-MATI di balik gerbang env; window F boleh membukanya hanya setelah deploy kode ini dan rung uji-hidup-nya sendiri. Build ≠ exposed.
+- Lapisan kepercayaan B′ yang wajib dipenuhi implementasi tetap §9.1–§9.4 dan keputusan irreversibel §21 (nama event snake_case, TANPA delta event, format token HMAC dengan `tokenVersion` + TTL, jti = keberadaan baris dengan label jujur, mesin-tidak-pernah-menulis-penghasilan tidak berubah).
+
+*Catatan masa depan (BUKAN otorisasi):* kandidat user story surface #2 kelak dapat dibaca dari data keputusan advisori (proposal_shown ⋈ baris, sesi G fase 1–3) — mis. detektor read-time yang mengusulkan koreksi kategori berulang — menunggu prasyarat 12.
