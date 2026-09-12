@@ -1,0 +1,1185 @@
+{
+  "versi": 1,
+  "dibuat": "2026-09-12",
+  "catatan": "Golden set advisori — kasus sintetis anonim lintas profil warung. diharapkan dihitung dari batas SPESIFIKASI (lihat server/scripts/eval-advisori.js), bukan salinan keluaran sanitizer.",
+  "kasus": [
+    {
+      "id": "r01",
+      "jenis": "rekomendasi",
+      "profil": "warung nasi rumahan",
+      "situasi": "pencatatan rutin, margin stabil sehat",
+      "aturan": [
+        "lolos-utuh"
+      ],
+      "mentah": {
+        "ringkasan": "Pembukuan rutin 26 hari bulan ini. Margin stabil di kisaran sehat untuk warung seukuran ini.",
+        "rekomendasi": [
+          {
+            "judul": "Catat belanja bahan harian",
+            "alasan": "Belanja bahan masih tercampur dengan belanja rumah di beberapa hari.",
+            "langkah": [
+              "Pisahkan kantong belanja usaha",
+              "Catat sebelum barang dipakai"
+            ],
+            "prioritas": "tinggi",
+            "dampak": "Margin terbaca apa adanya",
+            "modulTerkait": 2
+          },
+          {
+            "judul": "Sisihkan prive tetap tiap pekan",
+            "alasan": "Prive sudah di bawah laba, pertahankan ritmenya.",
+            "langkah": [
+              "Ambil prive setiap Sabtu"
+            ],
+            "prioritas": "rendah",
+            "dampak": "Saldo kas aman",
+            "modulTerkait": 9
+          }
+        ],
+        "peringatan": [
+          "Prive akhir pekan sedikit naik"
+        ],
+        "targetBulanIni": [
+          "Catat minimal 25 hari",
+          "Belanja bahan dicatat harian"
+        ]
+      },
+      "diharapkan": {
+        "ringkasan": "Pembukuan rutin 26 hari bulan ini. Margin stabil di kisaran sehat untuk warung seukuran ini.",
+        "rekomendasi": [
+          {
+            "judul": "Catat belanja bahan harian",
+            "alasan": "Belanja bahan masih tercampur dengan belanja rumah di beberapa hari.",
+            "langkah": [
+              "Pisahkan kantong belanja usaha",
+              "Catat sebelum barang dipakai"
+            ],
+            "prioritas": "tinggi",
+            "dampak": "Margin terbaca apa adanya",
+            "modulTerkait": 2
+          },
+          {
+            "judul": "Sisihkan prive tetap tiap pekan",
+            "alasan": "Prive sudah di bawah laba, pertahankan ritmenya.",
+            "langkah": [
+              "Ambil prive setiap Sabtu"
+            ],
+            "prioritas": "rendah",
+            "dampak": "Saldo kas aman",
+            "modulTerkait": 9
+          }
+        ],
+        "peringatan": [
+          "Prive akhir pekan sedikit naik"
+        ],
+        "targetBulanIni": [
+          "Catat minimal 25 hari",
+          "Belanja bahan dicatat harian"
+        ]
+      }
+    },
+    {
+      "id": "r02",
+      "jenis": "rekomendasi",
+      "profil": "warung sembako",
+      "situasi": "semua medan melebihi batas panjang dan jumlah",
+      "aturan": [
+        "potong-ringkasan-600",
+        "potong-judul-80",
+        "potong-alasan-400",
+        "potong-dampak-200",
+        "potong-langkah-200",
+        "maks-4-langkah",
+        "maks-5-peringatan",
+        "potong-peringatan-200",
+        "maks-3-target",
+        "potong-target-200"
+      ],
+      "mentah": {
+        "ringkasan": "Belanja bahan naik dua pekan berturut; catat tiap belanja agar polanya kelihatan. Belanja bahan naik dua pekan berturut; catat tiap belanja agar polanya kelihatan. Belanja bahan naik dua pekan berturut; catat tiap belanja agar polanya kelihatan. Belanja bahan naik dua pekan berturut; catat tiap belanja agar polanya kelihatan. Belanja bahan naik dua pekan berturut; catat tiap belanja agar polanya kelihatan. Belanja bahan naik dua pekan berturut; catat tiap belanja agar polanya kelihatan. Belanja bahan naik dua pekan berturut; catat tiap belanja agar polanya kelihatan. Belanja bahan naik dua pekan berturut; catat tiap belanja agar polanya kelihatan. Belanja bahan naik dua pekan berturut; catat",
+        "rekomendasi": [
+          {
+            "judul": "Rapikan pencatatan belanja bahan warung supaya margin terbaca jujur. Rapikan pencatatan belanja bahan warung supaya marg",
+            "alasan": "Belanja bahan tercampur belanja rumah pada beberapa hari; pisahkan dompet agar margin tidak terlihat lebih buruk dari kenyataan. Belanja bahan tercampur belanja rumah pada beberapa hari; pisahkan dompet agar margin tidak terlihat lebih buruk dari kenyataan. Belanja bahan tercampur belanja rumah pada beberapa hari; pisahkan dompet agar margin tidak terlihat lebih buruk dari kenyataan. Belanja bahan tercampur belanja rumah pada beberapa hari; pisahkan dompet",
+            "langkah": [
+              "Pisahkan kantong belanja usaha dari rumah. Pisahkan kantong belanja usaha dari rumah. Pisahkan kantong belanja usaha dari rumah. Pisahkan kantong belanja usaha dari rumah. Pisahkan kantong belanja usaha dari rumah. Pisahkan kantong belanja usaha dari rumah. Pi",
+              "Catat belanja sebelum barang dipakai. Catat belanja sebelum barang dipakai. Catat belanja sebelum barang dipakai. Catat belanja sebelum barang dipakai. Catat belanja sebelum barang dipakai. Catat belanja sebelum barang dipakai. Catat belanj",
+              "Ambil foto struk",
+              "Rekap tiap Sabtu",
+              "Lima langkah berlebih"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Margin terbaca apa adanya tanpa harus mengubah usaha. Margin terbaca apa adanya tanpa harus mengubah usaha. Margin terbaca apa adanya tanpa harus mengubah usaha. Margin terbaca apa adanya tanpa harus mengubah usaha. Margin terbaca apa adanya tanpa harus mengub",
+            "modulTerkait": 5
+          }
+        ],
+        "peringatan": [
+          "Prive naik tipis dua pekan berturut turut. Prive naik tipis dua pekan berturut turut. Prive naik tipis dua pekan berturut turut. Prive naik tipis dua pekan berturut turut. Prive naik tipis dua pekan berturut turut. Prive naik tipis dua peka",
+          "Stok menipis",
+          "Utang dagang",
+          "Listrik",
+          "Air",
+          "Keenam berlebih"
+        ],
+        "targetBulanIni": [
+          "Catat minimal 25 hari tiap bulan. Catat minimal 25 hari tiap bulan. Catat minimal 25 hari tiap bulan. Catat minimal 25 hari tiap bulan. Catat minimal 25 hari tiap bulan. Catat minimal 25 hari tiap bulan. Catat minimal 25 hari tiap bulan. Ca",
+          "Belanja harian",
+          "Prive terjadwal",
+          "Keempat berlebih"
+        ]
+      },
+      "diharapkan": {
+        "ringkasan": "Belanja bahan naik dua pekan berturut; catat tiap belanja agar polanya kelihatan. Belanja bahan naik dua pekan berturut; catat tiap belanja agar polanya kelihatan. Belanja bahan naik dua pekan berturut; catat tiap belanja agar polanya kelihatan. Belanja bahan naik dua pekan berturut; catat tiap belanja agar polanya kelihatan. Belanja bahan naik dua pekan berturut; catat tiap belanja agar polanya kelihatan. Belanja bahan naik dua pekan berturut; catat tiap belanja agar polanya kelihatan. Belanja bahan naik dua pekan berturut; catat tiap belanja agar polanya kelihatan. Belanja bahan naik dua pek",
+        "rekomendasi": [
+          {
+            "judul": "Rapikan pencatatan belanja bahan warung supaya margin terbaca jujur. Rapikan pen",
+            "alasan": "Belanja bahan tercampur belanja rumah pada beberapa hari; pisahkan dompet agar margin tidak terlihat lebih buruk dari kenyataan. Belanja bahan tercampur belanja rumah pada beberapa hari; pisahkan dompet agar margin tidak terlihat lebih buruk dari kenyataan. Belanja bahan tercampur belanja rumah pada beberapa hari; pisahkan dompet agar margin tidak terlihat lebih buruk dari kenyataan. Belanja bahan",
+            "langkah": [
+              "Pisahkan kantong belanja usaha dari rumah. Pisahkan kantong belanja usaha dari rumah. Pisahkan kantong belanja usaha dari rumah. Pisahkan kantong belanja usaha dari rumah. Pisahkan kantong belanja usa",
+              "Catat belanja sebelum barang dipakai. Catat belanja sebelum barang dipakai. Catat belanja sebelum barang dipakai. Catat belanja sebelum barang dipakai. Catat belanja sebelum barang dipakai. Catat bela",
+              "Ambil foto struk",
+              "Rekap tiap Sabtu"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Margin terbaca apa adanya tanpa harus mengubah usaha. Margin terbaca apa adanya tanpa harus mengubah usaha. Margin terbaca apa adanya tanpa harus mengubah usaha. Margin terbaca apa adanya tanpa harus ",
+            "modulTerkait": 5
+          }
+        ],
+        "peringatan": [
+          "Prive naik tipis dua pekan berturut turut. Prive naik tipis dua pekan berturut turut. Prive naik tipis dua pekan berturut turut. Prive naik tipis dua pekan berturut turut. Prive naik tipis dua pekan b",
+          "Stok menipis",
+          "Utang dagang",
+          "Listrik",
+          "Air"
+        ],
+        "targetBulanIni": [
+          "Catat minimal 25 hari tiap bulan. Catat minimal 25 hari tiap bulan. Catat minimal 25 hari tiap bulan. Catat minimal 25 hari tiap bulan. Catat minimal 25 hari tiap bulan. Catat minimal 25 hari tiap bul",
+          "Belanja harian",
+          "Prive terjadwal"
+        ]
+      }
+    },
+    {
+      "id": "r03",
+      "jenis": "rekomendasi",
+      "profil": "kedai kopi",
+      "situasi": "tujuh butir saran dari model",
+      "aturan": [
+        "maks-5-rekomendasi"
+      ],
+      "mentah": {
+        "ringkasan": "Omzet naik stabil; beberapa biaya mulai menggerus.",
+        "rekomendasi": [
+          {
+            "judul": "Saran 1",
+            "alasan": "Alasan saran 1.",
+            "langkah": [
+              "Langkah 1"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Dampak 1",
+            "modulTerkait": 1
+          },
+          {
+            "judul": "Saran 2",
+            "alasan": "Alasan saran 2.",
+            "langkah": [
+              "Langkah 2"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Dampak 2",
+            "modulTerkait": 2
+          },
+          {
+            "judul": "Saran 3",
+            "alasan": "Alasan saran 3.",
+            "langkah": [
+              "Langkah 3"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Dampak 3",
+            "modulTerkait": 3
+          },
+          {
+            "judul": "Saran 4",
+            "alasan": "Alasan saran 4.",
+            "langkah": [
+              "Langkah 4"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Dampak 4",
+            "modulTerkait": 4
+          },
+          {
+            "judul": "Saran 5",
+            "alasan": "Alasan saran 5.",
+            "langkah": [
+              "Langkah 5"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Dampak 5",
+            "modulTerkait": 5
+          },
+          {
+            "judul": "Saran 6",
+            "alasan": "Alasan saran 6.",
+            "langkah": [
+              "Langkah 6"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Dampak 6",
+            "modulTerkait": 6
+          },
+          {
+            "judul": "Saran 7",
+            "alasan": "Alasan saran 7.",
+            "langkah": [
+              "Langkah 7"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Dampak 7",
+            "modulTerkait": 7
+          }
+        ],
+        "peringatan": [],
+        "targetBulanIni": []
+      },
+      "diharapkan": {
+        "ringkasan": "Omzet naik stabil; beberapa biaya mulai menggerus.",
+        "rekomendasi": [
+          {
+            "judul": "Saran 1",
+            "alasan": "Alasan saran 1.",
+            "langkah": [
+              "Langkah 1"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Dampak 1",
+            "modulTerkait": 1
+          },
+          {
+            "judul": "Saran 2",
+            "alasan": "Alasan saran 2.",
+            "langkah": [
+              "Langkah 2"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Dampak 2",
+            "modulTerkait": 2
+          },
+          {
+            "judul": "Saran 3",
+            "alasan": "Alasan saran 3.",
+            "langkah": [
+              "Langkah 3"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Dampak 3",
+            "modulTerkait": 3
+          },
+          {
+            "judul": "Saran 4",
+            "alasan": "Alasan saran 4.",
+            "langkah": [
+              "Langkah 4"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Dampak 4",
+            "modulTerkait": 4
+          },
+          {
+            "judul": "Saran 5",
+            "alasan": "Alasan saran 5.",
+            "langkah": [
+              "Langkah 5"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Dampak 5",
+            "modulTerkait": 5
+          }
+        ],
+        "peringatan": [],
+        "targetBulanIni": []
+      }
+    },
+    {
+      "id": "r04",
+      "jenis": "rekomendasi",
+      "profil": "jasa laundry",
+      "situasi": "ada butir hantu tanpa judul dan tanpa alasan",
+      "aturan": [
+        "buang-hantu"
+      ],
+      "mentah": {
+        "ringkasan": "Pendapatan jasa naik; biaya listrik pencuci menonjol.",
+        "rekomendasi": [
+          {
+            "langkah": [
+              "Hanya langkah tanpa judul alasan"
+            ],
+            "prioritas": "tinggi",
+            "dampak": "Hantu",
+            "modulTerkait": 3
+          },
+          {
+            "judul": "Jadwalkan cucian penuh",
+            "alasan": "",
+            "langkah": [
+              "Tumpuk cucian dua hari sekali"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Listrik per unit turun",
+            "modulTerkait": 12
+          }
+        ],
+        "peringatan": [],
+        "targetBulanIni": []
+      },
+      "diharapkan": {
+        "ringkasan": "Pendapatan jasa naik; biaya listrik pencuci menonjol.",
+        "rekomendasi": [
+          {
+            "judul": "Jadwalkan cucian penuh",
+            "alasan": "",
+            "langkah": [
+              "Tumpuk cucian dua hari sekali"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Listrik per unit turun",
+            "modulTerkait": 12
+          }
+        ],
+        "peringatan": [],
+        "targetBulanIni": []
+      }
+    },
+    {
+      "id": "r05",
+      "jenis": "rekomendasi",
+      "profil": "kue rumahan",
+      "situasi": "prioritas di luar kosakata",
+      "aturan": [
+        "prioritas-tengah"
+      ],
+      "mentah": {
+        "ringkasan": "Pesanan musiman naik; cashflow menipis antar pesanan.",
+        "rekomendasi": [
+          {
+            "judul": "Pesan bahan dua pesanan",
+            "alasan": "Beli bahan per pesanan menaikkan harga satuan.",
+            "langkah": [
+              "Kunci harga bahan borongan"
+            ],
+            "prioritas": "URGENT",
+            "dampak": "Harga satuan turun",
+            "modulTerkait": 4
+          },
+          {
+            "judul": "Terima DP pesanan",
+            "alasan": "DP menjaga arus kas antar pesanan.",
+            "langah": [],
+            "langkah": [
+              "Minta setengah di muka"
+            ],
+            "prioritas": "Tinggi",
+            "dampak": "Kas tidak kosong",
+            "modulTerkait": null
+          }
+        ],
+        "peringatan": [],
+        "targetBulanIni": []
+      },
+      "diharapkan": {
+        "ringkasan": "Pesanan musiman naik; cashflow menipis antar pesanan.",
+        "rekomendasi": [
+          {
+            "judul": "Pesan bahan dua pesanan",
+            "alasan": "Beli bahan per pesanan menaikkan harga satuan.",
+            "langkah": [
+              "Kunci harga bahan borongan"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Harga satuan turun",
+            "modulTerkait": 4
+          },
+          {
+            "judul": "Terima DP pesanan",
+            "alasan": "DP menjaga arus kas antar pesanan.",
+            "langkah": [
+              "Minta setengah di muka"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Kas tidak kosong",
+            "modulTerkait": null
+          }
+        ],
+        "peringatan": [],
+        "targetBulanIni": []
+      }
+    },
+    {
+      "id": "r06",
+      "jenis": "rekomendasi",
+      "profil": "warung pulsa & aksesoris",
+      "situasi": "nomor modul di luar rentang dan tak bulat",
+      "aturan": [
+        "modul-rentang"
+      ],
+      "mentah": {
+        "ringkasan": "Margin per unit kecil; volume yang menentukan.",
+        "rekomendasi": [
+          {
+            "judul": "Bundel pulsa dengan aksesoris",
+            "alasan": "Bundel menaikkan nilai per transaksi.",
+            "langkah": [
+              "Rakit tiga bundel andalan"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Omzet per pelanggan naik",
+            "modulTerkait": 47
+          },
+          {
+            "judul": "Catat per transaksi",
+            "alasan": "Volume tinggi mudah lolos dari catatan.",
+            "langkah": [
+              "Catat sebelum kembalian"
+            ],
+            "prioritas": "tinggi",
+            "dampak": "Tidak ada transaksi hilang",
+            "modulTerkait": 2.5
+          },
+          {
+            "judul": "Tutup sesuai jam ramai",
+            "alasan": "Jam sepi menambah biaya tanpa omzet.",
+            "langkah": [
+              "Coba tutup lebih awal sepekan"
+            ],
+            "prioritas": "rendah",
+            "dampak": "Biaya listrik turun",
+            "modulTerkait": "7"
+          }
+        ],
+        "peringatan": [],
+        "targetBulanIni": []
+      },
+      "diharapkan": {
+        "ringkasan": "Margin per unit kecil; volume yang menentukan.",
+        "rekomendasi": [
+          {
+            "judul": "Bundel pulsa dengan aksesoris",
+            "alasan": "Bundel menaikkan nilai per transaksi.",
+            "langkah": [
+              "Rakit tiga bundel andalan"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Omzet per pelanggan naik",
+            "modulTerkait": null
+          },
+          {
+            "judul": "Catat per transaksi",
+            "alasan": "Volume tinggi mudah lolos dari catatan.",
+            "langkah": [
+              "Catat sebelum kembalian"
+            ],
+            "prioritas": "tinggi",
+            "dampak": "Tidak ada transaksi hilang",
+            "modulTerkait": null
+          },
+          {
+            "judul": "Tutup sesuai jam ramai",
+            "alasan": "Jam sepi menambah biaya tanpa omzet.",
+            "langkah": [
+              "Coba tutup lebih awal sepekan"
+            ],
+            "prioritas": "rendah",
+            "dampak": "Biaya listrik turun",
+            "modulTerkait": 7
+          }
+        ],
+        "peringatan": [],
+        "targetBulanIni": []
+      }
+    },
+    {
+      "id": "r07",
+      "jenis": "rekomendasi",
+      "profil": "jahitan & garmen",
+      "situasi": "langkah kosong dan spasi",
+      "aturan": [
+        "langkah-kosong-dibuang"
+      ],
+      "mentah": {
+        "ringkasan": "Pesanan perbaikan stabil; bahan sisa menumpuk.",
+        "rekomendasi": [
+          {
+            "judul": "Pakai stok kain sisa",
+            "alasan": "Bahan sisa bisa jadi produk kecil.",
+            "langkah": [
+              "",
+              "   ",
+              "Jual sisa kaci ke tetangga"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Bahan tidak membusuk",
+            "modulTerkait": 15
+          }
+        ],
+        "peringatan": [],
+        "targetBulanIni": []
+      },
+      "diharapkan": {
+        "ringkasan": "Pesanan perbaikan stabil; bahan sisa menumpuk.",
+        "rekomendasi": [
+          {
+            "judul": "Pakai stok kain sisa",
+            "alasan": "Bahan sisa bisa jadi produk kecil.",
+            "langkah": [
+              "Jual sisa kaci ke tetangga"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Bahan tidak membusuk",
+            "modulTerkait": 15
+          }
+        ],
+        "peringatan": [],
+        "targetBulanIni": []
+      }
+    },
+    {
+      "id": "r08",
+      "jenis": "rekomendasi",
+      "profil": "warung baru 3 minggu",
+      "situasi": "model mengembalikan daftar kosong",
+      "aturan": [
+        "502-rekomendasi-kosong"
+      ],
+      "mentah": {
+        "ringkasan": "Data masih sangat tipis untuk dinilai.",
+        "rekomendasi": [],
+        "peringatan": [],
+        "targetBulanIni": []
+      },
+      "galat": 502
+    },
+    {
+      "id": "r09",
+      "jenis": "rekomendasi",
+      "profil": "warung sayur keliling",
+      "situasi": "model mengembalikan prosa, bukan obyek",
+      "aturan": [
+        "502-bukan-obyek"
+      ],
+      "mentah": "Saran saya: catat setiap hari dan pisahkan prive dari uang usaha.",
+      "galat": 502
+    },
+    {
+      "id": "r10",
+      "jenis": "rekomendasi",
+      "profil": "toko roti kecil",
+      "situasi": "ringkasan kosong padahal butir ada",
+      "aturan": [
+        "502-ringkasan-kosong"
+      ],
+      "mentah": {
+        "ringkasan": "   ",
+        "rekomendasi": [
+          {
+            "judul": "Catat roti sisa tiap tutup",
+            "alasan": "Sisa roti adalah biaya tak terlihat.",
+            "langkah": [
+              "Hitung sisa sebelum tutup"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Biaya sisa terlihat",
+            "modulTerkait": 18
+          }
+        ],
+        "peringatan": [],
+        "targetBulanIni": []
+      },
+      "galat": 502
+    },
+    {
+      "id": "r11",
+      "jenis": "rekomendasi",
+      "profil": "toko kelontok",
+      "situasi": "medan asing disisipkan tubuh",
+      "aturan": [
+        "medan-asing-dibuang"
+      ],
+      "mentah": {
+        "ringkasan": "Stok berputar cepat; modal kerja sehat.",
+        "estimasiRupiah": 5000000,
+        "skor": 0.92,
+        "sumberInterior": "debug",
+        "rekomendasi": [
+          {
+            "judul": "Ganti barang lambat dengan cepat",
+            "alasan": "Rak depan untuk barang cepat.",
+            "urgensi": 9,
+            "langkah": [
+              "Pindahkan tiga barang terlaris ke depan"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Perputaran naik",
+            "modulTerkait": 21,
+            "rahasia": "x"
+          }
+        ],
+        "peringatan": [
+          "Satu barang lambat mengunci modal"
+        ],
+        "targetBulanIni": [
+          "Cek stok lambat mingguan"
+        ]
+      },
+      "diharapkan": {
+        "ringkasan": "Stok berputar cepat; modal kerja sehat.",
+        "rekomendasi": [
+          {
+            "judul": "Ganti barang lambat dengan cepat",
+            "alasan": "Rak depan untuk barang cepat.",
+            "langkah": [
+              "Pindahkan tiga barang terlaris ke depan"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Perputaran naik",
+            "modulTerkait": 21
+          }
+        ],
+        "peringatan": [
+          "Satu barang lambat mengunci modal"
+        ],
+        "targetBulanIni": [
+          "Cek stok lambat mingguan"
+        ]
+      }
+    },
+    {
+      "id": "r12",
+      "jenis": "rekomendasi",
+      "profil": "katering rumahan",
+      "situasi": "elemen non-obyek dalam daftar",
+      "aturan": [
+        "elemen-bukan-obyek",
+        "maks-5-rekomendasi"
+      ],
+      "mentah": {
+        "ringkasan": "Peserta katering naik; kapasitas dapur mulai penuh.",
+        "rekomendasi": [
+          {
+            "judul": "Batasi menu mingguan",
+            "alasan": "Menu panjang memperlambat dapur.",
+            "langkah": [
+              "Pilih lima menu tetap"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Waktu masak turun",
+            "modulTerkait": 23
+          },
+          "saran lewat string",
+          {
+            "judul": "Saran 2",
+            "alasan": "Alasan 2.",
+            "langkah": [
+              "Langkah 2"
+            ],
+            "prioritas": "rendah",
+            "dampak": "Dampak 2",
+            "modulTerkait": 2
+          },
+          {
+            "judul": "Saran 3",
+            "alasan": "Alasan 3.",
+            "langkah": [
+              "Langkah 3"
+            ],
+            "prioritas": "rendah",
+            "dampak": "Dampak 3",
+            "modulTerkait": 3
+          },
+          {
+            "judul": "Saran 4",
+            "alasan": "Alasan 4.",
+            "langkah": [
+              "Langkah 4"
+            ],
+            "prioritas": "rendah",
+            "dampak": "Dampak 4",
+            "modulTerkait": 4
+          },
+          {
+            "judul": "Saran 5",
+            "alasan": "Alasan 5.",
+            "langkah": [
+              "Langkah 5"
+            ],
+            "prioritas": "rendah",
+            "dampak": "Dampak 5",
+            "modulTerkait": 5
+          },
+          {
+            "judul": "Saran 6",
+            "alasan": "Alasan 6.",
+            "langkah": [
+              "Langkah 6"
+            ],
+            "prioritas": "rendah",
+            "dampak": "Dampak 6",
+            "modulTerkait": 6
+          }
+        ],
+        "peringatan": [],
+        "targetBulanIni": []
+      },
+      "diharapkan": {
+        "ringkasan": "Peserta katering naik; kapasitas dapur mulai penuh.",
+        "rekomendasi": [
+          {
+            "judul": "Batasi menu mingguan",
+            "alasan": "Menu panjang memperlambat dapur.",
+            "langkah": [
+              "Pilih lima menu tetap"
+            ],
+            "prioritas": "sedang",
+            "dampak": "Waktu masak turun",
+            "modulTerkait": 23
+          },
+          {
+            "judul": "Saran 2",
+            "alasan": "Alasan 2.",
+            "langkah": [
+              "Langkah 2"
+            ],
+            "prioritas": "rendah",
+            "dampak": "Dampak 2",
+            "modulTerkait": 2
+          },
+          {
+            "judul": "Saran 3",
+            "alasan": "Alasan 3.",
+            "langkah": [
+              "Langkah 3"
+            ],
+            "prioritas": "rendah",
+            "dampak": "Dampak 3",
+            "modulTerkait": 3
+          },
+          {
+            "judul": "Saran 4",
+            "alasan": "Alasan 4.",
+            "langkah": [
+              "Langkah 4"
+            ],
+            "prioritas": "rendah",
+            "dampak": "Dampak 4",
+            "modulTerkait": 4
+          },
+          {
+            "judul": "Saran 5",
+            "alasan": "Alasan 5.",
+            "langkah": [
+              "Langkah 5"
+            ],
+            "prioritas": "rendah",
+            "dampak": "Dampak 5",
+            "modulTerkait": 5
+          }
+        ],
+        "peringatan": [],
+        "targetBulanIni": []
+      }
+    },
+    {
+      "id": "r13",
+      "jenis": "rekomendasi",
+      "profil": "bengkel kecil",
+      "situasi": "langkah berupa kalimat, bukan daftar",
+      "aturan": [
+        "langkah-bukan-daftar"
+      ],
+      "mentah": {
+        "ringkasan": "Servis lancar; suku cadang sering ditunda beli.",
+        "rekomendasi": [
+          {
+            "judul": "Beli suku cadang habis pakai",
+            "alasan": "Stok kecil menambah putaran.",
+            "langkah": "Satu kalimat panjang, bukan daftar langkah.",
+            "prioritas": "sedang",
+            "dampak": "Servis tidak menunggu part",
+            "modulTerkait": 25
+          }
+        ],
+        "peringatan": [],
+        "targetBulanIni": []
+      },
+      "diharapkan": {
+        "ringkasan": "Servis lancar; suku cadang sering ditunda beli.",
+        "rekomendasi": [
+          {
+            "judul": "Beli suku cadang habis pakai",
+            "alasan": "Stok kecil menambah putaran.",
+            "langkah": [],
+            "prioritas": "sedang",
+            "dampak": "Servis tidak menunggu part",
+            "modulTerkait": 25
+          }
+        ],
+        "peringatan": [],
+        "targetBulanIni": []
+      }
+    },
+    {
+      "id": "r14",
+      "jenis": "rekomendasi",
+      "profil": "warung kopi keliling",
+      "situasi": "tubuh teratas adalah array",
+      "aturan": [
+        "502-bukan-obyek"
+      ],
+      "mentah": [
+        {
+          "judul": "A",
+          "alasan": "B"
+        }
+      ],
+      "galat": 502
+    },
+    {
+      "id": "r15",
+      "jenis": "rekomendasi",
+      "profil": "warung serba ada",
+      "situasi": "semua medan tepat di batas",
+      "aturan": [
+        "batas-presisi",
+        "modul-rentang"
+      ],
+      "mentah": {
+        "ringkasan": "Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas",
+        "rekomendasi": [
+          {
+            "judul": "J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J.",
+            "alasan": "A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A",
+            "langkah": [
+              "L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L.",
+              "L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L.",
+              "L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L.",
+              "L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L."
+            ],
+            "prioritas": "tinggi",
+            "dampak": "D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D.",
+            "modulTerkait": 1
+          },
+          {
+            "judul": "J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J.",
+            "alasan": "A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A",
+            "langkah": [
+              "L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L."
+            ],
+            "prioritas": "rendah",
+            "dampak": "D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D.",
+            "modulTerkait": 32
+          }
+        ],
+        "peringatan": [
+          "P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P.",
+          "P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P.",
+          "P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P.",
+          "P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P.",
+          "P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P."
+        ],
+        "targetBulanIni": [
+          "T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T.",
+          "T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T.",
+          "T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T."
+        ]
+      },
+      "diharapkan": {
+        "ringkasan": "Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas. Batas",
+        "rekomendasi": [
+          {
+            "judul": "J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J.",
+            "alasan": "A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A",
+            "langkah": [
+              "L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L.",
+              "L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L.",
+              "L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L.",
+              "L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L."
+            ],
+            "prioritas": "tinggi",
+            "dampak": "D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D.",
+            "modulTerkait": 1
+          },
+          {
+            "judul": "J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J. J.",
+            "alasan": "A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A. A",
+            "langkah": [
+              "L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L. L."
+            ],
+            "prioritas": "rendah",
+            "dampak": "D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D. D.",
+            "modulTerkait": 32
+          }
+        ],
+        "peringatan": [
+          "P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P.",
+          "P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P.",
+          "P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P.",
+          "P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P.",
+          "P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P. P."
+        ],
+        "targetBulanIni": [
+          "T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T.",
+          "T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T.",
+          "T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T."
+        ]
+      }
+    },
+    {
+      "id": "c01",
+      "jenis": "checkup",
+      "profil": "warung nasi rumahan",
+      "situasi": "sehat, ritme catat stabil",
+      "aturan": [
+        "lolos-utuh"
+      ],
+      "mentah": {
+        "item": [
+          {
+            "tipe": "ok",
+            "teks": "Ritme pencatatan 26 hari — konsisten."
+          },
+          {
+            "tipe": "perhatian",
+            "teks": "Belanja bahan naik tipis dua pekan."
+          }
+        ],
+        "insight": "Usaha sehat; jaga ritme catat dan awasi belanja bahan."
+      },
+      "diharapkan": {
+        "item": [
+          {
+            "tipe": "ok",
+            "teks": "Ritme pencatatan 26 hari — konsisten."
+          },
+          {
+            "tipe": "perhatian",
+            "teks": "Belanja bahan naik tipis dua pekan."
+          }
+        ],
+        "insight": "Usaha sehat; jaga ritme catat dan awasi belanja bahan."
+      }
+    },
+    {
+      "id": "c02",
+      "jenis": "checkup",
+      "profil": "kedai kopi",
+      "situasi": "tipe di luar kosakata",
+      "aturan": [
+        "tipe-jatuh-perhatian"
+      ],
+      "mentah": {
+        "item": [
+          {
+            "tipe": "warning",
+            "teks": "Biaya listrik pencuci menonjol."
+          },
+          {
+            "tipe": "OK",
+            "teks": "Omzet mingguan stabil."
+          }
+        ],
+        "insight": "Perhatikan biaya energi; omzet sehat."
+      },
+      "diharapkan": {
+        "item": [
+          {
+            "tipe": "perhatian",
+            "teks": "Biaya listrik pencuci menonjol."
+          },
+          {
+            "tipe": "perhatian",
+            "teks": "Omzet mingguan stabil."
+          }
+        ],
+        "insight": "Perhatikan biaya energi; omzet sehat."
+      }
+    },
+    {
+      "id": "c03",
+      "jenis": "checkup",
+      "profil": "warung sembako",
+      "situasi": "delapan butir, dua kosong",
+      "aturan": [
+        "maks-6-item",
+        "teks-kosong-dibuang"
+      ],
+      "mentah": {
+        "item": [
+          {
+            "tipe": "ok",
+            "teks": "Stok berputar cepat."
+          },
+          {
+            "tipe": "ok",
+            "teks": ""
+          },
+          {
+            "tipe": "ok",
+            "teks": "Modal kerja cukup."
+          },
+          {
+            "tipe": "perhatian",
+            "teks": "Satu barang lambat."
+          },
+          {
+            "tipe": "perhatian",
+            "teks": "   "
+          },
+          {
+            "tipe": "ok",
+            "teks": "Prive terkendali."
+          },
+          {
+            "tipe": "ok",
+            "teks": "Ketujuh terpotong jumlah."
+          },
+          {
+            "tipe": "ok",
+            "teks": "Kedelapan terpotong jumlah."
+          }
+        ],
+        "insight": "Sehat dengan satu titik jaga."
+      },
+      "diharapkan": {
+        "item": [
+          {
+            "tipe": "ok",
+            "teks": "Stok berputar cepat."
+          },
+          {
+            "tipe": "ok",
+            "teks": "Modal kerja cukup."
+          },
+          {
+            "tipe": "perhatian",
+            "teks": "Satu barang lambat."
+          },
+          {
+            "tipe": "ok",
+            "teks": "Prive terkendali."
+          }
+        ],
+        "insight": "Sehat dengan satu titik jaga."
+      }
+    },
+    {
+      "id": "c04",
+      "jenis": "checkup",
+      "profil": "jasa laundry",
+      "situasi": "teks dan insight kepanjangan",
+      "aturan": [
+        "potong-teks-200",
+        "potong-insight-400"
+      ],
+      "mentah": {
+        "item": [
+          {
+            "tipe": "perhatian",
+            "teks": "Listrik pencuci naik. Listrik pencuci naik. Listrik pencuci naik. Listrik pencuci naik. Listrik pencuci naik. Listrik pencuci naik. Listrik pencuci naik. Listrik pencuci naik. Listrik pencuci naik. Listrik pencuci naik. Listrik pencuci naik. Listrik pencuci naik. Listrik pencuci naik. Listrik pencuc"
+          }
+        ],
+        "insight": "Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesan"
+      },
+      "diharapkan": {
+        "item": [
+          {
+            "tipe": "perhatian",
+            "teks": "Listrik pencuci naik. Listrik pencuci naik. Listrik pencuci naik. Listrik pencuci naik. Listrik pencuci naik. Listrik pencuci naik. Listrik pencuci naik. Listrik pencuci naik. Listrik pencuci naik. Li"
+          }
+        ],
+        "insight": "Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar pesanan menipis. Arus kas antar p"
+      }
+    },
+    {
+      "id": "c05",
+      "jenis": "checkup",
+      "profil": "kue rumahan",
+      "situasi": "semua butir kosong",
+      "aturan": [
+        "502-item-kosong"
+      ],
+      "mentah": {
+        "item": [
+          {
+            "tipe": "ok",
+            "teks": ""
+          },
+          {
+            "tipe": "perhatian",
+            "teks": "   "
+          }
+        ],
+        "insight": "Ada insight tapi butirnya kosong."
+      },
+      "galat": 502
+    },
+    {
+      "id": "c06",
+      "jenis": "checkup",
+      "profil": "toko roti kecil",
+      "situasi": "insight kosong",
+      "aturan": [
+        "502-insight-kosong"
+      ],
+      "mentah": {
+        "item": [
+          {
+            "tipe": "ok",
+            "teks": "Roti sisa tercatat."
+          }
+        ],
+        "insight": "   "
+      },
+      "galat": 502
+    },
+    {
+      "id": "c07",
+      "jenis": "checkup",
+      "profil": "warung pulsa",
+      "situasi": "tubuh null",
+      "aturan": [
+        "502-bukan-obyek"
+      ],
+      "mentah": null,
+      "galat": 502
+    },
+    {
+      "id": "c08",
+      "jenis": "checkup",
+      "profil": "warung serba ada",
+      "situasi": "tepat di batas",
+      "aturan": [
+        "batas-presisi"
+      ],
+      "mentah": {
+        "item": [
+          {
+            "tipe": "ok",
+            "teks": "T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T."
+          }
+        ],
+        "insight": "I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I"
+      },
+      "diharapkan": {
+        "item": [
+          {
+            "tipe": "ok",
+            "teks": "T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T. T."
+          }
+        ],
+        "insight": "I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I. I"
+      }
+    }
+  ]
+}
