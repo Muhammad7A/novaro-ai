@@ -12,6 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { hitungToken, pangkasLog } from './anggaran.js';
+import { buatAdvisori, digestDasarAngka, pangkasAdvisori, VERSI_FITUR_ADVISORI } from './advisori.js';
 import { JENIS, isValidKategori, tanggalTerlama, tanggalWIB } from './cashbook.js';
 import { totalSoal } from './latihan.js';
 import { pool, initDb, JENIS_PENYIMPANAN, mongoCollection } from './db.js';
@@ -541,6 +542,13 @@ export const store = {
       progress: {},
       events: [], // append-only: "apa yang terjadi, kapan"
       usage: { requests: 0, inputTokens: 0, outputTokens: 0 },
+      // Riwayat nasihat (Sesi G — memori advisori): append-only, trim per jenis.
+      // Pengguna lama tanpa medan ini tetap sah — jalur tulis mengisi apa adanya.
+      advisori: [],
+      // Stempel skema fitur (M1-lite): metadata era bentuk data, set-if-absent.
+      // Tidak pernah menjadi penentu perilaku — jalur baca memutuskan dari
+      // medan baris, bukan dari stempel.
+      featureVersions: {},
     };
     await update((db) => {
       db.users.push(user);
@@ -1057,6 +1065,33 @@ export const store = {
     });
   },
 
+  /**
+   * Checkup hasil AI kini diingat — keluaran sanitizer yang sama, satu
+   * penulisan untuk usage + rekam advisori.
+   *
+   * Dulu checkup sengaja tidak pernah disimpan (hanya ke layar) — dan pembersih
+   *nya tidak berubah sedikit pun. Yang berubah adalah nasihat yang menguap:
+   * tanpa memori, tidak ada cara menjawab "checkup kemarin bilang apa, dan
+   * apakah kejadiannya". Rekamannya append-only murni: checkup tidak menimpa
+   * slot mana pun dan tidak pernah menyentuh transaksi.
+   *
+   * Rute checkup (server.js) akan menukar `recordUsage`-nya dengan panggilan
+   * ini pada fase wiring rute — di sini jalannya disiapkan dan diuji.
+   */
+  async simpanCheckup(userId, hasil, usage, provensi = {}) {
+    return update((db) => {
+      const user = db.users.find((u) => u.id === userId);
+      if (!user) return null;
+      catatUsage(user, usage);
+      return rekamAdvisoriKe(user, {
+        jenis: 'checkup',
+        isi: hasil,
+        sumber: provensi.sumber ?? 'ai',
+        model: provensi.model ?? null,
+      });
+    });
+  },
+
   /** Jejak pemakaian token harian, untuk memeriksa anggaran. */
   async getTokenLog(userId) {
     const db = await load();
@@ -1235,5 +1270,46 @@ function simpanRekomendasiKe(user, recommendations, provensi = {}) {
     jumlah: recommendations?.rekomendasi?.length ?? 0,
     peringatan: recommendations?.peringatan?.length ?? 0,
   });
+  /*
+   * Write-through memori advisori — di DALAM mutator yang sama, tanpa
+   * penulisan kedua ke disk. Slot `recommendations` TETAP apa adanya: /api/me,
+   * kartu fokus (aturan 7), dan kartu publik membacanya seperti kemarin.
+   * Yang baru adalah riwayatnya: keluaran sanitizer yang sama direkam
+   * append-only, jadi nasihat yang kemarin ditimpa kini tidak hilang.
+   * (Benih demo tidak lewat sini — hidrasi demo menulis slot lewat patch,
+   * sehingga ruang pamer tidak ikut menciptakan riwayat.)
+   */
+  rekamAdvisoriKe(user, {
+    jenis: 'rekomendasi',
+    isi: recommendations,
+    sumber: provensi.sumber ?? 'ai',
+    model: provensi.model ?? null,
+  });
   return user.recommendations;
+}
+
+/**
+ * Merekam satu advisori ke riwayat append-only pengguna yang sedang dimutasi.
+ *
+ * Dipanggil DI DALAM mutator (write-through rekomendasi, simpanCheckup) supaya
+ * riwayat, slot, event, dan usage berangkat dalam SATU flush — tidak ada
+ * jendela di mana riwayat sudah ada padahal nasihatnya gagal tersimpan, atau
+ * sebaliknya. Trim per jenis dijalankan di sini: yang tertua dibuat pergi
+ * sebelum yang baru menetap, dan kapnya diuji keras (plafon toko satu-berkas).
+ */
+function rekamAdvisoriKe(user, { jenis, isi, sumber, model, kini = new Date() }) {
+  const rekam = buatAdvisori({
+    jenis,
+    isi,
+    sumber,
+    model: model ?? null,
+    dasarAngka: digestDasarAngka(user, kini),
+    kini,
+  });
+  user.advisori = pangkasAdvisori([...(user.advisori ?? []), rekam]);
+  // Stempel skema M1-lite: set-if-absent pada shape baru, monotonik, metadata.
+  user.featureVersions ??= {};
+  user.featureVersions.advisori ??= VERSI_FITUR_ADVISORI;
+  pushEvent(user, 'advisori_dibuat', { id: rekam.id, jenis: rekam.jenis, sumber: rekam.sumber });
+  return rekam;
 }

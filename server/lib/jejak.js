@@ -67,6 +67,10 @@ export const SKEMA_JEJAK = {
   latihan_ai_dijawab: { modul: 'angka', benar: 'bool', 'konsep?': 'teks40?' },
   praktik_terverifikasi: { modul: 'daftarAngka', aksi: 'kata' },
   recommendations_generated: { jumlah: 'angka', peringatan: 'angka' },
+  /* Rekam advisori (Sesi G — memori nasihat): id rekam, jenis, dan asal saja.
+   * Isi nasihat tinggal di user.advisori; jejaknya tetap tanpa nominal dan
+   * tanpa teks — id menghubungkan keduanya. */
+  advisori_dibuat: { id: 'id', jenis: 'kata', sumber: 'kata' },
 
   /* --- dari rute (store.logEvent) --- */
   login: {},

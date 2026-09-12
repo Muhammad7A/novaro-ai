@@ -77,16 +77,23 @@ test('seluruh mutator menghasilkan peristiwa yang terdaftar dan sah bentuknya', 
 
   // Pin kosakata: jumlah per jenis PERSIS. Peristiwa baru di salah satu
   // mutator = wajib lewat lib/jejak.js dulu — inilah gerbangnya.
+  //
+  // Catatan hitung (menutup tanya terbuka Sesi G — 25 vs 26): angka di pin ini
+  // adalah jumlah EMISI skenario ini, bukan jumlah REGISTRI. SKEMA_JEJAK sengaja
+  // bisa memuat lebih banyak jenis daripada yang terlihat di sini (mis.
+  // `transactions_added` hanya dipancarkan hidrasi demo) — dua angka itu beda
+  // konteks, bukan kontradiksi.
   assert.equal(
     jenisTerlihat,
     [
-      'ai_feedback', 'anggaran_habis', 'batch_assigned', 'belajar_dimulai',
-      'belajar_dimulai', 'chat_cleared', 'chat_turn', 'consent_given',
-      'data_downloaded', 'fokus_viewed', 'konteks_viewed', 'latihan_ai_dibuat',
-      'latihan_ai_dijawab', 'latihan_dijawab', 'login', 'module_completed',
-      'papan_viewed', 'peserta_dinamai', 'praktik_terverifikasi',
-      'profile_saved', 'recommendations_generated', 'report_viewed',
-      'transaction_added', 'transaction_deleted', 'user_created',
+      'advisori_dibuat', 'ai_feedback', 'anggaran_habis', 'batch_assigned',
+      'belajar_dimulai', 'belajar_dimulai', 'chat_cleared', 'chat_turn',
+      'consent_given', 'data_downloaded', 'fokus_viewed', 'konteks_viewed',
+      'latihan_ai_dibuat', 'latihan_ai_dijawab', 'latihan_dijawab', 'login',
+      'module_completed', 'papan_viewed', 'peserta_dinamai',
+      'praktik_terverifikasi', 'profile_saved', 'recommendations_generated',
+      'report_viewed', 'transaction_added', 'transaction_deleted',
+      'user_created',
     ].join(','),
     'kosakata peristiwa berubah — daftarkan di lib/jejak.js dan perbarui pin ini secara sadar',
   );
