@@ -40,7 +40,7 @@ process.on('exit', () => rmSync(DATA_DIR, { recursive: true, force: true }));
 
 const DB_PATH = path.join(DATA_DIR, 'users.json');
 
-const { store } = await import('../lib/store.js');
+const { store, GalatMutasi } = await import('../lib/store.js');
 const { CONSENT_VERSION } = await import('../lib/consent.js');
 const app = (await import('../server.js')).default;
 
@@ -140,6 +140,11 @@ const penyedia = createServer((req, res) => {
       return;
     }
     mulai();
+    // happy = penyedia SEHAT: jawaban JSON utuh untuk rekomendasi — tanpa
+    // delta ini generateRecommendations membaca teks kosong dan gagal 502
+    // SEBELUM menyentuh penyimpanan (kegagalan yang membuat uji kemarin
+    // lulus karena alasan yang salah).
+    w('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: JSON.stringify(REK_SAH) } });
     selesaiNormal();
   });
 });
@@ -266,8 +271,14 @@ test('chat: sambungan penyedia hancur di tengah aliran — satu akhir, tidak ada
   const res = await minta('/api/chat', { kode: putus.accessCode, method: 'POST', body: JSON.stringify({ message: 'halo' }) });
   assert.equal(res.status, 200, 'SSE: kepala sudah terkirim sebelum penyedia mati');
 
-  const nama = (await bacaSSE(res)).map((a) => a.ev);
+  const acara = await bacaSSE(res);
+  const nama = acara.map((a) => a.ev);
   assert.ok(nama.includes('error'), 'kegagalan harus tiba sebagai event error');
+  assert.match(
+    acara.find((a) => a.ev === 'error')?.data?.error ?? '',
+    /terputus/,
+    'galat transport harus sampai sebagai kalimat terpotong (502), bukan "tak terduga" (500)',
+  );
   assert.ok(!nama.includes('done'), 'done setelah aliran patah adalah sukses palsu');
 
   const u = await penggunaDisk(putus.id);
@@ -283,9 +294,9 @@ test('rekomendasi: penyedia mati di tengah aliran — ditolak, tidak ada yang te
   hitungan = 0;
 
   const res = await minta('/api/recommendations', { kode: putusRek.accessCode, method: 'POST' });
-  assert.ok(res.status >= 500, 'kegagalan penyedia tidak boleh dibalas sukses');
+  assert.equal(res.status, 502, 'sambungan yang sudah mengalir lalu mati = jawaban terpotong (502), bukan 500');
   const body = await res.json();
-  assert.ok(body.error, 'kalimat galat harus ikut');
+  assert.match(body.error, /terputus/, 'kalimat galat yang dijanjikan galat bertipe, bukan "tak terduga"');
 
   const u = await penggunaDisk(putusRek.id);
   assert.equal(u.recommendations ?? null, null);
@@ -306,7 +317,7 @@ test('penyedia menutup aliran tanpa menyelesaikannya: ditolak, tidak ada yang te
   hitungan = 0;
 
   const res = await minta('/api/recommendations', { kode: potong.accessCode, method: 'POST' });
-  assert.ok(res.status >= 500, 'aliran yang berhenti sebelum waktunya bukan jawaban');
+  assert.equal(res.status, 502, 'aliran yang berhenti sebelum waktunya = terpotong (502), bukan 500');
 
   const u = await penggunaDisk(potong.id);
   assert.equal(u.recommendations ?? null, null, 'setengah aliran tidak boleh tersimpan sebagai rekomendasi');
@@ -386,7 +397,12 @@ test('penyimpanan gagal setelah AI sukses: tidak ada sukses palsu, disk utuh, ku
   await mkdir(seam);
   try {
     const res = await minta('/api/recommendations', { kode: simpanGagal.accessCode, method: 'POST' });
-    assert.ok(res.status >= 500, 'AI sukses tapi penyimpanan gagal — itu BUKAN sukses');
+    // 500, BUKAN 502: penyedia sehat (happy = JSON sah, tepat satu panggilan);
+    // yang gagal penyimpanannya — galat tanpa status milik disk, bukan galat
+    // penyedia. Pembeda ini yang dulu membuat uji lulus karena alasan salah
+    // (penyedia tanpa delta mengirim 502 yang juga lolos ">= 500").
+    assert.equal(res.status, 500, 'AI sukses tapi penyimpanan gagal — ditolak sebagai galat server');
+    assert.equal(hitungan, 1, 'penyedia memang sempat sukses — kegagalannya murni di penyimpanan');
     const body = await res.json();
     assert.ok(body.error);
 
@@ -446,8 +462,9 @@ test('setelah pulih, penulisan ulang mendarat tepat sekali dari kebenaran disk',
   /*
    * Proses baru = cache kosong = disk yang kebaca. Inilah janji yang boleh
    * dipegang peserta: gagal hari ini, coba lagi, keadaannya SATU — bukan dua.
-   * (Idempotensi ulang DALAM proses yang sama belum bisa diuji jujur sebelum
-   * Temuan E-1 diputuskan pemiliknya — lihat laporan Session E §5.)
+   * Pasangan lintas-prosesnya dari sisi DALAM proses diuji di bawah
+   * (Seksi E6) sesudah Temuan E-1 dijatuhkan: flush yang gagal kini
+   * membuang cache, sama seperti mutator yang gagal.
    */
   const toko = await prosesBaru();
   await toko.simpanRekomendasi(tokoPulih.id, REK_SAH, USAGE_UJI);
@@ -459,4 +476,210 @@ test('setelah pulih, penulisan ulang mendarat tepat sekali dari kebenaran disk',
     'tepat satu peristiwa — kegagalan sebelumnya tidak menggandakan keadaan');
   assert.equal(u.usage.requests, 1, 'pemakaian tercatat tepat sekali');
   assert.equal(u.tokenLog[0].token, 15);
+});
+
+/* ================= E6 — Temuan E-1 dijatuhkan: flush gagal membuang cache */
+
+test('flush gagal: pembacaan sesaat kemudian mengembalikan keadaan lama, bukan mutasi yang ditolak', async () => {
+  /*
+   * Dulu (Temuan E-1): flush yang gagal meninggalkan mutasi di cache — dan
+   * sidik berkas masih cocok dengan berkas lama yang utuh — sehingga
+   * pembacaan DALAM PROSES YANG SAMA menyajikan mutasi yang DITOLAK ke
+   * pemanggilnya seolah sudah nyata. Kini cache dibuang, aturan yang sama
+   * dengan mutator yang gagal.
+   */
+  const gagal = await buatPeserta('Bu E Satu');
+  await store.recordUsage(gagal.id, { input_tokens: 10 }); // keadaan lama: 10 token
+
+  const seam = path.join(DATA_DIR, `users.json.${process.pid}.tmp`);
+  await mkdir(seam);
+  try {
+    await assert.rejects(() => store.recordUsage(gagal.id, { input_tokens: 1_000_000 }));
+
+    // Pembacaan dalam proses yang sama — inilah yang dulu menyajikan hantu.
+    const log = await store.getTokenLog(gagal.id);
+    assert.equal(log.length, 1);
+    assert.equal(log[0].token, 10, 'tokenLog yang terbaca = keadaan lama, bukan 1.000.010');
+    const dariToko = (await store.listUsers()).find((u) => u.id === gagal.id);
+    assert.equal(dariToko.usage.inputTokens, 10, 'usage agregat = keadaan lama');
+    // Disk tentu sama — dua sumber kebenaran tidak boleh berbeda.
+    assert.equal((await penggunaDisk(gagal.id)).usage.inputTokens, 10);
+  } finally {
+    await rm(seam, { recursive: true, force: true });
+  }
+
+  // Penulisan sukses berikutnya dalam proses yang sama tidak boleh ikut
+  // meng-commit mutasi yang ditolak itu (dulu: usage mendarat lewat pintu belakang).
+  await store.logEvent(gagal.id, 'login');
+  const u = await penggunaDisk(gagal.id);
+  assert.equal(u.usage.inputTokens, 10, 'mutasi yang ditolak tidak mendarat diam-diam');
+  assert.equal(u.tokenLog[0].token, 10);
+});
+
+test('requestId dedup tidak 409 untuk percobaan ulang yang tidak pernah persist', async () => {
+  /*
+   * Interaksi paling berbahaya dari Temuan E-1: baris gagal flush tetap
+   * terbaca dari cache, lalu dedup requestId menjawab `duplikat` untuk
+   * percobaan ulang atas transaksi yang BELUM PERNAH ADA di disk. Kini
+   * retry yang sah diterima, dan dedup tetap nyata untuk yang sudah persist.
+   */
+  const rekonsiliasi = await buatPeserta('Bu Rekonsiliasi');
+  const baris = {
+    tanggal: '2026-08-01', jenis: 'keluar', kategori: 'operasional',
+    keterangan: 'rekonsiliasi', jumlah: 5_000,
+  };
+  const idPermintaan = 'rekonsiliasi-2026.09.12-01';
+
+  const seam = path.join(DATA_DIR, `users.json.${process.pid}.tmp`);
+  await mkdir(seam);
+  try {
+    await assert.rejects(
+      () => store.addTransaction(rekonsiliasi.id, baris, { aktor: 'manusia', requestId: idPermintaan }),
+      'flush gagal harus sampai ke pemanggil sebagai penolakan',
+    );
+  } finally {
+    await rm(seam, { recursive: true, force: true });
+  }
+
+  // Percobaan ulang DENGAN requestId yang sama — dulu 409 duplikat palsu.
+  const baris1 = await store.addTransaction(rekonsiliasi.id, baris, { aktor: 'manusia', requestId: idPermintaan });
+  assert.ok(baris1, 'retry yang tidak pernah persist harus diterima, bukan dianggap duplikat');
+
+  const u = await penggunaDisk(rekonsiliasi.id);
+  const barisPersist = (u.transactions ?? []).filter((t) => t.requestId === idPermintaan);
+  assert.equal(barisPersist.length, 1, 'tepat satu baris — retry tidak menggandakan transaksi');
+
+  // Yang SUDAH persist tetap terjaga dedup-nya.
+  await assert.rejects(
+    () => store.addTransaction(rekonsiliasi.id, baris, { aktor: 'manusia', requestId: idPermintaan }),
+    (err) => err instanceof GalatMutasi && err.kode === 'duplikat' && err.status === 409,
+    'setelah persist, requestId yang sama harus tetap ditolak sebagai duplikat',
+  );
+});
+
+test('rekomendasi: retry dalam proses yang sama setelah heal mendarat tepat sekali', async () => {
+  /*
+   * Pasangan dalam-proses dari uji lintas-proses di atas. Dulu tidak bisa
+   * diuji jujur: mutasi gagal flush menetap di cache, jadi retry mendarat
+   * DOBEL (satu dari cache hantu, satu dari retry). Kini hanya mutasi baru.
+   */
+  const pulih = await buatPeserta('Bu Pulih Dalam Proses', { profil: true });
+  perilaku = 'happy';
+  hitungan = 0;
+
+  const seam = path.join(DATA_DIR, `users.json.${process.pid}.tmp`);
+  await mkdir(seam);
+  try {
+    const gagal = await minta('/api/recommendations', { kode: pulih.accessCode, method: 'POST' });
+    assert.equal(gagal.status, 500, 'kegagalan penyimpanan = galat server (bukan 502 penyedia — penyedia sehat)');
+    assert.equal(hitungan, 1);
+  } finally {
+    await rm(seam, { recursive: true, force: true });
+  }
+
+  const sukses = await minta('/api/recommendations', { kode: pulih.accessCode, method: 'POST' });
+  assert.equal(sukses.status, 200);
+
+  const u = await penggunaDisk(pulih.id);
+  assert.equal((u.events ?? []).filter((e) => e.type === 'recommendations_generated').length, 1,
+    'tepat satu peristiwa — kegagalan sebelumnya tidak ikut mendarat');
+  assert.equal(u.usage.requests, 1, 'pemakaian tercatat tepat sekali dari retry yang berhasil');
+  assert.equal(u.tokenLog[0].token, 15);
+  assert.equal(u.recommendations.rekomendasi.length, 1);
+});
+
+/* ===================== E7 — E-2: transport → 502 eksak, dan refund-nya */
+
+test('galat bertipe stream lewat describeError sebagai 502, juga lewat dispatcher ai.js', async () => {
+  const { galatStreamTerpotong, galatStreamHabis } = await import('../lib/batas-stream.js');
+  const claude = await import('../lib/claude.js');
+  const ai = await import('../lib/ai.js');
+
+  for (const galat of [galatStreamTerpotong(), galatStreamHabis()]) {
+    const hasil = claude.describeError(galat);
+    assert.equal(hasil.status, 502, `${galat.code} harus 502 — bukan 500 "tak terduga"`);
+    assert.equal(ai.describeError(galat).status, 502, 'dispatcher ai.js harus meneruskan 502 yang sama');
+    assert.ok(
+      [502, 503, 429].includes(hasil.status),
+      '502 = kegagalan layanan → jalur refund jatah laju di server.js harus aktif',
+    );
+  }
+});
+
+test('batas waktu stream aplikasi: 502 bertipe, bukan menggantung selamanya', async () => {
+  /*
+   * Deadline dari commit B (NOVA_AI_STREAM_TIMEOUT_MS dibaca per pemanggilan,
+   * jadi bisa dipasang sementara). Penyedia terus menetes tanpa ujung —
+   * permintaan harus berakhir sendiri dengan galat bertipe.
+   */
+  const tenggat = await buatPeserta('Bu Tenggat', { profil: true });
+  perilaku = 'dribble-abort';
+  hitungan = 0;
+  process.env.NOVA_AI_STREAM_TIMEOUT_MS = '150';
+  try {
+    const res = await minta('/api/recommendations', { kode: tenggat.accessCode, method: 'POST' });
+    assert.equal(res.status, 502);
+    assert.match((await res.json()).error, /terlalu lama/);
+    const u = await penggunaDisk(tenggat.id);
+    assert.equal(u.recommendations ?? null, null);
+    assert.equal(u.tokenLog ?? null, null);
+    assert.equal(hitungan, 1);
+  } finally {
+    delete process.env.NOVA_AI_STREAM_TIMEOUT_MS;
+  }
+});
+
+test('jatah laju dikembalikan pada kegagalan transport — peserta tidak kehilangan kuota', async () => {
+  /*
+   * Janji komentar rateLimit() (server.js): "pengguna tidak boleh kehilangan
+   * kuota untuk kegagalan yang bukan salahnya". RATE_LIMIT file ini 3/jam.
+   * Tanpa refund, kegagalan keempat sudah berganti menjadi "Batas pemakaian
+   * AI tercapai". Dengan refund, semua kegagalan tetap 502 penyedia — dan
+   * saat penyedia sembuh, permintaan berikutnya LANGSUNG berhasil.
+   */
+  const refund = await buatPeserta('Bu Refund', { profil: true });
+  perilaku = 'destroy';
+  hitungan = 0;
+
+  for (let i = 0; i < 4; i += 1) {
+    const res = await minta('/api/recommendations', { kode: refund.accessCode, method: 'POST' });
+    assert.equal(res.status, 502, `kegagalan ${i + 1} harus tetap galat penyedia, bukan 429 jatah laju`);
+    assert.doesNotMatch((await res.json()).error ?? '', /Batas pemakaian AI tercapai/);
+  }
+
+  perilaku = 'happy';
+  const sembuh = await minta('/api/recommendations', { kode: refund.accessCode, method: 'POST' });
+  assert.equal(sembuh.status, 200, 'penyedia sembuh → langsung berhasil, jatah laju tak pernah habis oleh kegagalan');
+
+  const u = await penggunaDisk(refund.id);
+  assert.equal((u.events ?? []).filter((e) => e.type === 'recommendations_generated').length, 1);
+  assert.equal(u.usage.requests, 1);
+});
+
+test('gemini: sambungan yang sudah terjalin lalu putus dengan galat tak berstatus = terpotong 502', async () => {
+  /*
+   * Simetris dengan pernahTerhubung di claude.js. Tanpa klasifikasi ini,
+   * galat iterasi tak berstatus jatuh ke "kesalahan tak terduga" (500) dan
+   * jatah laju tidak dikembalikan. Identitas penyedia (ApiError/status)
+   * tetap lewat apa adanya untuk describeError.
+   */
+  const { bacaStream } = await import(`../lib/gemini.js?u=${Math.random()}`);
+  const { ApiError } = await import('@google/genai');
+
+  const putusTengah = async function* () {
+    yield { text: 'sebagian ' };
+    throw new Error('socket hang up');
+  };
+  await assert.rejects(
+    () => bacaStream(async () => putusTengah()),
+    (err) => err.code === 'AI_STREAM_TERPOTONG' && err.status === 502,
+  );
+
+  // Identitas penyedia TIDAK boleh ditelan klasifikasi.
+  const apiError = new ApiError({ message: 'backend error', status: 503 });
+  const lewat = async function* () {
+    yield { text: 'sebagian ' };
+    throw apiError;
+  };
+  await assert.rejects(() => bacaStream(async () => lewat()), (err) => err === apiError);
 });

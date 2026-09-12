@@ -300,7 +300,24 @@ function update(mutator) {
         cacheSidik = null;
         throw err;
       }
-      await flush(db);
+      try {
+        await flush(db);
+      } catch (err) {
+        /*
+         * Aturan yang sama dengan mutator yang gagal, untuk kegagalan yang
+         * datang belakangan: `db` yang sudah berubah tidak pernah sampai ke
+         * disk, tapi `cache` masih memegangnya — dan sidik berkas masih
+         * cocok dengan berkas lama yang utuh, jadi pembacaan berikutnya akan
+         * melayani mutasi yang DITOLAK ke pemanggilnya seolah sudah nyata.
+         * Lebih berbahaya lagi, penulisan sukses berikutnya akan meng-commit
+         * diam-diam mutasi yang ditolak itu — dan dedup requestId-nya akan
+         * menjawab `duplikat` untuk percobaan ulang yang belum pernah persist.
+         * Cache dibuang: pembacaan kembali ke kebenaran disk.
+         */
+        cache = null;
+        cacheSidik = null;
+        throw err;
+      }
       return result;
     }),
   );

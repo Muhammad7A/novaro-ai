@@ -229,7 +229,18 @@ export async function bacaStream(buat, { signal, onText } = {}) {
     } catch (err) {
       if (signal?.aborted) throw err; // peserta menutup aplikasi — rute yang menanganinya
       if (habis()) throw galatStreamHabis();
-      throw err; // galat jaringan penyedia — tetap urusan describeError
+      /*
+       * Aturan yang sama dengan jalankanStream() di claude.js: galat yang
+       * MEMBAWA identitas penyedia (ApiError, punya status) tetap lewat untuk
+       * diterjemahkan describeError. Yang diklasifikasi ulang hanya sambungan
+       * yang SUDAH TERJALIN — buat() sudah sukses, iterasinya yang putus —
+       * lalu mati dengan galat tak berstatus. Tanpa ini galat itu jatuh ke
+       * "kesalahan tak terduga" (500): tidak dianggap kegagalan layanan, dan
+       * jatah laju peserta tidak dikembalikan untuk kegagalan yang bukan
+       * salahnya.
+       */
+      if (err instanceof ApiError || err?.status) throw err;
+      throw galatStreamTerpotong();
     }
     if (!hasil || !hasil.alasan) throw galatStreamTerpotong();
     return hasil;
