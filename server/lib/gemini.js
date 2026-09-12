@@ -39,6 +39,7 @@ import {
 } from './prompts.js';
 
 import { parseNotaJson } from './nota.js';
+import { galatStreamHabis, galatStreamTerpotong, tandaBatasStream } from './batas-stream.js';
 
 /**
  * Model bawaan.
@@ -183,6 +184,60 @@ export function describeError(err) {
 
 /* ------------------------------------------------------------------ Chat */
 
+/**
+ * Membaca satu stream Gemini sampai TUNTAS — atau gagal, tidak pernah setengah.
+ *
+ * Iterasi `for await` sendiri tidak punya batas aplikasi, dan stream yang
+ * ditutup prematur oleh perantara bisa BERAKHIR secara sah tanpa finishReason:
+ * teks setengah jalan, usage nol, terbaca sukses. Sekarang pembacaannya
+ * dibatasi lib/batas-stream.js, dan aliran yang berakhir tanpa alasan selesai
+ * dianggap terpotong — galat bertipe, bukan jawaban parsial.
+ *
+ * Diekspor semata agar kontrak ini bisa diuji langsung tanpa kredensial
+ * Vertex: stream palsu cukup async-iterable biasa (pola yang sama dengan
+ * keUsage di atas).
+ *
+ * @param {(sinyal: AbortSignal) => Promise<AsyncIterable>} buat pembuat stream;
+ *        menerima sinyal gabungan (rute + batas waktu) untuk sambungannya.
+ * @returns {Promise<{teks: string, usage: object|null, alasan: string|null}>}
+ */
+export async function bacaStream(buat, { signal, onText } = {}) {
+  const { sinyal, habis, janjiBatas, selesai } = tandaBatasStream(signal);
+  try {
+    const stream = await buat(sinyal);
+    let teks = '';
+    let usage = null;
+    let alasan = null;
+    const iterasi = (async () => {
+      for await (const bagian of stream) {
+        if (bagian.text) {
+          teks += bagian.text;
+          onText?.(bagian.text);
+        }
+        // Potongan terakhir yang membawanya adalah yang lengkap.
+        if (bagian.usageMetadata) usage = bagian.usageMetadata;
+        const f = bagian.candidates?.[0]?.finishReason;
+        if (f) alasan = f;
+      }
+      return { teks, usage, alasan };
+    })();
+    iterasi.catch(() => {}); // boleh kalah perlombaan di bawah — jangan jatuhkan proses
+
+    let hasil;
+    try {
+      hasil = await Promise.race([iterasi, janjiBatas]);
+    } catch (err) {
+      if (signal?.aborted) throw err; // peserta menutup aplikasi — rute yang menanganinya
+      if (habis()) throw galatStreamHabis();
+      throw err; // galat jaringan penyedia — tetap urusan describeError
+    }
+    if (!hasil || !hasil.alasan) throw galatStreamTerpotong();
+    return hasil;
+  } finally {
+    selesai();
+  }
+}
+
 export async function streamChat({
   profile,
   metrics,
@@ -195,32 +250,22 @@ export async function streamChat({
 }) {
   const ai = getClient();
 
-  const stream = await ai.models.generateContentStream({
-    model: modelAktif(),
-    contents: keIsiGemini(history, message),
-    config: {
-      systemInstruction: chatSystem(profile, metrics, cashbook, belajar),
-      maxOutputTokens: 4000,
-      // Konsultasi singkat: penalaran dimatikan supaya jawaban muncul cepat
-      // dan tidak memakan jatah token peserta. Rekomendasi memakai penalaran.
-      thinkingConfig: { thinkingBudget: 0 },
-      abortSignal: signal,
-    },
-  });
-
-  let teks = '';
-  let usage = null;
-  let alasan = null;
-  for await (const bagian of stream) {
-    if (bagian.text) {
-      teks += bagian.text;
-      onText(bagian.text);
-    }
-    // Potongan terakhir yang membawanya adalah yang lengkap.
-    if (bagian.usageMetadata) usage = bagian.usageMetadata;
-    const f = bagian.candidates?.[0]?.finishReason;
-    if (f) alasan = f;
-  }
+  const { teks, usage, alasan } = await bacaStream(
+    (sinyal) =>
+      ai.models.generateContentStream({
+        model: modelAktif(),
+        contents: keIsiGemini(history, message),
+        config: {
+          systemInstruction: chatSystem(profile, metrics, cashbook, belajar),
+          maxOutputTokens: 4000,
+          // Konsultasi singkat: penalaran dimatikan supaya jawaban muncul cepat
+          // dan tidak memakan jatah token peserta. Rekomendasi memakai penalaran.
+          thinkingConfig: { thinkingBudget: 0 },
+          abortSignal: sinyal,
+        },
+      }),
+    { signal, onText },
+  );
 
   if (DITOLAK.has(alasan)) {
     const err = new Error(
@@ -244,34 +289,28 @@ export async function generateRecommendations({
 }) {
   const ai = getClient();
 
-  const stream = await ai.models.generateContentStream({
-    model: modelAktif(),
-    contents: [{ role: 'user', parts: [{ text: recommendationRequest(profile, metrics) }] }],
-    config: {
-      systemInstruction: recommendationSystem(profile, metrics, cashbook, belajar),
-      maxOutputTokens: 32768,
-      responseMimeType: 'application/json',
-      /*
-       * `responseJsonSchema`, BUKAN `responseSchema`. Yang terakhir memakai
-       * tipe Schema milik Google (subset OpenAPI) dan menolak sebagian kata
-       * kunci; yang pertama menerima JSON Schema apa adanya, sehingga
-       * RECOMMENDATION_SCHEMA dipakai bersama tanpa disalin ke bentuk kedua
-       * yang bisa menyimpang diam-diam dari aslinya.
-       */
-      responseJsonSchema: RECOMMENDATION_SCHEMA,
-      abortSignal: signal,
-    },
-  });
-
-  let teks = '';
-  let usage = null;
-  let alasan = null;
-  for await (const bagian of stream) {
-    if (bagian.text) teks += bagian.text;
-    if (bagian.usageMetadata) usage = bagian.usageMetadata;
-    const f = bagian.candidates?.[0]?.finishReason;
-    if (f) alasan = f;
-  }
+  const { teks: mentah, usage, alasan } = await bacaStream(
+    (sinyal) =>
+      ai.models.generateContentStream({
+        model: modelAktif(),
+        contents: [{ role: 'user', parts: [{ text: recommendationRequest(profile, metrics) }] }],
+        config: {
+          systemInstruction: recommendationSystem(profile, metrics, cashbook, belajar),
+          maxOutputTokens: 32768,
+          responseMimeType: 'application/json',
+          /*
+           * `responseJsonSchema`, BUKAN `responseSchema`. Yang terakhir memakai
+           * tipe Schema milik Google (subset OpenAPI) dan menolak sebagian kata
+           * kunci; yang pertama menerima JSON Schema apa adanya, sehingga
+           * RECOMMENDATION_SCHEMA dipakai bersama tanpa disalin ke bentuk kedua
+           * yang bisa menyimpang diam-diam dari aslinya.
+           */
+          responseJsonSchema: RECOMMENDATION_SCHEMA,
+          abortSignal: sinyal,
+        },
+      }),
+    { signal },
+  );
 
   if (DITOLAK.has(alasan)) {
     const err = new Error('Permintaan ditolak oleh sistem keamanan AI. Coba ubah isian profil usaha.');
@@ -279,7 +318,7 @@ export async function generateRecommendations({
     throw err;
   }
 
-  teks = teks.trim();
+  const teks = mentah.trim();
   if (alasan === 'MAX_TOKENS' || !teks) {
     const err = new Error('Jawaban AI terpotong. Coba jalankan ulang pembuatan rekomendasi.');
     err.status = 502;
@@ -319,36 +358,30 @@ export async function generateRecommendations({
 export async function analyzeNota({ imageBase64, mimeType, signal }) {
   const ai = getClient();
 
-  const stream = await ai.models.generateContentStream({
-    model: modelAktif(),
-    contents: [
-      {
-        role: 'user',
-        parts: [
-          { inlineData: { mimeType, data: imageBase64 } },
-          { text: notaRequest() },
+  const { teks, usage, alasan } = await bacaStream(
+    (sinyal) =>
+      ai.models.generateContentStream({
+        model: modelAktif(),
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { inlineData: { mimeType, data: imageBase64 } },
+              { text: notaRequest() },
+            ],
+          },
         ],
-      },
-    ],
-    config: {
-      systemInstruction: notaSystem(),
-      maxOutputTokens: 1000,
-      responseMimeType: 'application/json',
-      responseJsonSchema: NOTA_SCHEMA,
-      thinkingConfig: { thinkingBudget: 0 },
-      abortSignal: signal,
-    },
-  });
-
-  let teks = '';
-  let usage = null;
-  let alasan = null;
-  for await (const bagian of stream) {
-    if (bagian.text) teks += bagian.text;
-    if (bagian.usageMetadata) usage = bagian.usageMetadata;
-    const f = bagian.candidates?.[0]?.finishReason;
-    if (f) alasan = f;
-  }
+        config: {
+          systemInstruction: notaSystem(),
+          maxOutputTokens: 1000,
+          responseMimeType: 'application/json',
+          responseJsonSchema: NOTA_SCHEMA,
+          thinkingConfig: { thinkingBudget: 0 },
+          abortSignal: sinyal,
+        },
+      }),
+    { signal },
+  );
 
   if (DITOLAK.has(alasan)) {
     const err = new Error('Foto nota ditolak oleh sistem keamanan AI. Coba foto ulang dengan sudut yang berbeda.');
@@ -356,14 +389,14 @@ export async function analyzeNota({ imageBase64, mimeType, signal }) {
     throw err;
   }
 
-  teks = teks.trim();
-  if (alasan === 'MAX_TOKENS' || !teks) {
+  const utuh = teks.trim();
+  if (alasan === 'MAX_TOKENS' || !utuh) {
     const err = new Error('Hasil baca nota terpotong. Coba foto lebih dekat pada bagian totalnya.');
     err.status = 502;
     throw err;
   }
 
-  return { data: parseNotaJson(teks), usage: keUsage(usage) };
+  return { data: parseNotaJson(utuh), usage: keUsage(usage) };
 }
 
 /**
@@ -377,43 +410,37 @@ export async function analyzeNota({ imageBase64, mimeType, signal }) {
 export async function analyzeLatihanAi({ materiTeks, angkaTeks, signal }) {
   const ai = getClient();
 
-  const stream = await ai.models.generateContentStream({
-    model: modelAktif(),
-    contents: [{ role: 'user', parts: [{ text: latihanAiRequest() }] }],
-    config: {
-      systemInstruction: latihanAiSystem(materiTeks, angkaTeks),
-      maxOutputTokens: 1500,
-      responseMimeType: 'application/json',
-      responseJsonSchema: LATIHAN_AI_SCHEMA,
-      thinkingConfig: { thinkingBudget: 0 },
-      abortSignal: signal,
-    },
-  });
-
-  let teks = '';
-  let usage = null;
-  let alasan = null;
-  for await (const bagian of stream) {
-    if (bagian.text) teks += bagian.text;
-    if (bagian.usageMetadata) usage = bagian.usageMetadata;
-    const f = bagian.candidates?.[0]?.finishReason;
-    if (f) alasan = f;
-  }
+  const { teks, usage, alasan } = await bacaStream(
+    (sinyal) =>
+      ai.models.generateContentStream({
+        model: modelAktif(),
+        contents: [{ role: 'user', parts: [{ text: latihanAiRequest() }] }],
+        config: {
+          systemInstruction: latihanAiSystem(materiTeks, angkaTeks),
+          maxOutputTokens: 1500,
+          responseMimeType: 'application/json',
+          responseJsonSchema: LATIHAN_AI_SCHEMA,
+          thinkingConfig: { thinkingBudget: 0 },
+          abortSignal: sinyal,
+        },
+      }),
+    { signal },
+  );
 
   if (DITOLAK.has(alasan)) {
-    const err = new Error('Permintaan soal latihan ditolak sistem keamanan AI. Coba lagi sebentar.');
+    const err = new Error('Permintaan soal latihan ditolak sistem keamanan AI. Coba lagi.');
     err.status = 422;
     throw err;
   }
 
-  teks = teks.trim();
-  if (alasan === 'MAX_TOKENS' || !teks) {
-    const err = new Error('Hasil soal latihan terpotong. Coba lagi sebentar.');
+  const utuh = teks.trim();
+  if (alasan === 'MAX_TOKENS' || !utuh) {
+    const err = new Error('Hasil soal latihan terpotong. Coba lagi.');
     err.status = 502;
     throw err;
   }
 
-  return { data: parseNotaJson(teks), usage: keUsage(usage) };
+  return { data: parseNotaJson(utuh), usage: keUsage(usage) };
 }
 
 /* ------------------------------------------------- Check-up keuangan (AI) */
@@ -430,28 +457,22 @@ export async function analyzeLatihanAi({ materiTeks, angkaTeks, signal }) {
 export async function analyzeCheckup({ metricsTeks, perubahanTeks, signal }) {
   const ai = getClient();
 
-  const stream = await ai.models.generateContentStream({
-    model: modelAktif(),
-    contents: [{ role: 'user', parts: [{ text: checkupRequest() }] }],
-    config: {
-      systemInstruction: checkupSystem([metricsTeks, perubahanTeks].filter(Boolean).join('\n\n')),
-      maxOutputTokens: 2000,
-      responseMimeType: 'application/json',
-      responseJsonSchema: CHECKUP_SCHEMA,
-      thinkingConfig: { thinkingBudget: 0 },
-      abortSignal: signal,
-    },
-  });
-
-  let teks = '';
-  let usage = null;
-  let alasan = null;
-  for await (const bagian of stream) {
-    if (bagian.text) teks += bagian.text;
-    if (bagian.usageMetadata) usage = bagian.usageMetadata;
-    const f = bagian.candidates?.[0]?.finishReason;
-    if (f) alasan = f;
-  }
+  const { teks, usage, alasan } = await bacaStream(
+    (sinyal) =>
+      ai.models.generateContentStream({
+        model: modelAktif(),
+        contents: [{ role: 'user', parts: [{ text: checkupRequest() }] }],
+        config: {
+          systemInstruction: checkupSystem([metricsTeks, perubahanTeks].filter(Boolean).join('\n\n')),
+          maxOutputTokens: 2000,
+          responseMimeType: 'application/json',
+          responseJsonSchema: CHECKUP_SCHEMA,
+          thinkingConfig: { thinkingBudget: 0 },
+          abortSignal: sinyal,
+        },
+      }),
+    { signal },
+  );
 
   if (DITOLAK.has(alasan)) {
     const err = new Error('Permintaan check-up ditolak sistem keamanan AI. Coba lagi sebentar.');
@@ -459,12 +480,12 @@ export async function analyzeCheckup({ metricsTeks, perubahanTeks, signal }) {
     throw err;
   }
 
-  teks = teks.trim();
-  if (alasan === 'MAX_TOKENS' || !teks) {
+  const utuh = teks.trim();
+  if (alasan === 'MAX_TOKENS' || !utuh) {
     const err = new Error('Hasil check-up terpotong. Coba lagi sebentar.');
     err.status = 502;
     throw err;
   }
 
-  return { data: parseNotaJson(teks), usage: keUsage(usage) };
+  return { data: parseNotaJson(utuh), usage: keUsage(usage) };
 }

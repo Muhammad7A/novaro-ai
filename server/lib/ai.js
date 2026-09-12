@@ -9,12 +9,18 @@
  * bergaya Anthropic, karena `lib/anggaran.js` menghitung jatah peserta dari
  * nama-nama medan itu. Penerjemahannya dikerjakan di dalam masing-masing
  * implementasi, bukan di sini dan bukan di pemanggilnya.
+ *
+ * Pembacaan stream di kedua implementasi dibatasi batas waktu aplikasi yang
+ * sama (lib/batas-stream.js): stream yang terputus di tengah atau kehabisan
+ * waktu gagal dengan galat bertipe — tidak pernah mengembalikan teks setengah
+ * jalan, sehingga tidak ada yang sempat tersimpan.
  */
 import { backendAI } from './backend.js';
 import * as claude from './claude.js';
 import * as gemini from './gemini.js';
 
 export { BACKEND_SAH, backendAI } from './backend.js';
+export { batasStreamMs } from './batas-stream.js';
 
 function impl() {
   return backendAI() === 'gemini' ? gemini : claude;

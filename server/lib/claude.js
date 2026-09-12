@@ -24,6 +24,7 @@ import {
 } from './prompts.js';
 
 import { parseNotaJson } from './nota.js';
+import { galatStreamHabis, galatStreamTerpotong, tandaBatasStream } from './batas-stream.js';
 
 export function getModel() {
   return backendAI() === 'vertex' ? 'claude-3-5-sonnet-v2@20241022' : 'claude-3-5-sonnet-20241022';
@@ -173,6 +174,66 @@ export function describeError(err) {
 }
 
 /**
+ * Menjalankan satu stream Anthropic sampai TUNTAS — atau gagal, tidak pernah setengah.
+ *
+ * Dua kegagalan yang dulu tidak punya penjaga aplikasi:
+ *   - sambungan putus di tengah: pesan bisa berhenti tanpa message_stop dan
+ *     jawaban setengah jalan terbaca sebagai sukses;
+ *   - stream yang menggantung: satu-satunya tenggat adalah batas saluran
+ *     milik SDK, yang tidak menjaga lamanya pembacaan.
+ *
+ * Sekarang pembacaannya dibatasi lib/batas-stream.js: kehabisan waktu dan
+ * putus di tengah melempar galat bertipe — tidak ada teks parsial yang
+ * kembali ke pemanggil, jadi tidak ada yang sempat tersimpan. Sinyal rute
+ * (peserta menutup aplikasi) tetap diteruskan apa adanya supaya rute
+ * menanganinya diam-diam sebagaimana sebelumnya.
+ */
+async function jalankanStream(anthropic, params, { signal, onText } = {}) {
+  const { sinyal, habis, janjiBatas, selesai } = tandaBatasStream(signal);
+  /*
+   * "Pernah terhubung" membedakan dua galat jaringan yang kelihatannya sama:
+   * putus SETELAH respons penyedia mulai tiba = jawaban terpotong; gagal
+   * SEBELUM itu = memang tidak pernah nyambung — tetap urusan describeError.
+   *
+   * Ditandai lewat listener `connect`, bukan peristiwa protokol
+   * (message_start dkk.): pada aliran yang mati di tengah, SDK ini hanya
+   * memancarkan `connect` dan `text` — peristiwa protokolnya baru ikut
+   * di-emit ulang untuk pesan yang UTUS sampai message_stop.
+   */
+  let pernahTerhubung = false;
+  try {
+    const stream = anthropic.messages.stream(params, { signal: sinyal });
+    stream.on('connect', () => { pernahTerhubung = true; });
+    if (onText) stream.on('text', onText);
+
+    const pesanAkhir = stream.finalMessage();
+    pesanAkhir.catch(() => {}); // boleh kalah perlombaan di bawah — jangan jatuhkan proses
+
+    let pesan;
+    try {
+      pesan = await Promise.race([pesanAkhir, janjiBatas]);
+    } catch (err) {
+      if (signal?.aborted) throw err; // peserta menutup aplikasi — rute yang menanganinya
+      if (habis()) throw galatStreamHabis();
+      /*
+       * Galat yang MEMBAWA identitas penyedia (429, 5xx, kunci ditolak) tetap
+       * lewat apa adanya — penerjemahannya milik describeError, bukan di sini.
+       * Yang diklasifikasi ulang hanya satu hal: sambungan yang sudah mengalir
+       * lalu mati sebelum pesannya tuntas.
+       */
+      if (err instanceof Anthropic.APIError || err?.status) throw err;
+      if (pernahTerhubung) throw galatStreamTerpotong();
+      throw err;
+    }
+    // Pesan utuh selalu membawa alasan berhenti; tanpa itu, alirannya tidak selesai.
+    if (!pesan || !pesan.stop_reason) throw galatStreamTerpotong();
+    return pesan;
+  } finally {
+    selesai();
+  }
+}
+
+/**
  * Konsultasi chat — dialirkan token demi token.
  * @param {{profile: object|null, metrics: object, history: Array, message: string,
  *          onText: (chunk: string) => void, signal?: AbortSignal}} opts
@@ -186,7 +247,8 @@ export async function streamChat({ profile, metrics, cashbook = '', belajar = {}
     { role: 'user', content: message },
   ];
 
-  const stream = anthropic.messages.stream(
+  const final = await jalankanStream(
+    anthropic,
     {
       model: getModel(),
       max_tokens: 4000,
@@ -197,12 +259,8 @@ export async function streamChat({ profile, metrics, cashbook = '', belajar = {}
       thinking: { type: 'disabled' },
       output_config: { effort: 'low' },
     },
-    { signal },
+    { signal, onText },
   );
-
-  stream.on('text', (delta) => onText(delta));
-
-  const final = await stream.finalMessage();
   const text = final.content
     .filter((b) => b.type === 'text')
     .map((b) => b.text)
@@ -257,7 +315,8 @@ export async function generateRecommendations({ profile, metrics, cashbook = '',
    * penyusunan yang tidak akan pernah dia lihat, dan biayanya tidak pernah
    * tercatat di jejak token miliknya karena `recordUsage` tidak sempat jalan.
    */
-  const stream = anthropic.messages.stream(
+  const response = await jalankanStream(
+    anthropic,
     {
       /*
        * Penalaran dan jawaban berbagi jatah yang sama, jadi angka ini bukan
@@ -279,8 +338,6 @@ export async function generateRecommendations({ profile, metrics, cashbook = '',
     },
     { signal },
   );
-
-  const response = await stream.finalMessage();
 
   if (response.stop_reason === 'refusal') {
     const err = new Error('Permintaan ditolak oleh sistem keamanan AI. Coba ubah isian profil usaha.');
@@ -330,7 +387,8 @@ export async function generateRecommendations({ profile, metrics, cashbook = '',
 export async function analyzeNota({ imageBase64, mimeType, signal }) {
   const anthropic = getClient();
 
-  const stream = anthropic.messages.stream(
+  const response = await jalankanStream(
+    anthropic,
     {
       max_tokens: 2000,
       model: getModel(),
@@ -353,8 +411,6 @@ export async function analyzeNota({ imageBase64, mimeType, signal }) {
     },
     { signal },
   );
-
-  const response = await stream.finalMessage();
 
   if (response.stop_reason === 'refusal') {
     const err = new Error('Foto nota ditolak oleh sistem keamanan AI. Coba foto ulang dengan sudut yang berbeda.');
@@ -388,7 +444,8 @@ export async function analyzeNota({ imageBase64, mimeType, signal }) {
 export async function analyzeCheckup({ metricsTeks, perubahanTeks, signal }) {
   const anthropic = getClient();
 
-  const stream = anthropic.messages.stream(
+  const response = await jalankanStream(
+    anthropic,
     {
       max_tokens: 2000,
       model: getModel(),
@@ -403,8 +460,6 @@ export async function analyzeCheckup({ metricsTeks, perubahanTeks, signal }) {
     },
     { signal },
   );
-
-  const response = await stream.finalMessage();
 
   if (response.stop_reason === 'refusal') {
     const err = new Error('Permintaan check-up ditolak sistem keamanan AI. Coba lagi sebentar.');
@@ -438,7 +493,8 @@ export async function analyzeCheckup({ metricsTeks, perubahanTeks, signal }) {
 export async function analyzeLatihanAi({ materiTeks, angkaTeks, signal }) {
   const anthropic = getClient();
 
-  const stream = anthropic.messages.stream(
+  const response = await jalankanStream(
+    anthropic,
     {
       max_tokens: 1500,
       model: getModel(),
@@ -452,8 +508,6 @@ export async function analyzeLatihanAi({ materiTeks, angkaTeks, signal }) {
     },
     { signal },
   );
-
-  const response = await stream.finalMessage();
 
   if (response.stop_reason === 'refusal') {
     const err = new Error('Permintaan soal latihan ditolak sistem keamanan AI. Coba lagi sebentar.');
