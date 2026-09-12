@@ -10,18 +10,74 @@
  * Karena itu cadangan bukan fitur tambahan, melainkan syarat menjalankan pilot.
  */
 import { copyFile, mkdir, readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { denganKunci } from './kunci.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-// Mengikuti NOVA_DATA_DIR yang sama dengan store.js — lihat catatan di sana.
-const DATA_DIR = process.env.NOVA_DATA_DIR
-  ? path.resolve(process.env.NOVA_DATA_DIR)
-  : path.join(HERE, '..', 'data');
+
+/**
+ * Resolver SATU tempat untuk folder data (M0-lite, prasyarat B′ 1).
+ *
+ * Beberapa berkas dulu menghitungnya sendiri-sendiri dengan rumus yang sama —
+ * tempat-tempat yang bisa saling tertinggal begitu aturannya berubah. Sejak
+ * sesi G fase 4, backup.js dan store.js memakai fungsi ini; penyusun lain
+ * menyusul pada gilirannya masing-masing. Rumusnya TIDAK berubah: env
+ * NOVA_DATA_DIR bila terpasang, kalau tidak folder data bawaan repo.
+ */
+export function direktoriData() {
+  return process.env.NOVA_DATA_DIR
+    ? path.resolve(process.env.NOVA_DATA_DIR)
+    : path.join(HERE, '..', 'data');
+}
+
+const DATA_DIR = direktoriData();
 const DB_PATH = path.join(DATA_DIR, 'users.json');
 const BACKUP_DIR = path.join(DATA_DIR, 'backup');
+
+/**
+ * Set-berkas-ter yang dibakukan untuk manifest (M0-lite, bentuk minimal jujur
+ * dari FDM M0). Yang TIDAK ada tetap tercantum dengan `ada: false` — berkas
+ * yang hilang adalah temuan, bukan hal yang didiamkan. Backend non-JSON
+ * (mongo/postgres) tidak dicover manifest ini; pencadangan lib ini memang
+ * hanya untuk jalur JSON (lihat scripts/backup.js yang menolak backend lain).
+ */
+const BERKAS_TER = ['users.json', 'users-seed.json', 'validasi.json'];
+const DIR_TER = ['backup', 'export'];
+
+async function sha256Berkas(p) {
+  const isi = await readFile(p);
+  return createHash('sha256').update(isi).digest('hex');
+}
+
+/**
+ * Enumerasi berkas data untuk manifest: set-berkas-ter di atas + isi folder
+ * terdaftar (satu tingkat, nama saja). Setiap entri membawa keberadaan,
+ * ukuran, dan sidik sha256 (bila ada) — cukup untuk membuktikan "cadangan ini
+ * dibuat atas data yang mana", tanpa menyalin isinya.
+ */
+export async function manifestData() {
+  const entri = [];
+  for (const nama of BERKAS_TER) {
+    const p = path.join(DATA_DIR, nama);
+    const s = await stat(p).catch(() => null);
+    entri.push(s
+      ? { jalur: nama, ada: true, byte: s.size, sha256: await sha256Berkas(p) }
+      : { jalur: nama, ada: false });
+  }
+  for (const dir of DIR_TER) {
+    const isi = await readdir(path.join(DATA_DIR, dir)).catch(() => []);
+    for (const nama of isi.sort()) {
+      const p = path.join(DATA_DIR, dir, nama);
+      const s = await stat(p).catch(() => null);
+      if (!s?.isFile()) continue;
+      entri.push({ jalur: `${dir}/${nama}`, ada: true, byte: s.size, sha256: await sha256Berkas(p) });
+    }
+  }
+  return { dibuat: new Date().toISOString(), dataDir: DATA_DIR, berkas: entri };
+}
 
 /** Berapa salinan harian yang disimpan sebelum yang terlama dibuang. */
 export const KEEP = Number(process.env.BACKUP_KEEP) || 14;
@@ -125,6 +181,22 @@ export async function runBackup({ quiet = false } = {}) {
   await copyFile(DB_PATH, target);
 
   const dibuang = await prune();
+
+  /*
+   * Manifest berpasangan dengan cadangannya (M0-lite): enumerasi berkas-ter
+   * data ditulis sebagai manifest-<nama-yang-sama>.json di sampingnya, SETELAH
+   * prune — supaya isinya adalah keadaan akhir folder, bukan berkas yang
+   * sedang menuju dibuang. Pola nama cadangan (/^users-…/) tidak
+   * menyentuhnya; rotasi mengenalinya lewat pasangan nama.
+   */
+  const manifest = path.join(BACKUP_DIR, path.basename(target).replace(/^users-/, 'manifest-'));
+  try {
+    await writeFile(manifest, JSON.stringify(await manifestData(), null, 2), 'utf8');
+  } catch (err) {
+    // Cadangan utama sudah aman; manifest yang gagal adalah temuan, bukan
+    // alasan membatalkan pencadangan. Diingat keras supaya terlihat.
+    console.error('[backup] manifest gagal ditulis — cadangan tetap tersimpan:', err?.message ?? err);
+  }
   const info = {
     file: path.basename(target),
     pengguna: db.users?.length ?? 0,
@@ -157,6 +229,9 @@ async function prune() {
   for (const f of buang) {
     if (!namaCadanganSah(f)) continue;
     await unlink(path.join(BACKUP_DIR, f)).catch(() => {});
+    // Manifest berpasangan ikut pergi bersama cadangannya — rotasi tidak
+    // meninggalkan yatim yang mengaku lebih segar dari kenyataannya.
+    await unlink(path.join(BACKUP_DIR, f.replace(/^users-/, 'manifest-'))).catch(() => {});
   }
   return buang;
 }

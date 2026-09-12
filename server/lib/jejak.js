@@ -75,6 +75,15 @@ export const SKEMA_JEJAK = {
    * status 'terukur'|'tak-terukur' — yang gagal dinilai juga tercatat,
    * supaya ketiadaan hasil terlihat, bukan hening. */
   evaluasi_advisori: { id: 'id', metode: 'kata', status: 'kata' },
+  /* Rel proposal T1 surface #1 (scan-nota; addendum §25 2026-09-12).
+   * proposal_shown: usulan tampil di layar — id + tingkat keyakinan tutup
+   * ('ok'|'warning'|'low'), menunggangi tulisan usage rute scan. TANPA delta
+   * event (§21.2): penerimaan DITURUNKAN dari shown ⋈ baris (origin+proposalId),
+   * tidak pernah disimpan sebagai peristiwa. proposal_rejected: penolakan
+   * EKSPLISIT saja, alasan kosakata tertutup. Keduanya tanpa nominal, tanpa
+   * teks bebas — isi usulan tinggal di respons HTTP, bukan di jejak. */
+  proposal_shown: { id: 'id', 'tier?': 'kata?' },
+  proposal_rejected: { id: 'id', 'alasan?': 'kata?' },
 
   /* --- dari rute (store.logEvent) --- */
   login: {},

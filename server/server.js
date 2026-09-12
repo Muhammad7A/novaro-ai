@@ -58,6 +58,7 @@ import { susunKonteksUsaha } from './lib/konteks-usaha.js';
 import { susunFokusHarian } from './lib/fokus-harian.js';
 import { bulanCheckpoint, evaluasiTertunda } from './lib/advisori.js';
 import { deteksiKonteks } from './lib/deteksi.js';
+import { buatIdProposal, proposalScanAktif, terbitkanToken } from './lib/proposal.js';
 import { modulPraktikTerverifikasi } from './lib/praktik.js';
 import { adaLatihan, periksa, sanitasiLatihanAI, soalPublik } from './lib/latihan.js';
 import { GalatMutasi, store } from './lib/store.js';
@@ -155,9 +156,33 @@ app.post(
         signal: controller.signal,
       });
       const hasil = sanitasiHasilNota(mentah);
-      await store.recordUsage(req.user.id, usage);
+      /*
+       * Rel proposal T1 surface #1 (addendum §25, 2026-09-12) — default MATI.
+       * Saat gerbang env terbuka DAN rahasia terpasang, scan sekalian
+       * menerbitkan id usulan + token sekali-pakai; peristiwa proposal_shown
+       * menunggangi tulisan usage yang memang sudah terjadi (§9.3 — nol
+       * tulisan baru). Rahasia tidak terpasang: jalur proposal mati dengan
+       * log galat keras, scan biasa tetap hidup (degradasi jujur R6) — dan
+       * TIDAK ada peristiwa shown tanpa token, supaya data keputusan tidak
+       * berisi usulan yang mustahil dikonfirmasi.
+       */
+      let proposal = null;
+      if (proposalScanAktif()) {
+        const id = buatIdProposal();
+        const token = terbitkanToken({ proposalId: id, tingkat: hasil.tingkat });
+        if (token) {
+          proposal = { id, token };
+        } else {
+          log.error('nota', 'NOVA_PROPOSAL_SCAN aktif tanpa NOVA_PROPOSAL_SECRET — token tidak diterbitkan, jalur proposal mati', { userId: req.user.id });
+        }
+      }
+      if (proposal) {
+        await store.catatProposalScan(req.user.id, { id: proposal.id, tingkat: hasil.tingkat }, usage);
+      } else {
+        await store.recordUsage(req.user.id, usage);
+      }
       log.info('nota', 'nota selesai dibaca', { userId: req.user.id, bytes: gambar.length, tingkat: hasil.tingkat });
-      res.json({ hasil });
+      res.json(proposal ? { hasil, proposal } : { hasil });
     } catch (err) {
       if (controller.signal.aborted) {
         log.info('nota', 'dibatalkan peserta sebelum selesai', { userId: req.user.id });

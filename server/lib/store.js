@@ -13,11 +13,13 @@ import { fileURLToPath } from 'node:url';
 
 import { hitungToken, pangkasLog } from './anggaran.js';
 import { buatAdvisori, digestDasarAngka, EVALUASI_MAKS, pangkasAdvisori, VERSI_FITUR_ADVISORI } from './advisori.js';
+import { ALASAN_TOLAK_SAH, bukaToken, GalatToken, VERSI_FITUR_PROPOSAL_SCAN } from './proposal.js';
 import { JENIS, isValidKategori, tanggalTerlama, tanggalWIB } from './cashbook.js';
 import { totalSoal } from './latihan.js';
 import { pool, initDb, JENIS_PENYIMPANAN, mongoCollection } from './db.js';
 import { muatAtauSeed, simpanSemua as simpanSemuaMongo } from './mongo-store.js';
 import { denganKunci } from './kunci.js';
+import { direktoriData } from './backup.js';
 
 let dbInitialized = false;
 async function ensureDb() {
@@ -32,10 +34,10 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
  * Letak data bisa dialihkan lewat NOVA_DATA_DIR. Dipakai untuk memasang data di
  * volume terpisah saat deploy, dan — sama pentingnya — supaya uji otomatis
  * memakai direktorinya sendiri dan tidak pernah menyentuh data peserta sungguhan.
+ * Resolusinya SATU tempat sejak sesi G fase 4: direktoriData() di lib/backup.js
+ * (M0-lite — dulu rumus yang sama disalin di beberapa berkas).
  */
-const DATA_DIR = process.env.NOVA_DATA_DIR
-  ? path.resolve(process.env.NOVA_DATA_DIR)
-  : path.join(HERE, '..', 'data');
+const DATA_DIR = direktoriData();
 const DB_PATH = path.join(DATA_DIR, 'users.json');
 
 const EMPTY_DB = { version: 1, users: [] };
@@ -854,13 +856,23 @@ export const store = {
    * @param {object} transaction { tanggal?, jenis, kategori, keterangan?, jumlah }
    * @param {{aktor: 'manusia'|'mesin', requestId?: string}} opts
    */
-  async addTransaction(userId, transaction, { aktor, requestId } = {}) {
+  async addTransaction(userId, transaction, { aktor, requestId, proposalToken } = {}) {
     return update((db) => {
       const user = db.users.find((u) => u.id === userId);
       if (!user) return null;
-      const row = barisTransaksiSah(transaction, { aktor, requestId, transactionsLama: user.transactions });
+      const row = barisTransaksiSah(transaction, {
+        aktor,
+        requestId,
+        proposalToken,
+        transactionsLama: user.transactions,
+      });
       // push, bukan sebar — alasannya sama dengan pushEvent di bawah.
       (user.transactions ??= []).push(row);
+      if (row.origin === 'proposal') {
+        // Stempel fitur M1: rel proposal scan-nota — set-if-absent, metadata.
+        user.featureVersions ??= {};
+        user.featureVersions['proposal-scan'] ??= VERSI_FITUR_PROPOSAL_SCAN;
+      }
       pushEvent(user, 'transaction_added', {
         jenis: row.jenis,
         kategori: row.kategori,
@@ -868,6 +880,8 @@ export const store = {
         mundur: row.tanggal < row.createdAt.slice(0, 10),
         // Asal mengikuti baris: jejak penelitian boleh memuat kosakata tertutup
         // ini — ia bukan nominal dan bukan teks bebas (lihat uji penelitian).
+        // proposalId TIDAK ikut di meta: join shown⋈row bekerja lewat baris
+        // (proposal_shown membawa id yang sama) — tanpa memperluas skema event.
         origin: row.origin,
       });
       return row;
@@ -1120,6 +1134,51 @@ export const store = {
     });
   },
 
+  /**
+   * Satu tulis untuk rute scan saat fitur proposal aktif: pemakaian token
+   * DAN peristiwa proposal_shown — menunggangi penulisan usage yang memang
+   * sudah terjadi (§9.3: NOL tulisan baru; dulu rute memanggil recordUsage).
+   *
+   * Tanpa proposal (fitur mati / rahasia belum dipasang), rute tetap memakai
+   * recordUsage biasa — jalur itu tidak berubah.
+   *
+   * @param {{id: string, tingkat?: string|null}} proposal id usulan + tingkat keyakinan
+   */
+  async catatProposalScan(userId, proposal, usage) {
+    return update((db) => {
+      const user = db.users.find((u) => u.id === userId);
+      if (!user) return null;
+      catatUsage(user, usage);
+      pushEvent(user, 'proposal_shown',
+        proposal?.tingkat ? { id: proposal.id, tier: proposal.tingkat } : { id: proposal.id });
+      return user.usage;
+    });
+  },
+
+  /**
+   * Penolakan EKSPLISIT satu usulan — satu peristiwa, satu penulisan.
+   *
+   * Idempoten: usulan yang sudah pernah ditolak tidak menambah peristiwa
+   * kedua (ketukan ganda pada tombol tolak bukan dua keputusan). Alasan
+   * kosakata tertutup — bukan teks bebas; kosong diizinkan (menolak tanpa
+   * memilih alasan tetap sah). TANPA delta event: penerimaan tetap diturunkan
+   * dari shown ⋈ baris, bukan disimpan di sini.
+   */
+  async tolakProposal(userId, proposalId, alasan) {
+    return update((db) => {
+      const user = db.users.find((u) => u.id === userId);
+      if (!user) return null;
+      if (alasan != null && alasan !== '' && !ALASAN_TOLAK_SAH.includes(alasan)) {
+        throw new GalatMutasi('alasan-tolak', 400, `Alasan penolakan tidak dikenali. Pilihannya: ${ALASAN_TOLAK_SAH.join(', ')}.`);
+      }
+      const pernah = (user.events ?? []).some((e) => e.type === 'proposal_rejected' && e.meta?.id === proposalId);
+      if (pernah) return { sudah: true };
+      pushEvent(user, 'proposal_rejected',
+        alasan ? { id: proposalId, alasan } : { id: proposalId });
+      return { sudah: false };
+    });
+  },
+
   /** Jejak pemakaian token harian, untuk memeriksa anggaran. */
   async getTokenLog(userId) {
     const db = await load();
@@ -1148,17 +1207,21 @@ const JUMLAH_MAKS = 1e12;
  * Urutan pemeriksaan disengaja: SIAPA penulisnya diperiksa SEBELUM APA yang
  * ditulisnya — pemanggil mesin mendapat penolakan aktornya meski isinya
  * kebetulan sah, karena pesan yang paling perlu sampai adalah "bukan jalurmu".
+ * Token proposal diperiksa PALING AKHIR: artefak sekali-pakai tidak boleh
+ * terbakar oleh medan yang keliru — perbaiki medannya, token masih hidup
+ * selama TTL-nya.
  *
  * Semantik angka sengaja sama dengan rute (`asNumber` di server.js): masukan
  * yang tak terbaca sebagai angka atau bernilai negatif menjadi 0 — dan 0
  * ditolak, bukan didiamkan.
  *
  * @param {object} masukan            medan mentah dari pemanggil
- * @param {{aktor?: string, requestId?: string, transactionsLama?: Array}} opts
+ * @param {{aktor?: string, requestId?: string, proposalToken?: string, transactionsLama?: Array}} opts
  * @returns {object} baris lengkap siap dorong ke `user.transactions`
- * @throws {GalatMutasi} pada aktor tak sah, medan tidak sah, atau id permintaan yang sudah terpakai
+ * @throws {GalatMutasi} pada aktor tak sah, medan tidak sah, id permintaan
+ *   kembar, atau token proposal yang tak sah/kedaluwarsa/telah terpakai
  */
-function barisTransaksiSah(masukan, { aktor, requestId, transactionsLama = [] } = {}) {
+function barisTransaksiSah(masukan, { aktor, requestId, proposalToken, transactionsLama = [] } = {}) {
   if (aktor !== 'manusia' && aktor !== 'mesin') {
     throw new GalatMutasi('aktor-tidak-sah', 400, 'Aktor mutasi wajib dinyatakan: "manusia" atau "mesin".');
   }
@@ -1235,6 +1298,39 @@ function barisTransaksiSah(masukan, { aktor, requestId, transactionsLama = [] } 
       throw new GalatMutasi('duplikat', 409, 'Permintaan ini sudah pernah dicatat. Periksa buku kas sebelum mengirim ulang.');
     }
     row.requestId = bersih;
+  }
+
+  /*
+   * Konsumsi token proposal T1 surface #1 (scan-nota; addendum §25
+   * 2026-09-12). Dua hal yang dipegang DI SINI, bukan di rute:
+   *
+   *   - origin 'proposal' hanya lahir dari token yang LULUS verifikasi
+   *     (bentuk, versi, HMAC, TTL) — tubuh permintaan tidak punya parameter
+   *     untuk menyetingnya; sisipan palsu sudah dibuang daftar putih di atas;
+   *   - jti = KEBERADAAN BARIS: token yang id-nya sudah hidup di buku kas
+   *     pengguna ini ditolak sebagai duplikat (409) — satu usulan, satu
+   *     baris, selama TTL dan seumur toko (label jujur §21.4; tidak ada
+   *     penyimpanan jti terpisah).
+   *
+   * Konsumsi adalah REKAM BARIS itu sendiri — mutator yang melempar tidak
+   * pernah menulis apa pun, jadi token yang gagal karena medan lain tidak
+   * hangus.
+   */
+  if (proposalToken != null && proposalToken !== '') {
+    let isi;
+    try {
+      isi = bukaToken(proposalToken);
+    } catch (err) {
+      if (err instanceof GalatToken) {
+        throw new GalatMutasi(err.kode, err.status, err.message);
+      }
+      throw err;
+    }
+    if (transactionsLama.some((t) => t?.proposalId === isi.proposalId)) {
+      throw new GalatMutasi('duplikat', 409, 'Usulan ini sudah pernah disimpan. Periksa buku kas sebelum mengirim ulang.');
+    }
+    row.origin = 'proposal';
+    row.proposalId = isi.proposalId;
   }
 
   return row;
