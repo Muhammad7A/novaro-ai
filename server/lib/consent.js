@@ -24,8 +24,17 @@
  * BERHENTI dikirim (lihat prompts.js), lalu teks ini menyebutkan apa yang masih
  * benar-benar terkirim. Memperbaiki teksnya saja berarti hanya membuat
  * pengakuan yang lebih rapi atas hal yang seharusnya tidak dilakukan.
+ *
+ * Versi 3 (keputusan pemilik, tercatat di SESSION-D5-CONSENT-DECISION.md):
+ * pernyataan pemroses dulu menyebut SATU layanan, "layanan Claude (Anthropic)",
+ * padahal NOVA_AI_BACKEND memilih salah satu dari tiga jalur — anthropic
+ * (Anthropic), vertex, dan gemini (keduanya Vertex AI, Google Cloud). Pada dua
+ * dari tiga konfigurasi, pernyataan itu keliru menunjuk pemroses datanya.
+ * Kini teks menyebut semua pemroses yang mungkin. Perubahan substantif atas
+ * siapa yang menerima data → persetujuan ulang diwajibkan, sesuai mekanisme
+ * versi yang sudah ada.
  */
-export const CONSENT_VERSION = 2;
+export const CONSENT_VERSION = 3;
 
 export const CONSENT_TEXT = {
   versi: CONSENT_VERSION,
@@ -40,7 +49,8 @@ export const CONSENT_TEXT = {
     {
       judul: 'Apa yang dikirim ke layanan AI',
       isi:
-        'Saat kamu bertanya ke Konsultan AI atau meminta rekomendasi, sebagian datamu dikirim ke layanan Claude (Anthropic) untuk diproses: ' +
+        'Saat kamu bertanya ke Konsultan AI atau meminta rekomendasi, sebagian datamu dikirim ke layanan AI yang dipakai server ini — ' +
+        'Claude (Anthropic) atau Gemini (Google Cloud, lewat Vertex AI), sesuai pengaturan server — untuk diproses: ' +
         'jenis usaha, produk utama, lama usaha, jumlah karyawan, cara mencatat, tujuanmu, angka keuangan hasil hitungan sistem, ' +
         'ringkasan buku kas termasuk keterangan pengeluaran terbesarmu, teks "tantangan terbesar" bila kamu mengisinya, dan pertanyaanmu sendiri.',
     },

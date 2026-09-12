@@ -12,6 +12,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { CONSENT_VERSION } from '../lib/consent.js';
 
 const DATA_DIR = mkdtempSync(path.join(tmpdir(), 'nova-uji-ubah-'));
 process.env.NOVA_DATA_DIR = DATA_DIR;
@@ -56,7 +57,7 @@ const BASE = `http://127.0.0.1:${server.address().port}`;
 test.after(() => server.close());
 
 const { user, accessCode } = await store.createUser({ name: 'Bu Ubah', business: 'Warung Ubah', batch: 'B1' });
-await store.saveConsent(user.id, 2);
+await store.saveConsent(user.id, CONSENT_VERSION);
 await store.saveProfile(user.id, {
   namaUsaha: 'Warung Ubah', jenisUsaha: 'kuliner', pencatatan: 'aplikasi',
   tujuan: 'naikkan-laba', omzetBulanan: 4_000_000,
@@ -113,7 +114,7 @@ test('data dua bulan: omzet, pengeluaran, laba, dan pencatatan dibandingkan bena
 
 test('bulan lalu kosong: perubahan null dengan kalimat yang jujur', async () => {
   const kosong = await store.createUser({ name: 'Bu Baru', business: '', batch: 'B1' });
-  await store.saveConsent(kosong.user.id, 2);
+  await store.saveConsent(kosong.user.id, CONSENT_VERSION);
   await store.saveProfile(kosong.user.id, {
     namaUsaha: 'Warung Baru', jenisUsaha: 'kuliner', pencatatan: 'aplikasi',
     tujuan: 'rapikan-keuangan', omzetBulanan: 3_000_000,
@@ -139,7 +140,7 @@ test('laba negatif: arah perubahan selalu benar — memburuk tidak pernah terbac
 
 test('laba negatif di kedua bulan: perbandingan tetap dihitung, tanpa NaN', async () => {
   const rugi = await store.createUser({ name: 'Bu Rugi', business: '', batch: 'B2' });
-  await store.saveConsent(rugi.user.id, 2);
+  await store.saveConsent(rugi.user.id, CONSENT_VERSION);
   await store.saveProfile(rugi.user.id, {
     namaUsaha: 'Warung Rugi', jenisUsaha: 'kuliner', pencatatan: 'buku',
     tujuan: 'naikkan-laba', omzetBulanan: 1_000_000,

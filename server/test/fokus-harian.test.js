@@ -190,27 +190,54 @@ test('margin 0–10%: ambang yang sama dengan pewarnaan margin dasbor', () => {
 
 /* ================================= Aturan 7 — peringatan rekomendasi */
 
+/* Sesi D: aturan 7 kini berjendela umur — uji lama tetap menguji bentuk &
+ * keterhubungan, dengan `kini` terkunci dan rekomendasi yang jelas SEGAR. */
+const KINI_UJI = new Date('2026-09-12T04:00:00.000Z');
+const segar = (hariLalu) => new Date(KINI_UJI.getTime() - hariLalu * 86_400_000).toISOString();
+
 test('peringatan tersimpan dari rekomendasi terakhir dibaca apa adanya', () => {
   const k = fokus({
+    kini: KINI_UJI,
     metrics: { ...METRIK_SEHAT, prive: 1_000_000 },
     rekomendasi: {
       peringatan: ['Cicilan Rp 450.000 menyerap 8% laba — masih dalam ambang aman.'],
       rekomendasi: [{ judul: 'Kunci porsi bahan', modulTerkait: 5 }],
+      generatedAt: segar(0),
     },
   });
   assert.equal(k.id, 'peringatan-rekomendasi');
   assert.match(k.alasan, /Cicilan Rp 450\.000/);
+  assert.doesNotMatch(k.alasan, /Disusun/, 'disusun hari ini — tidak perlu keterangan umur');
   assert.equal(k.aksi.halaman, 'rekomendasi');
   assert.equal(k.modul, 5, 'modulTerkait dari rekomendasi yang sama ikut dihubungkan');
 });
 
 test('modulTerkait yang tidak sah tidak bocor menjadi tautan', () => {
   const k = fokus({
+    kini: KINI_UJI,
     metrics: { ...METRIK_SEHAT, prive: 1_000_000 },
-    rekomendasi: { peringatan: ['Periksa stok.'], rekomendasi: [{ judul: 'X', modulTerkait: 99 }] },
+    rekomendasi: {
+      peringatan: ['Periksa stok.'],
+      rekomendasi: [{ judul: 'X', modulTerkait: 99 }],
+      generatedAt: segar(2),
+    },
   });
   assert.equal(k.id, 'peringatan-rekomendasi');
   assert.equal(k.modul, null);
+});
+
+test('umur peringatan disebut jujur saat rekomendasinya sudah berhari-hari', () => {
+  const k = fokus({
+    kini: KINI_UJI,
+    metrics: { ...METRIK_SEHAT, prive: 1_000_000 },
+    rekomendasi: {
+      peringatan: ['Periksa stok bahan kering.'],
+      rekomendasi: [{ judul: 'X' }],
+      generatedAt: segar(9),
+    },
+  });
+  assert.equal(k.id, 'peringatan-rekomendasi');
+  assert.match(k.alasan, /^Disusun 9 hari lalu\. /, 'peserta menilai sendiri kebaruannya');
 });
 
 /* ======================================= Aturan 8 — komponen terlemah */

@@ -130,11 +130,15 @@ function tampil(k) {
     <div class="baris"><span>Laba bersih setara bulanan</span><b>${rp(k.labaBersih)}</b></div>
     <div class="baris"><span>Konsistensi pencatatan</span><b>${esc(konsistensi)}</b></div>
     <div class="insight">
-      <h4>Catatan utama</h4>
+      <h4>${esc(k.insightSumber === 'contoh'
+        ? 'Contoh catatan (data kurasi, bukan keluaran AI)'
+        : k.insightSumber === 'sistem'
+          ? 'Catatan sistem dari angka buku kas'
+          : 'Catatan dari analisis AI')}</h4>
       <ul>${(k.insight ?? []).map((i) => `<li>${esc(i.judul)}</li>`).join('')}</ul>
     </div>
-    <div class="periode">Periode data: ${k.periode.hariSejakMulai || '—'} hari pencatatan${k.periode.bulanLengkap ? ', termasuk bulan penuh tercatat' : ''}. Angka ${k.sumberAngka === 'catatan' ? 'dihitung dari buku kas' : 'masih perkiraan profil'}. Dibuat ${new Date(k.dibuatPada).toLocaleDateString('id-ID', { dateStyle: 'long' })}.</div>
-    <div class="disclaimer">Ringkasan edukatif dari catatan pemilik usaha sendiri — bukan jaminan, bukan keputusan kredit. Keputusan KUR sepenuhnya ada di bank.</div>`;
+    <div class="periode">Periode data: ${k.periode.hariSejakMulai || '—'} hari pencatatan${k.periode.bulanLengkap ? ', termasuk bulan penuh tercatat' : ''}. Angka ${k.sumberAngka === 'catatan' ? 'dihitung dari buku kas' : 'masih perkiraan profil'}.${k.insightSumber === 'ai' && k.insightDibuat ? ` Catatan AI disusun ${new Date(k.insightDibuat).toLocaleDateString('id-ID', { dateStyle: 'long' })}.` : ''} Kartu dibuat ${new Date(k.dibuatPada).toLocaleDateString('id-ID', { dateStyle: 'long' })}.</div>
+    <div class="disclaimer">Ringkasan edukatif dari catatan usahamu sendiri; catatan berlabel analisis AI dihasilkan AI dan bisa keliru — bukan jaminan, bukan keputusan kredit. Keputusan KUR sepenuhnya ada di bank.</div>`;
 
   document.querySelector('.dial-fill').style.strokeDasharray = `${terisi} ${panjang}`;
 }

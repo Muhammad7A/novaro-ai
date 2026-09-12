@@ -41,6 +41,29 @@
 import { formatRupiah } from './metrics.js';
 import { nomorModulSah } from './kurikulum.js';
 
+/**
+ * Umur maksimum (hari) peringatan rekomendasi yang masih boleh diangkat
+ * aturan 7. Konstanta bernama, bukan angka ajaib: 30 hari kalender — cukup
+ * lama untuk tetap relevan pada ritme UMKM, cukup pendek agar nasihat bulan
+ * lalu tidak berpura-pura segar.
+ */
+const UMUR_MAKS_PERINGATAN_HARI = 30;
+
+/**
+ * Umur rekomendasi dalam hari kalender, atau null bila tanggalnya absen,
+ * bukan tanggal sah, atau dari masa depan (jam server melenceng diperlakukan
+ * sama dengan tak diketahui — bukan umur negatif).
+ *
+ * Gagal-aman berarti DI LUAR jendela: nasihat tanpa tanggal yang bisa
+ * dipercaya tidak boleh tampil sebagai "peringatan terakhir".
+ */
+function umurRekomendasiHari(rekomendasi, kini) {
+  const t = Date.parse(rekomendasi?.generatedAt);
+  if (!Number.isFinite(t)) return null;
+  const hari = Math.floor((kini.getTime() - t) / 86_400_000);
+  return hari < 0 ? null : hari;
+}
+
 /** Peta aspek skor ke modul yang mengajarkan perbaikannya. */
 function modulDariAspek(aspek = '') {
   if (aspek.includes('Margin')) return 5;
@@ -59,6 +82,7 @@ function modulDariAspek(aspek = '') {
  *   perubahan?: object|null,
  *   rekomendasi?: object|null,
  *   sesiBerikut?: {no: number, judul: string}|null,
+ *   kini?: Date,
  * }} sumber
  * @returns {{id: string, judul: string, alasan: string, aksi: {label: string, halaman: string}, modul: number|null}|null}
  */
@@ -68,6 +92,7 @@ export function susunFokusHarian({
   perubahan = null,
   rekomendasi = null,
   sesiBerikut = null,
+  kini = new Date(),
 } = {}) {
   if (!punyaProfil || !metrics) {
     return {
@@ -154,14 +179,27 @@ export function susunFokusHarian({
     };
   }
 
-  /* 7 — peringatan tersimpan dari rekomendasi terakhir (tanpa memanggil AI). */
+  /* 7 — peringatan tersimpan dari rekomendasi terakhir (tanpa memanggil AI).
+   *
+   * Jendela umur: nasihat AI yang tersimpan membara sesuai angka pada HARI ia
+   * disusun. Memangkatnya berminggu-minggu kemudian seolah masih "peringatan
+   * terakhir" adalah dusta kesegaran — fokus harian justru permukaan yang
+   * paling dipercaya peserta. Maka aturan 7 hanya berlaku bila rekomendasinya
+   * cukup muda; di luar jendela (atau tanpa tanggal yang bisa dipercaya) aliran
+   * jatuh ke aturan 8/9 yang murni deterministik. Satu konstanta, satu
+   * pembanding — tanpa mesin pembatalan apa pun.
+   */
   const peringatan = rekomendasi?.peringatan?.[0];
-  if (typeof peringatan === 'string' && peringatan.trim()) {
+  const umurHari = umurRekomendasiHari(rekomendasi, kini);
+  const dalamJendela = umurHari !== null && umurHari <= UMUR_MAKS_PERINGATAN_HARI;
+  if (typeof peringatan === 'string' && peringatan.trim() && dalamJendela) {
     const modulTerkait = rekomendasi?.rekomendasi?.[0]?.modulTerkait;
     return {
       id: 'peringatan-rekomendasi',
       judul: 'Ada peringatan dari rekomendasi terakhirmu',
-      alasan: peringatan.trim().slice(0, 200),
+      // Umur disebut saat ia ada — peserta menilai sendiri kebaruannya.
+      alasan:
+        (umurHari > 0 ? `Disusun ${umurHari} hari lalu. ` : '') + peringatan.trim().slice(0, 200),
       aksi: { label: 'Buka Saran', halaman: 'rekomendasi' },
       modul: nomorModulSah(modulTerkait) ? Number(modulTerkait) : null,
     };

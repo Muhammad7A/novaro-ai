@@ -457,7 +457,9 @@ function bulanPenuhTerakhir(hariIni) {
  * dengan bentuk persis RECOMMENDATION_SCHEMA — supaya kartunya tampil utuh
  * dan tidak terlihat "belum pernah dipakai".
  */
-function susunRekomendasi(persona, trx, hariIni) {
+export function susunRekomendasi(persona, trx, hariIni) {
+  // Diekspor semata agar kontrak provenansinya bisa dipatrikan langsung di
+  // uji — pola yang sama dengan keUsage di lib/gemini.js.
   const bulan = bulanPenuhTerakhir(hariIni);
   const s = ringkasBulan(trx, bulan);
   const namaBulan = new Date(`${bulan}-01T00:00:00Z`).toLocaleDateString('id-ID', { month: 'long', year: 'numeric', timeZone: 'UTC' });
@@ -528,6 +530,10 @@ function susunRekomendasi(persona, trx, hariIni) {
       'Nol hari tanpa catat kas — termasuk hari sepi',
     ],
     generatedAt: `${hariIni}T02:00:00.000Z`,
+    // Benih demo adalah susunan kurasi, BUKAN keluaran model mana pun. Tanpa
+    // tanda ini permukaan tampilan akan mati sebagai "AI segar" — dusta
+    // provenansi pada akun yang justru paling sering dilihat orang baru.
+    sumber: 'contoh',
   };
 }
 

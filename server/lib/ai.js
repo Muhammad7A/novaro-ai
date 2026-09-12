@@ -20,9 +20,18 @@ function impl() {
   return backendAI() === 'gemini' ? gemini : claude;
 }
 
-/** Nama model yang sedang dipakai — untuk banner, /api/health, dan jejak SSE. */
+/**
+ * Nama model yang sedang dipakai — untuk banner, /api/health, dan jejak SSE.
+ *
+ * Jalur Claude mendelegasikan ke getModel() — fungsi yang SAMA dengan yang
+ * memilih model pada tiap permintaan. Memakai konstanta `MODEL` di sini dulu
+ * melaporkan `claude-3-5-sonnet-20241022` ketika runtime sebenarnya memanggil
+ * `claude-3-5-sonnet-v2@20241022` lewat Vertex: identitas yang tampil di
+ * kesehatan, jejak SSE, dan bukti live tidak pernah cocok dengan tagihan.
+ * Identitas hanya jujur bila ia DITURUNKAN dari pemilihnya sendiri.
+ */
 export function modelAktif() {
-  return backendAI() === 'gemini' ? gemini.modelAktif() : claude.MODEL;
+  return backendAI() === 'gemini' ? gemini.modelAktif() : claude.getModel();
 }
 
 export function isConfigured() {

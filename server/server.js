@@ -403,6 +403,8 @@ app.post('/api/login', async (req, res) => {
     user: store.publicUser(user),
     metrics: user.profile ? metrics : null,
     aiConfigured: isConfigured(),
+    // Identitas runtime utk label tampilan — peramban tidak menebak model.
+    model: modelAktif(),
     consent: hasConsented(user) ? null : CONSENT_TEXT,
     anggaran: await anggaranUntuk(user),
     belajar: ringkasJadwal(user),
@@ -521,6 +523,20 @@ function susunKartuPublik(user, metrics) {
         prioritas: m.statusCicilan === 'aman' ? 'rendah' : 'tinggi',
       }];
 
+  /*
+   * Provenansi insight ikut keluar (medan aditif di daftar putih):
+   *   - 'ai'     → judul dari rekomendasi AI tersimpan (rekam lama tanpa
+   *                `sumber` tetap 'ai': sebelum Sesi D satu-satunya penulis
+   *                objek ini adalah rute AI — demo kini menstempel 'contoh');
+   *   - 'contoh' → benih demo susunan kurasi, bukan keluaran model;
+   *   - 'sistem' → fallback dari metrik yang dihitung server.
+   * `insightDibuat` membawa tanggal penyusunan ASLI — bukan tanggal ambil
+   * kartu yang dulu menyamarkan umurnya.
+   */
+  const sumberInsight = rekomendasi.length
+    ? (user.recommendations?.sumber === 'contoh' ? 'contoh' : 'ai')
+    : 'sistem';
+
   return {
     aplikasi: 'Novaro',
     namaUsaha: String(p.namaUsaha || user.business || 'Usaha saya').slice(0, 80),
@@ -541,6 +557,8 @@ function susunKartuPublik(user, metrics) {
       hariBulan: Number(m.hariBulan) || 0,
     },
     insight,
+    insightSumber: sumberInsight,
+    insightDibuat: rekomendasi.length ? user.recommendations?.generatedAt ?? null : null,
     dibuatPada: new Date().toISOString(),
   };
 }
@@ -751,7 +769,8 @@ app.post(
       });
       const bersih = sanitasiLatihanAI(data);
       await store.recordUsage(req.user.id, usage);
-      const tersimpan = await store.aturLatihanAI(req.user.id, no, bersih);
+      // Soal AI distempel asal-usulnya — pembaca kelak tahu apa yang menyusunnya.
+      const tersimpan = await store.aturLatihanAI(req.user.id, no, bersih, { model: modelAktif() });
       log.info('latihan', 'soal AI dibuat', { userId: req.user.id, modul: no });
       res.json({ soal: { pertanyaan: tersimpan.pertanyaan, pilihan: tersimpan.pilihan }, sudahAda: false });
     } catch (err) {
@@ -835,8 +854,9 @@ app.post('/api/recommendations', authenticate, requireConsent, anggaranToken('re
      */
     const bersih = sanitasiRekomendasi(data);
     // Satu penulisan, bukan dua: rekomendasi dan pemakaian tokennya mengubah
-    // pengguna yang sama pada momen yang sama.
-    const saved = await store.simpanRekomendasi(req.user.id, bersih, usage);
+    // pengguna yang sama pada momen yang sama. Identitas model yang benar
+    // benar dipakai ikut tersimpan — stempel provenansi, bukan tebakan.
+    const saved = await store.simpanRekomendasi(req.user.id, bersih, usage, { model: modelAktif() });
     res.json({ recommendations: saved, metrics, anggaran: await anggaranUntuk(req.user) });
   } catch (err) {
     /*
@@ -962,7 +982,7 @@ app.post(
         { role: 'assistant', content: isi, ts: new Date().toISOString() },
       ],
       usage,
-      { modul },
+      { modul, model: modelAktif() },
     );
 
     send('done', { model: modelAktif(), terpotong: Boolean(terpotong), anggaran: await anggaranUntuk(req.user) });

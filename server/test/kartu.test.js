@@ -21,6 +21,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { CONSENT_VERSION } from '../lib/consent.js';
 
 const DATA_DIR = mkdtempSync(path.join(tmpdir(), 'nova-uji-kartu-'));
 process.env.NOVA_DATA_DIR = DATA_DIR;
@@ -40,7 +41,7 @@ const BASE = `http://127.0.0.1:${server.address().port}`;
 test.after(() => server.close());
 
 const { user, accessCode } = await store.createUser({ name: 'Bu Kartu', business: 'Warung Bu Kartu', batch: 'B1' });
-await store.saveConsent(user.id, 2);
+await store.saveConsent(user.id, CONSENT_VERSION);
 await store.saveProfile(user.id, {
   namaUsaha: 'Warung Bu Kartu',
   jenisUsaha: 'kuliner',
@@ -134,10 +135,13 @@ test('payload publik adalah daftar putih — tidak ada id, kode, token, atau pem
   assert.ok(!teks.includes('tokenKartu'), 'medan token tidak boleh bocor');
   // Bentuknya persis kunci-karti yang diizinkan.
   assert.deepEqual(Object.keys(data.kartu).sort(), [
-    'aplikasi', 'dibuatPada', 'insight', 'jenisUsaha', 'konsistensi',
-    'labaBersih', 'namaUsaha', 'omzet', 'periode', 'skorKesehatan',
-    'statusKesehatan', 'sumberAngka',
+    'aplikasi', 'dibuatPada', 'insight', 'insightDibuat', 'insightSumber',
+    'jenisUsaha', 'konsistensi', 'labaBersih', 'namaUsaha', 'omzet',
+    'periode', 'skorKesehatan', 'statusKesehatan', 'sumberAngka',
   ]);
+  // Sesi D: dua medan provenansi sengaja publik — kartu wajib jujur
+  // soal asal-usul catatannya, dan sumbernya hanya dari kamus ini.
+  assert.ok(['ai', 'contoh', 'sistem'].includes(data.kartu.insightSumber));
 });
 
 test('token palsu, rusak, dan milik akun tanpa profil: semuanya 404 yang rapi', async () => {
@@ -151,7 +155,7 @@ test('token palsu, rusak, dan milik akun tanpa profil: semuanya 404 yang rapi', 
 
 test('akun kedua tidak terbaca dari token akun pertama', async () => {
   const lain = await store.createUser({ name: 'Bu Lain', business: 'Toko Bu Lain', batch: 'B2' });
-  await store.saveConsent(lain.user.id, 2);
+  await store.saveConsent(lain.user.id, CONSENT_VERSION);
   await store.saveProfile(lain.user.id, {
     namaUsaha: 'Toko Bu Lain', jenisUsaha: 'retail', pencatatan: 'buku',
     tujuan: 'naikkan-laba', omzetBulanan: 2_000_000,

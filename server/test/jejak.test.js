@@ -26,6 +26,7 @@ process.on('exit', () => rmSync(process.env.NOVA_DATA_DIR, { recursive: true, fo
 import { store } from '../lib/store.js';
 import { SKEMA_JEJAK, TEKS_BEBAS, periksaMetaJejak, bangMetaAnonim } from '../lib/jejak.js';
 import { PERSONA_DEMO, isiDemoPenuh } from '../lib/demo-data.js';
+import { CONSENT_VERSION } from '../lib/consent.js';
 
 const AKAR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 let idPeserta = null; // dipakai lintas uji — uji berjalan berurutan dalam satu berkas
@@ -39,7 +40,7 @@ test('seluruh mutator menghasilkan peristiwa yang terdaftar dan sah bentuknya', 
   await store.setMulai(id, null);
   await store.setBatch(id, 'B2'); // batch_assigned: pindahan B1 → B2 tercatat dengan sebelumnya
   await store.renameUser(id, { name: 'Bu Sari Santoso', business: 'Warung Sari Rasa' });
-  await store.saveConsent(id, 2);
+  await store.saveConsent(id, CONSENT_VERSION);
   await store.saveProfile(id, { ...PERSONA_DEMO[0].profil });
   const baris = await store.addTransaction(id, {
     tanggal: '2026-09-01', jenis: 'keluar', kategori: 'operasional',

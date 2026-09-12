@@ -45,6 +45,7 @@ test('teks persetujuan menyebut hal-hal yang wajib diberitahukan', () => {
   // Bukan uji gaya bahasa — ini daftar hal yang tidak boleh hilang dari teksnya.
   assert.match(semua, /buku kas|catatan/, 'harus menyebut data apa yang disimpan');
   assert.match(semua, /claude|anthropic/, 'harus menyebut data dikirim ke layanan AI mana');
+  assert.match(semua, /gemini|google/, 'dan jalur Gemini (Vertex AI, Google Cloud) ikut disebut — versi 2 dulu menyebut SATU pemroses padahal ada tiga jalur');
   assert.match(semua, /uji coba/, 'harus jelas bahwa ini uji coba');
   assert.match(semua, /hapus/, 'harus menyebut hak menghapus data');
   assert.match(semua, /tanpa nama|anonim/, 'harus menjelaskan pemakaian untuk penelitian');

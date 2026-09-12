@@ -918,12 +918,19 @@ export const store = {
    * Soal tantangan AI tersimpan milik server (memuat kunci!) — sengaja
    * TIDAK ikut publicUser, jadi peramban tidak pernah menerimanya.
    */
-  async aturLatihanAI(userId, no, soal) {
+  async aturLatihanAI(userId, no, soal, provensi = {}) {
     return update((db) => {
       const user = db.users.find((u) => u.id === userId);
       if (!user) return null;
       user.latihanAI = user.latihanAI ?? {};
-      user.latihanAI[no] = { ...soal, pada: new Date().toISOString(), sudahJawab: false, hasilBenar: null };
+      // Provenansi aditif: soal lama tanpa `model` tetap sah terbaca.
+      user.latihanAI[no] = {
+        ...soal,
+        ...(provensi.model ? { model: provensi.model } : {}),
+        pada: new Date().toISOString(),
+        sudahJawab: false,
+        hasilBenar: null,
+      };
       pushEvent(user, 'latihan_ai_dibuat', { modul: no });
       return user.latihanAI[no];
     });
@@ -1003,11 +1010,20 @@ export const store = {
    * yang paling sering dipakai — dan menghapus jendela di mana percakapan
    * sudah tersimpan tapi tokennya belum terhitung.
    */
-  async simpanGiliranChat(userId, messages, usage, { maxTurns = 60, modul = null } = {}) {
+  async simpanGiliranChat(userId, messages, usage, { maxTurns = 60, modul = null, model = null } = {}) {
     return update((db) => {
       const user = db.users.find((u) => u.id === userId);
       if (!user) return null;
-      user.chat = [...(user.chat ?? []), ...messages].slice(-maxTurns);
+      /*
+       * Identitas model ikut pada pesan asistennya — aditif, dan hanya bila
+       * pemanggil benar-benar mengetahuinya. Pesan lama tanpa `model` tetap
+       * terbaca; peramban menampilkannya sebagai "AI" tanpa versi, bukan
+       * versi karangan.
+       */
+      const berstempel = model
+        ? messages.map((m) => (m.role === 'assistant' ? { ...m, model } : m))
+        : messages;
+      user.chat = [...(user.chat ?? []), ...berstempel].slice(-maxTurns);
       pushEvent(user, 'chat_turn', modul ? { pesan: messages.length, modul } : { pesan: messages.length });
       catatUsage(user, usage);
       return user.chat;
@@ -1015,12 +1031,12 @@ export const store = {
   },
 
   /** Rekomendasi + pemakaian tokennya, juga dalam satu penulisan. */
-  async simpanRekomendasi(userId, recommendations, usage) {
+  async simpanRekomendasi(userId, recommendations, usage, provensi = {}) {
     return update((db) => {
       const user = db.users.find((u) => u.id === userId);
       if (!user) return null;
       catatUsage(user, usage);
-      return simpanRekomendasiKe(user, recommendations);
+      return simpanRekomendasiKe(user, recommendations, provensi);
     });
   },
 
@@ -1177,9 +1193,27 @@ function catatUsage(user, usage) {
   return user.usage;
 }
 
-/** Menyimpan rekomendasi pada obyek pengguna yang sedang dimutasi. */
-function simpanRekomendasiKe(user, recommendations) {
-  user.recommendations = { ...recommendations, generatedAt: new Date().toISOString() };
+/**
+ * Menyimpan rekomendasi pada obyek pengguna yang sedang dimutasi.
+ *
+ * Provenansi ikut distempel DI SINI, bukan di pemanggilnya, supaya satu-satunya
+ * pintu ke `user.recommendations` tidak bisa meloloskan keluaran tanpa asal.
+ * Medannya aditif; rekam lama (sebelum Sesi D) tanpa `sumber`/`model` tetap
+ * terbaca apa adanya — kekosongan berarti "disusun sebelum pencatatan
+ * identitas ada", bukan dusta bahwa ia keluaran AI segar.
+ */
+function simpanRekomendasiKe(user, recommendations, provensi = {}) {
+  user.recommendations = {
+    ...recommendations,
+    generatedAt: new Date().toISOString(),
+    // 'ai' = disusun AI hidup lewat rute; 'contoh' = benih demo susunan
+    // kurasi — bukan keluaran model mana pun, dan tidak boleh mati sebagai
+    // "AI" di permukaan mana pun yang membacanya.
+    sumber: provensi.sumber ?? 'ai',
+    // Model dicatat HANYA bila pemanggil benar-benar tahu; tidak pernah
+    // ditebak dari konfigurasi saat dibaca.
+    ...(provensi.model ? { model: provensi.model } : {}),
+  };
   pushEvent(user, 'recommendations_generated', {
     jumlah: recommendations?.rekomendasi?.length ?? 0,
     peringatan: recommendations?.peringatan?.length ?? 0,

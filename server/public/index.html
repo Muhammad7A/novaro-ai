@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Novaro — Pendamping Keuangan UMKM</title>
-<meta name="description" content="Aplikasi pendamping keuangan UMKM: profil usaha, rekomendasi personal, dan konsultasi AI AI Gemini 2.5.">
+<meta name="description" content="Aplikasi pendamping keuangan UMKM: profil usaha, rekomendasi personal, dan konsultasi dengan asisten AI.">
 <meta name="robots" content="noindex, nofollow">
 <!--
   Tidak ada satu pun berkas dari domain luar di halaman ini.
@@ -1124,7 +1124,7 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
       </form>
     </div>
     <p class="ai-note" id="anggaranNote"></p>
-    <p class="ai-note">Ditenagai AI Gemini 2.5. Jawaban AI bisa keliru — untuk pajak, sengketa, atau pinjaman besar, konsultasikan ke ahlinya.</p>
+    <p class="ai-note">Ditenagai asisten AI. Jawaban AI bisa keliru — untuk pajak, sengketa, atau pinjaman besar, konsultasikan ke ahlinya.</p>
   </div>
 </section>
 
@@ -1218,7 +1218,7 @@ const THEME_KEY = 'nova-theme';
 const DEMO_KEY = 'nova-demo-mode';
 const TOUR_TUTUP_KEY = 'nova-demo-tur-tutup';
 let token = localStorage.getItem(TOKEN_KEY) || '';
-let state = { user: null, metrics: null, aiConfigured: false, chatBusy: false };
+let state = { user: null, metrics: null, aiConfigured: false, model: null, chatBusy: false };
 
 const fmtRp = (n) => 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(Number(n) || 0));
 const el = (id) => document.getElementById(id);
@@ -1369,7 +1369,7 @@ function logout() {
   token = '';
   localStorage.removeItem(TOKEN_KEY);
   try { localStorage.removeItem(DEMO_KEY); localStorage.removeItem(TOUR_TUTUP_KEY); } catch {}
-  state = { user: null, metrics: null, aiConfigured: false, chatBusy: false };
+  state = { user: null, metrics: null, aiConfigured: false, model: null, chatBusy: false };
   el('app').style.display = 'none';
   el('consentScreen').style.display = 'none';
   el('authScreen').style.display = 'grid';
@@ -1515,6 +1515,9 @@ function applySession(data) {
   state.user = data.user;
   state.metrics = data.metrics;
   state.aiConfigured = data.aiConfigured;
+  // Identitas runtime dari server — tidak pernah ditebak di sini. Server lama
+  // tanpa medan ini dibiarkan null, dan tampilan jujur menyebut "AI" saja.
+  state.model = data.model ?? null;
   // Jadwal belajar: dipakai untuk tahu sesi mana yang sudah boleh dibuka.
   // Server tetap yang menegakkan; ini hanya supaya layarnya jujur lebih dulu.
   if (data.belajar) state.belajar = data.belajar;
@@ -2226,6 +2229,26 @@ el('profileForm').addEventListener('submit', async (e) => {
 /* ============================================================
    Rekomendasi personal
 ============================================================ */
+
+/*
+ * Stempel asal-usul & kesegaran — SATU tempat, dipakai semua tampilan.
+ *   - sumber 'contoh' → selalu disebut sebagai contoh, tidak pernah "AI";
+ *   - model dikenal → disebut persis (dari rekam, bukan tebakan);
+ *   - model tak dikenal (rekam lama) → "oleh AI" saja, tanpa versi karangan;
+ *   - umur ≥1 hari disebut jujur; klaim "berdasarkan profil terbaru" dihapus —
+ *     yang benar adalah peserta menilai sendiri bila perlu diperbarui.
+ */
+function stempelRekomendasi(rec) {
+  const kapan = new Date(rec.generatedAt).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
+  if (rec.sumber === 'contoh') {
+    return `Contoh tampilan (data kurasi — bukan keluaran AI), disusun ${kapan}.`;
+  }
+  const hari = Math.floor((Date.now() - new Date(rec.generatedAt).getTime()) / 86400000);
+  const umur = hari >= 1 ? ` — perbarui bila profil atau angka usahamu sudah berubah` : '';
+  const siapa = rec.model ? ` oleh AI ${rec.model}` : ' oleh AI';
+  return `Disusun ${kapan}${siapa}${umur}.`;
+}
+
 function renderRecommendations() {
   const box = el('recBody');
   if (!state.user.profile) {
@@ -2285,7 +2308,7 @@ function renderRecommendations() {
         <button class="btn btn-ghost" id="regenRecBtn">🔄 Perbarui rekomendasi</button>
         <button class="btn btn-ghost" onclick="goTo('konsultasi')">💬 Diskusikan dengan AI</button>
       </div>
-      <p class="stamp">Dibuat ${new Date(rec.generatedAt).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })} oleh AI Gemini 2.5 · berdasarkan profil usaha terbaru.</p>
+      <p class="stamp">${stempelRekomendasi(rec)}</p>
     </div>`;
   el('regenRecBtn').addEventListener('click', generateRecommendations);
   box.querySelectorAll('[data-modul]').forEach((b) =>
@@ -2324,7 +2347,8 @@ function setChatStatus() {
   const txt = el('chatStatus');
   if (state.aiConfigured) {
     sub.classList.add('online'); sub.classList.remove('offline');
-    txt.textContent = 'Online · AI Gemini 2.5';
+    // Identitas dari server (login / jejak 'done') — tanpa itu cukup "AI".
+    txt.textContent = state.model ? 'Online · AI ' + state.model : 'Online · AI';
   } else {
     sub.classList.add('offline'); sub.classList.remove('online');
     txt.textContent = 'AI belum aktif di server ini';
@@ -2365,7 +2389,7 @@ async function loadChat() {
     const { messages } = await api('/chat');
     for (const m of messages) {
       addMsg(m.content, m.role === 'user' ? 'user' : 'ai',
-        m.role === 'user' ? null : 'AI Gemini 2.5 · ' + new Date(m.ts).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
+        m.role === 'user' ? null : (m.model ? 'AI ' + m.model : 'AI') + ' · ' + new Date(m.ts).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
     }
   } catch { /* riwayat gagal dimuat — tidak fatal */ }
 }
@@ -2481,6 +2505,11 @@ el('chatForm').addEventListener('submit', async (e) => {
         log.scrollTop = log.scrollHeight;
       } else if (event === 'done') {
         if (payload.anggaran) setAnggaran(payload.anggaran);
+        // Identitas runtime ikut di bingkai 'done' — sekarang benar-benar dibaca.
+        if (payload.model) {
+          state.model = payload.model;
+          setChatStatus();
+        }
         // Jawaban yang berhenti di tengah kalimat harus terlihat sebagai
         // terpotong SEKARANG, bukan hanya setelah halaman dimuat ulang.
         if (payload.terpotong) terpotong = true;
@@ -2519,7 +2548,7 @@ el('chatForm').addEventListener('submit', async (e) => {
       }
       const meta = document.createElement('span');
       meta.className = 'msg-meta';
-      meta.textContent = 'AI Gemini 2.5 · ' + new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      meta.textContent = (state.model ? 'AI ' + state.model : 'AI') + ' · ' + new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
       bubble.appendChild(meta);
     }
   } catch (err) {

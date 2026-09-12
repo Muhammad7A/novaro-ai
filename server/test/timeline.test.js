@@ -13,6 +13,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { CONSENT_VERSION } from '../lib/consent.js';
 
 const DATA_DIR = mkdtempSync(path.join(tmpdir(), 'nova-uji-tl-'));
 process.env.NOVA_DATA_DIR = DATA_DIR;
@@ -34,7 +35,7 @@ const BASE = `http://127.0.0.1:${server.address().port}`;
 test.after(() => server.close());
 
 const { user, accessCode } = await store.createUser({ name: 'Bu Garis', business: 'Warung Garis', batch: 'B1' });
-await store.saveConsent(user.id, 2);
+await store.saveConsent(user.id, CONSENT_VERSION);
 await store.saveProfile(user.id, {
   namaUsaha: 'Warung Garis', jenisUsaha: 'kuliner', pencatatan: 'aplikasi',
   tujuan: 'rapikan-keuangan', omzetBulanan: 5_000_000,

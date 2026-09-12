@@ -19,6 +19,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { CONSENT_VERSION } from '../lib/consent.js';
 
 const DATA_DIR = mkdtempSync(path.join(tmpdir(), 'nova-uji-rek-'));
 process.env.NOVA_DATA_DIR = DATA_DIR;
@@ -40,7 +41,7 @@ const BASE = `http://127.0.0.1:${server.address().port}`;
 test.after(() => server.close());
 
 const { user, accessCode } = await store.createUser({ name: 'Bu Rek', business: 'Warung Rek', batch: 'B1' });
-await store.saveConsent(user.id, 2);
+await store.saveConsent(user.id, CONSENT_VERSION);
 await store.saveProfile(user.id, {
   namaUsaha: 'Warung Rek', jenisUsaha: 'kuliner', pencatatan: 'buku',
   tujuan: 'naikkan-laba', omzetBulanan: 5_000_000,
@@ -158,7 +159,7 @@ test('tanpa kode akses: 401', async () => {
 
 test('profil kosong: 400, bukan AI yang dipanggil', async () => {
   const kosong = await store.createUser({ name: 'Tanpa Profil', business: '', batch: 'B1' });
-  await store.saveConsent(kosong.user.id, 2);
+  await store.saveConsent(kosong.user.id, CONSENT_VERSION);
   const res = await minta('/api/recommendations', { method: 'POST', kode: kosong.accessCode });
   assert.equal(res.status, 400);
 });
@@ -201,7 +202,7 @@ test.after(() => {
 /* Pengguna khusus kasus gagalan — rekomendasinya harus tetap kosong setelah
  * setiap kegagalan, tanpa tertukar dengan hasil jalur bahagia di atas. */
 const gagal = await store.createUser({ name: 'Bu Gagal', business: 'Warung Gagal', batch: 'B1' });
-await store.saveConsent(gagal.user.id, 2);
+await store.saveConsent(gagal.user.id, CONSENT_VERSION);
 await store.saveProfile(gagal.user.id, {
   namaUsaha: 'Warung Gagal', jenisUsaha: 'retail', pencatatan: 'buku',
   tujuan: 'rapikan-keuangan', omzetBulanan: 3_000_000,

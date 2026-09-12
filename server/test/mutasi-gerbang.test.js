@@ -26,6 +26,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { CONSENT_VERSION } from '../lib/consent.js';
 
 const DATA_DIR = mkdtempSync(path.join(tmpdir(), 'nova-uji-gerbang-'));
 process.env.NOVA_DATA_DIR = DATA_DIR;
@@ -45,7 +46,7 @@ const BASE = `http://127.0.0.1:${server.address().port}`;
 test.after(() => server.close());
 
 const { user, accessCode } = await store.createUser({ name: 'Bu Gerbang', business: 'Warung Gerbang', batch: 'B1' });
-await store.saveConsent(user.id, 2);
+await store.saveConsent(user.id, CONSENT_VERSION);
 const hariIni = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
 
 const tolakan = async (janjian, eksekusi) => {
