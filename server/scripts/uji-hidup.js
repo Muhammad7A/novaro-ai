@@ -27,6 +27,11 @@
  *   checkup  (--ai-route checkup) — /api/checkup, satu panggilan JSON
  *            terbatas. Jalur rung inilah yang dinamai keputusan §18; pilih
  *            bila revisi yang dideploy sudah membuktikan rutenya sendiri.
+ *   proposal (--ai-route proposal) — rantai T1 surface #1: scan (token
+ *            diterbitkan) → konfirmasi satu-ketuk via /api/cashbook (baris
+ *            origin 'proposal') → replay token (wajib 409 duplikat).
+ *            Fitur NOVA_PROPOSAL_SCAN + NOVA_PROPOSAL_SECRET harus aktif di
+ *            layanan; rung ini justru rung pembuktiannya sebelum exposure.
  *   rekomendasi (--ai-route rekomendasi) — /api/recommendations, satu
  *            panggilan JSON untuk penyusunan termahal di aplikasi. Slot
  *            rekomendasi akun demo tertimpa apa adanya (satu slot, tanpa
@@ -53,6 +58,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { deflateSync } from 'node:zlib';
 
 const execFileP = promisify(execFile);
 const execP = promisify(exec);
@@ -420,6 +426,158 @@ async function langkahRekomendasi(base, kode, timeoutMs) {
     : gagal('rekomendasi', res.status, res.galat ?? `status ${res.status}: ${potong(res.teks, 300)}`, { ms: res.ms });
 }
 
+/* ------------------- Rung proposal (T1 surface #1, fase 5) --------------- */
+
+/**
+ * Citra uji PNG deterministik (grayscale murni, tanpa dependensi). Isinya
+ * sengaja polos: yang diuji rung ini adalah RANTAINYA (token → konfirmasi →
+ * replay), bukan kualitas OCR — sanitasiHasilNota tidak pernah menolak hasil
+ * kosong, jadi citra polos pun menghasilkan usulan bertoken.
+ */
+export function gambarNotaUji(lebar = 64, tinggi = 32) {
+  const crc = (buf) => {
+    let c, tabel = crc.tabel ?? (crc.tabel = Array.from({ length: 256 }, (_, n) => {
+      c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      return c >>> 0;
+    }));
+    c = 0xffffffff;
+    for (const b of buf) c = tabel[(c ^ b) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const potongan = (jenis, isi) => {
+    const panjang = Buffer.alloc(4);
+    panjang.writeUInt32BE(isi.length);
+    const nama = Buffer.from(jenis, 'ascii');
+    const batal = Buffer.alloc(4);
+    batal.writeUInt32BE(crc(Buffer.concat([nama, isi])));
+    return Buffer.concat([panjang, nama, isi, batal]);
+  };
+
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(lebar, 0);
+  ihdr.writeUInt32BE(tinggi, 4);
+  ihdr[8] = 8;  // kedalaman bit
+  ihdr[9] = 0;  // grayscale
+  const mentah = Buffer.alloc(tinggi * (1 + lebar), 0xee); // baris filter-0 + piksel abu muda
+  const idat = deflateSync(mentah);
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    potongan('IHDR', ihdr),
+    potongan('IDAT', idat),
+    potongan('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+/**
+ * Penilai langkah scan rung proposal — MURNI, dieksor untuk uji.
+ *
+ * 200 saja tidak cukup: jawaban harus membawa usulan BERTOKEN (fitur aktif +
+ * rahasia terpasang di layanan terdeploy). 200 tanpa proposal = fitur mati —
+ * kegagalan konfigurasi yang jujur disebut, bukan dilewati.
+ */
+export function rekamProposalScan(body, status, ms) {
+  if (status === 200 && body?.proposal?.token) {
+    return {
+      langkah: 'proposal-scan', lulus: true, status, ms,
+      proposalId: body.proposal.id ?? null,
+      tingkat: body.hasil?.tingkat ?? null,
+      anggaranSesudah: body.anggaran ?? null,
+    };
+  }
+  return {
+    langkah: 'proposal-scan',
+    lulus: false,
+    status,
+    ms,
+    alasan: status === 200
+      ? 'jawaban tanpa usulan bertoken — NOVA_PROPOSAL_SCAN/NOVA_PROPOSAL_SECRET tidak aktif di layanan ini'
+      : `status ${status}`,
+  };
+}
+
+/**
+ * Penilai langkah konfirmasi — MURNI. Baris sah = lahir lewat mutator dengan
+ * origin 'proposal' + proposalId yang sama dengan usulan; edit-angka sebelum
+ * simpan adalah alur resmi (manusia yang memutuskan angkanya).
+ */
+export function rekamProposalKonfirmasi(body, status, ms, proposalId) {
+  const trx = body?.transaction;
+  if (status === 201 && trx?.origin === 'proposal' && (!proposalId || trx.proposalId === proposalId)) {
+    return { langkah: 'proposal-konfirmasi', lulus: true, status, ms, transactionId: trx.id ?? null };
+  }
+  return {
+    langkah: 'proposal-konfirmasi',
+    lulus: false,
+    status,
+    ms,
+    alasan: status !== 201
+      ? `status ${status}`
+      : `baris tidak lahir dari usulan (origin: ${trx?.origin ?? 'tanpa-baris'})`,
+  };
+}
+
+/** Penilai langkah replay — MURNI: token terkonsumsi wajib ditolak 409 duplikat. */
+export function rekamProposalReplay(body, status, ms) {
+  const lulus = status === 409 && body?.kode === 'duplikat';
+  return { langkah: 'proposal-replay', lulus, status, ms, ...(lulus ? {} : { alasan: `status ${status} (kode: ${body?.kode ?? 'tanpa-kode'}) — token sekali pakai tidak tertolak` }) };
+}
+
+/**
+ * Jalur proposal (pilihan --ai-route proposal): scan → konfirmasi satu-ketuk →
+ * replay. Membuktikan rantai T1 surface #1 secara live: token diterbitkan
+ * runtime terdeploy, dikonsumsi mutator (origin 'proposal'), dan sekali pakai.
+ * Baris uji mendarat di AKUN DEMO fiktif — bukan peserta; tanpa pembersihan
+ * (satu baris per eksekusi rung, akun demo sekali pakai).
+ */
+async function langkahProposal(base, kode, timeoutMs) {
+  const HARI = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
+
+  const scan = await ambil(`${base}/api/scan-nota`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'image/png', Authorization: `Bearer ${kode}` },
+    body: gambarNotaUji(),
+  }, timeoutMs);
+  const rekamScan = rekamProposalScan(scan.body, scan.status, scan.ms);
+  if (!rekamScan.lulus) return { ...rekamScan, langkah: 'proposal' };
+
+  const konfirmasi = await ambil(`${base}/api/cashbook`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${kode}` },
+    body: JSON.stringify({
+      jenis: 'keluar', kategori: 'operasional', jumlah: 1000,
+      keterangan: 'uji-hidup proposal', tanggal: HARI,
+      proposalToken: scan.body.proposal.token,
+    }),
+  }, timeoutMs);
+  const rekamKonfirmasi = rekamProposalKonfirmasi(konfirmasi.body, konfirmasi.status, konfirmasi.ms, rekamScan.proposalId);
+
+  // Replay token yang sama: SATU usulan tidak boleh menjadi dua baris.
+  const replay = await ambil(`${base}/api/cashbook`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${kode}` },
+    body: JSON.stringify({
+      jenis: 'keluar', kategori: 'operasional', jumlah: 1000,
+      keterangan: 'uji-hidup proposal', tanggal: HARI,
+      proposalToken: scan.body.proposal.token,
+    }),
+  }, timeoutMs);
+  const rekamReplay = rekamProposalReplay(replay.body, replay.status, replay.ms);
+
+  const lulus = rekamKonfirmasi.lulus && rekamReplay.lulus;
+  return {
+    langkah: 'proposal',
+    lulus,
+    status: konfirmasi.status,
+    ms: scan.ms + konfirmasi.ms,
+    scan: rekamScan,
+    konfirmasi: rekamKonfirmasi,
+    replay: rekamReplay,
+    anggaranSesudah: rekamScan.anggaranSesudah,
+    ...(lulus ? {} : { alasan: [rekamKonfirmasi, rekamReplay].filter((r) => !r.lulus).map((r) => `${r.langkah}: ${r.alasan}`).join('; ') }),
+  };
+}
+
 /** Membersihkan jejak percakapan uji dari akun demo — best-effort, dicatat. */
 async function langkahPembersihan(base, kode, timeoutMs) {
   const res = await ambil(
@@ -438,7 +596,7 @@ async function langkahPembersihan(base, kode, timeoutMs) {
  *
  * @param {{baseUrl: string, layanan?: string, region?: string, project?: string,
  *          revision?: string|null, healthOnly?: boolean, timeoutMs?: number,
- *          aiRoute?: 'chat'|'checkup'|'rekomendasi'}} sasaran
+ *          aiRoute?: 'chat'|'checkup'|'rekomendasi'|'proposal'}} sasaran
  * @returns {Promise<object>} artefak
  */
 export async function jalankanUji(sasaran) {
@@ -587,6 +745,10 @@ export async function jalankanUji(sasaran) {
     langkahAi = await langkahRekomendasi(base, kode, sasaran.timeoutMs);
     // Slot rekomendasi tertimpa isi barunya — tanpa akumulasi sisa uji,
     // tanpa langkah pembersihan.
+  } else if (sasaran.aiRoute === 'proposal') {
+    langkahAi = await langkahProposal(base, kode, sasaran.timeoutMs);
+    // Satu baris uji mendarat di akun demo fiktif — sekali pakai, tanpa
+    // pembersihan; replay-nya justru bagian dari bukti (409 duplikat).
   } else {
     langkahAi = await langkahPercakapan(base, kode, sasaran.timeoutMs);
     // Riwayat giliran uji dihapus lagi — akun demo tidak menumpuk sisa uji.
@@ -668,8 +830,8 @@ function bacaArgv(argv) {
   opsi.revision = nilai('--revision') ?? opsi.revision;
   const rute = nilai('--ai-route');
   if (rute !== null) {
-    if (rute !== 'chat' && rute !== 'checkup' && rute !== 'rekomendasi') {
-      throw new Error(`--ai-route harus 'chat', 'checkup', atau 'rekomendasi', diterima: ${rute}`);
+    if (rute !== 'chat' && rute !== 'checkup' && rute !== 'rekomendasi' && rute !== 'proposal') {
+      throw new Error(`--ai-route harus 'chat', 'checkup', 'rekomendasi', atau 'proposal', diterima: ${rute}`);
     }
     opsi.aiRoute = rute;
   }

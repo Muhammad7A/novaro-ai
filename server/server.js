@@ -182,7 +182,13 @@ app.post(
         await store.recordUsage(req.user.id, usage);
       }
       log.info('nota', 'nota selesai dibaca', { userId: req.user.id, bytes: gambar.length, tingkat: hasil.tingkat });
-      res.json(proposal ? { hasil, proposal } : { hasil });
+      // Anggaran ikut seperti rute rekomendasi — rung uji-hidup proposal
+      // membuktikan pemakaian provider lewat delta penghitung ini.
+      res.json({
+        hasil,
+        ...(proposal ? { proposal } : {}),
+        anggaran: await anggaranUntuk(req.user),
+      });
     } catch (err) {
       if (controller.signal.aborted) {
         log.info('nota', 'dibatalkan peserta sebelum selesai', { userId: req.user.id });
@@ -199,6 +205,31 @@ app.post(
 );
 
 app.use(express.json({ limit: '256kb' }));
+
+/**
+ * Penolakan EKSPLISIT satu usulan scan (T1 surface #1, fase 5).
+ *
+ * Bukan pintu simpan dan bukan uang: satu peristiwa contentless saja, lewat
+ * store.tolakProposal yang idempoten. Alasan (bila ada) kosakata tertutup —
+ * divalidasi di store; rute hanya membatasi bentuk id.
+ */
+app.post('/api/proposal/tolak', authenticate, requireConsent, async (req, res) => {
+  const proposalId = String(req.body?.proposalId ?? '').trim();
+  if (!/^prop_[0-9a-f]{12}$/.test(proposalId)) {
+    return res.status(400).json({ error: 'Id usulan tidak dikenali.' });
+  }
+  const alasanBersih = req.body?.alasan == null ? '' : String(req.body.alasan).trim();
+  try {
+    const hasil = await store.tolakProposal(req.user.id, proposalId, alasanBersih);
+    if (!hasil) return res.status(404).json({ error: 'Peserta tidak ditemukan.' });
+    res.json(hasil);
+  } catch (err) {
+    if (err instanceof GalatMutasi) {
+      return res.status(err.status).json({ error: err.message, kode: err.kode });
+    }
+    throw err;
+  }
+});
 
 /* ---------------------------------------------------------------- Autentikasi */
 
@@ -1574,12 +1605,21 @@ app.post('/api/cashbook', authenticate, requireConsent, async (req, res) => {
    */
   const idPermintaan = String(req.get('x-request-id') ?? '').trim();
 
+  /*
+   * Token usulan (T1 surface #1, fase 5): SATU medan tambahan yang dibaca
+   * dari tubuh — string, diteruskan APA ADANYA ke mutator. Validasinya bukan
+   * urusan rute: mutator (penegak terakhir) memverifikasi HMAC/versi/TTL/jti
+   * dan menolak bertipe. Rute kas TETAP satu-satunya pintu simpan — konfirmasi
+   * usulan hanyalah permintaan kas yang membawa token (desain FDM §5).
+   */
+  const proposalToken = typeof body.proposalToken === 'string' ? body.proposalToken.trim() : '';
+
   let row;
   try {
     row = await store.addTransaction(
       req.user.id,
       { tanggal, jenis, kategori, keterangan, jumlah },
-      { aktor: 'manusia', requestId: idPermintaan || undefined },
+      { aktor: 'manusia', requestId: idPermintaan || undefined, proposalToken: proposalToken || undefined },
     );
   } catch (err) {
     /*

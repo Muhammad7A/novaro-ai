@@ -12,7 +12,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { parseDeployLog, perkiraanBiaya, potong, rekamRekomendasi, saringEnv } from '../scripts/uji-hidup.js';
+import { parseDeployLog, perkiraanBiaya, potong, rekamProposalKonfirmasi, rekamProposalReplay, rekamProposalScan, rekamRekomendasi, saringEnv, gambarNotaUji } from '../scripts/uji-hidup.js';
 
 test('import uji-hidup tidak menjalankan apa pun (uji tetap tanpa jaringan)', () => {
   // Sengaja kosong: keberhasilan impor sendiri sudah buktinya — modul ini
@@ -145,4 +145,55 @@ test('rekamRekomendasi gagal jujur: slot hilang, butir kosong, status bukan 200'
   const gagal = rekamRekomendasi(JAWABAN_SAH, 502, 5);
   assert.equal(gagal.lulus, false);
   assert.match(gagal.alasan, /status 502/);
+});
+
+/* ------------------- Rung proposal (fase 5, tanpa panggilan live) -------- */
+
+test('gambarNotaUji: PNG sah deterministik — magic, ukuran, byte-identik', () => {
+  const a = gambarNotaUji();
+  const b = gambarNotaUji();
+  assert.equal(a.slice(0, 8).toString('hex'), '89504e470d0a1a0a', 'magic PNG');
+  assert.ok(a.length > 50 && a.length < 500, 'kecil dan tetap sah');
+  assert.deepEqual(a, b, 'deterministik — artefak rung bisa dibandingkan');
+});
+
+test('rekamProposalScan: token ada = lulus; 200 tanpa proposal = konfigurasi jujur disebut', () => {
+  const baik = rekamProposalScan(
+    { proposal: { id: 'prop_000000000000', token: 'np1.xxx.yyy' }, hasil: { tingkat: 'ok' }, anggaran: { harian: { terpakai: 10 } } },
+    200, 120,
+  );
+  assert.equal(baik.lulus, true);
+  assert.equal(baik.proposalId, 'prop_000000000000');
+  assert.equal(baik.tingkat, 'ok');
+  assert.equal(baik.anggaranSesudah.harian.terpakai, 10);
+
+  const fiturMati = rekamProposalScan({ hasil: {} }, 200, 120);
+  assert.equal(fiturMati.lulus, false);
+  assert.match(fiturMati.alasan, /NOVA_PROPOSAL_SCAN/, 'kegagalan konfigurasi disebut nama env-nya');
+  assert.equal(rekamProposalScan({}, 503, 5).lulus, false);
+});
+
+test('rekamProposalKonfirmasi: baris origin proposal + id cocok; yang lain jujur gagal', () => {
+  const baik = rekamProposalKonfirmasi(
+    { transaction: { id: 'trx_a', origin: 'proposal', proposalId: 'prop_1' } },
+    201, 90, 'prop_1',
+  );
+  assert.equal(baik.lulus, true);
+  assert.equal(baik.transactionId, 'trx_a');
+
+  // Baris lahir tapi bukan dari usulan (origin manual) — bukan lulusan rung ini.
+  const manual = rekamProposalKonfirmasi({ transaction: { origin: 'manual' } }, 201, 5, 'prop_1');
+  assert.equal(manual.lulus, false);
+  assert.match(manual.alasan, /origin: manual/);
+  // Id tidak cocok = token usulan lain — jangan dianggap bukti rantai ini.
+  const silang = rekamProposalKonfirmasi({ transaction: { origin: 'proposal', proposalId: 'prop_lain' } }, 201, 5, 'prop_1');
+  assert.equal(silang.lulus, false);
+  assert.equal(rekamProposalKonfirmasi({}, 400, 5).lulus, false);
+});
+
+test('rekamProposalReplay: wajib 409 duplikat — bukan 404, bukan 201 kedua', () => {
+  assert.equal(rekamProposalReplay({ kode: 'duplikat' }, 409, 5).lulus, true);
+  assert.equal(rekamProposalReplay({ kode: 'token-tak-sah' }, 400, 5).lulus, false);
+  assert.equal(rekamProposalReplay({ transaction: {} }, 201, 5).lulus, false);
+  assert.match(rekamProposalReplay({}, 500, 5).alasan, /sekali pakai/);
 });

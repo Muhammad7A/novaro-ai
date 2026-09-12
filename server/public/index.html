@@ -1035,6 +1035,7 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
     </div>
     <div class="form-error" id="notaError" style="display:none"></div>
     <div class="actions" style="justify-content:flex-end;margin-top:14px">
+      <button class="btn btn-ghost" id="notaTolak" type="button" style="display:none">Buang Usulan</button>
       <button class="btn btn-ghost" id="notaBatal" type="button">Batal</button>
       <button class="btn btn-primary" id="notaSimpan" type="button">Simpan Transaksi</button>
     </div>
@@ -2981,9 +2982,12 @@ function renderKasList(rows, terfilter = false) {
           .map((t) => {
             const def = defs[t.jenis]?.[t.kategori];
             const label = def?.short ?? def?.label ?? t.kategori;
+            // Baris hasil konfirmasi usulan tampil berlabel asal — kebenaran
+            // tampilan: asal baris kata server, bukan tebakan tampilan.
+            const asal = t.origin === 'proposal' ? ' · dari usulan pemindaian' : '';
             return `<div class="trx">
               <span class="trx-icon ${t.jenis}">${t.jenis === 'masuk' ? '↓' : '↑'}</span>
-              <span class="trx-body"><b>${escapeHtml(t.keterangan || label)}</b><span>${escapeHtml(label)}</span></span>
+              <span class="trx-body"><b>${escapeHtml(t.keterangan || label)}</b><span>${escapeHtml(label)}${asal}</span></span>
               <span class="trx-amt ${t.jenis}">${t.jenis === 'masuk' ? '+' : '−'} ${fmtRp(t.jumlah)}</span>
               <button class="trx-del" data-del="${t.id}" title="Hapus" aria-label="Hapus transaksi">✕</button>
             </div>`;
@@ -3082,6 +3086,7 @@ const SCAN_MIME_SAH = ['image/jpeg', 'image/png', 'image/webp'];
 const SCAN_MAKS_ASAL = 8 * 1024 * 1024; // batas BERKAS ASLI, sebelum dikompres
 
 let notaHasil = null;
+let notaProposal = null; // {id, token} — hanya saat server menerbitkan token (fitur aktif)
 let notaJenisAktif = 'keluar';
 
 el('scanNotaBtn').addEventListener('click', () => el('scanNotaFile').click());
@@ -3117,7 +3122,7 @@ async function prosesFileNota(file) {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'Gagal membaca nota. Coba lagi.');
-    bukaModalNota(data.hasil);
+    bukaModalNota(data.hasil, data.proposal);
   } catch (err) {
     tampilkanGalatKas(err.message);
   } finally {
@@ -3166,12 +3171,18 @@ async function kompresNota(file) {
   return blob;
 }
 
-function bukaModalNota(hasil) {
+function bukaModalNota(hasil, proposal) {
   if (!hasil) return;
   notaHasil = hasil;
+  // Usulan bertoken = alur satu-ketuk T1: tombolnya bernama apa adanya,
+  // dan penolakan eksplisit tersedia. Tanpa token (fitur mati/di luar rung),
+  // modal persis seperti sebelumnya.
+  notaProposal = proposal?.token ? proposal : null;
   notaJenisAktif = hasil.jenis === 'masuk' ? 'masuk' : 'keluar';
 
   el('notaMerchant').textContent = hasil.merchant ? `Toko: ${hasil.merchant}` : '';
+  el('notaTolak').style.display = notaProposal ? '' : 'none';
+  el('notaSimpan').textContent = notaProposal ? 'Simpan Usulan' : 'Simpan Transaksi';
 
   // Keyakinan rendah: jangan pura-pura hasilnya bisa dipercaya. Tanpa
   // tombol simpan — hanya jalan keluar ke formulir manual atau coba lagi.
@@ -3210,6 +3221,7 @@ document.querySelectorAll('[data-nota-jenis]').forEach((b) =>
 
 function tutupModalNota() {
   el('notaBackdrop').style.display = 'none';
+  notaProposal = null; // usulan yang ditutup tanpa keputusan = ditinggalkan (konvensi shown-tanpa-baris)
 }
 
 el('notaClose').addEventListener('click', tutupModalNota);
@@ -3219,6 +3231,28 @@ el('notaBackdrop').addEventListener('click', (e) => {
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && el('notaBackdrop').style.display !== 'none') tutupModalNota();
+});
+
+// Penolakan EKSPLISIT (T1): satu ketukan, satu peristiwa proposal_rejected —
+// bukan sekadar menutup modal. Tanpa alasan di v1: membuang cukup jujur
+// tanpa memaksa peserta memilih kata.
+el('notaTolak').addEventListener('click', async () => {
+  if (!notaProposal) return;
+  const btn = el('notaTolak');
+  btn.disabled = true;
+  btn.textContent = 'Membuang…';
+  try {
+    await api('/proposal/tolak', { method: 'POST', body: JSON.stringify({ proposalId: notaProposal.id }) });
+    tutupModalNota();
+    toast('Usulan dibuang. Tidak ada yang dicatat.');
+  } catch (err) {
+    const errBox = el('notaError');
+    errBox.textContent = err.message;
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Buang Usulan';
+  }
 });
 
 // Keyakinan rendah: isi formulir utama dengan yang terbaca, peserta
@@ -3250,8 +3284,12 @@ el('notaSimpan').addEventListener('click', async () => {
   const btn = el('notaSimpan');
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span> Menyimpan…';
+  const labelSimpan = notaProposal ? 'Simpan Usulan' : 'Simpan Transaksi';
   try {
     // Jalur simpan YANG SAMA dengan formulir manual — bukan jalur kedua.
+    // Token usulan (bila ada) ikut sebagai medan tambahan; mutator yang
+    // memverifikasi dan mengonsumsinya. Angka yang tersimpan tetap angka
+    // hasil konfirmasi peserta — bukan angka model.
     const data = await api('/cashbook', {
       method: 'POST',
       body: JSON.stringify({
@@ -3260,6 +3298,7 @@ el('notaSimpan').addEventListener('click', async () => {
         jumlah,
         keterangan: el('notaKet').value,
         tanggal: el('notaTanggal').value,
+        ...(notaProposal ? { proposalToken: notaProposal.token } : {}),
       }),
     });
     tutupModalNota();
@@ -3267,15 +3306,25 @@ el('notaSimpan').addEventListener('click', async () => {
     tandaiPraktikLokal(data);
     renderDashboard();
     await loadCashbook(el('kasMonth').value); // grafik + daftar ikut segar
-    toast('✅ Transaksi berhasil disimpan');
+    toast(notaTersimpanPesan(data.transaction));
   } catch (err) {
     errBox.textContent = err.message;
     errBox.style.display = 'block';
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Simpan Transaksi';
+    btn.textContent = labelSimpan;
   }
 });
+
+/*
+ * Kebenaran tampilan hasil konfirmasi (PR-contract fase 5): baris yang lahir
+ * dari usulan pemindaian MENGATAKAN asalnya beserta tanggal konfirmasinya.
+ */
+function notaTersimpanPesan(row) {
+  if (row?.origin !== 'proposal') return '✅ Transaksi berhasil disimpan';
+  const kapan = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  return `✅ Tersimpan — dari usulan pemindaian, dikonfirmasi ${kapan}`;
+}
 
 el('kasForm').addEventListener('submit', async (e) => {
   e.preventDefault();
