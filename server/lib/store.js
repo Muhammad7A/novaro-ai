@@ -12,7 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { hitungToken, pangkasLog } from './anggaran.js';
-import { buatAdvisori, digestDasarAngka, pangkasAdvisori, VERSI_FITUR_ADVISORI } from './advisori.js';
+import { buatAdvisori, digestDasarAngka, EVALUASI_MAKS, pangkasAdvisori, VERSI_FITUR_ADVISORI } from './advisori.js';
 import { JENIS, isValidKategori, tanggalTerlama, tanggalWIB } from './cashbook.js';
 import { totalSoal } from './latihan.js';
 import { pool, initDb, JENIS_PENYIMPANAN, mongoCollection } from './db.js';
@@ -1089,6 +1089,34 @@ export const store = {
         sumber: provensi.sumber ?? 'ai',
         model: provensi.model ?? null,
       });
+    });
+  },
+
+  /**
+   * Menambahkan hasil checkpoint advisori — SATU penulisan untuk seluruh
+   * batch yang jatuh tempo pada satu pembacaan.
+   *
+   * Idempoten dua lapis: pemanggil (evaluasiSaatDibaca) sudah menyaring id
+   * yang terlanjur bernilai, dan mutator ini menyaring LAGI di dalam kunci —
+   * dua pembacaan hampir bersamaan tidak menghasilkan rekam kembar.
+   * Evaluasi yang statusnya 'tak-terukur' TETAP masuk: ketiadaan hasil yang
+   * terlihat adalah kejujuran; keheningan adalah dusta.
+   *
+   * Rekamnya trim di 48 terbaru (EVALUASI_MAKS — sink dengan kap advisori).
+   * Jejak eventnya tidak pernah dipangkas, jadi riwayat lengkap tetap ada.
+   */
+  async tambahEvaluasiAdvisori(userId, daftar) {
+    return update((db) => {
+      const user = db.users.find((u) => u.id === userId);
+      if (!user || !Array.isArray(daftar) || !daftar.length) return [];
+      const sudah = new Set((user.evaluasiAdvisori ?? []).map((e) => e?.advisoriId));
+      const baru = daftar.filter((e) => e?.advisoriId && !sudah.has(e.advisoriId));
+      if (!baru.length) return [];
+      user.evaluasiAdvisori = [...(user.evaluasiAdvisori ?? []), ...baru].slice(-EVALUASI_MAKS);
+      for (const e of baru) {
+        pushEvent(user, 'evaluasi_advisori', { id: e.advisoriId, metode: e.metode, status: e.status });
+      }
+      return baru;
     });
   },
 

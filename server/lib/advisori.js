@@ -169,6 +169,60 @@ function bulanBerikut(bulan) {
 }
 
 /**
+ * Bulan checkpoint satu advisori: PERSIS bulan sesudah bulan saran. Dieksor
+ * supaya hook read-time (rute riwayat/fokus) bisa menentukan jatuh tempo dan
+ * menyusun peta bulan yang benar TANPA menduplikasi aturan penilaian — satu
+ * sumber aturan, dua pemakai.
+ */
+export function bulanCheckpoint(bulanDasar) {
+  return bulanBerikut(bulanDasar);
+}
+
+/**
+ * Kap rekam evaluasi per pengguna. Sink dengan kap advisori (2 jenis × 24):
+ * satu advisori menghasilkan PALING BANYAK satu evaluasi, jadi evaluasi milik
+ * advisori yang masih ada tidak mungkin terpangkas — yang terpangkas hanyalah
+ * evaluasi advisori yang sudah lama pergi dari riwayat.
+ */
+export const EVALUASI_MAKS = 48;
+
+/**
+ * Checkpoint yang jatuh tempo tapi belum bernilai — MURNI, tanpa penulisan.
+ *
+ * Dipanggil hook read-time (rute riwayat/fokus) SEBELUM menulis: yang
+ * dikembalikan adalah daftar evaluasi yang BELUM ada di `evaluasiAda` dan
+ * sudah jatuh tempo. Jatuh tempo berarti bulan periksanya sudah LEWAT penuh
+ * (bulan WIB kini > bulan checkpoint) — selama bulan periksa masih berjalan,
+ * hasilnya memang belum ada dan TIDAK ADA yang direkam (bukan keheningan;
+ * kejujuran menunggu bulan selesai). Rekam yang bulan dasarnya rusak/absen
+ * dianggap langsung jatuh tempo: kejujurannya ("tak terukur — bulan dasar
+ * tidak tercatat") direkam, bukan didiamkan selamanya.
+ *
+ * Checkup sengaja tidak pernah menjadwalkan checkpoint: ia belum punya metode
+ * penilaian bulanan — itu bukan input rusak, jadi tidak merekam kejujuran
+ * kosong untuk setiap checkup.
+ *
+ * @param {Array} advisoris      riwayat advisori pengguna
+ * @param {Array} evaluasiAda    rekam evaluasi yang sudah tersimpan
+ * @param {object} bulanMetrics  peta bulan → angka inti (kontrak evaluasiAdvisori)
+ * @param {{kini?: Date}} opts   jam WIB untuk keputusan jatuh tempo
+ * @returns {Array} evaluasi baru siap di-append (boleh kosong)
+ */
+export function evaluasiTertunda(advisoris, evaluasiAda, bulanMetrics, { kini = new Date() } = {}) {
+  const bulanKini = tanggalWIB(kini).slice(0, 7);
+  const sudah = new Set((evaluasiAda ?? []).map((e) => e?.advisoriId));
+  const tertunda = [];
+  for (const advisori of advisoris ?? []) {
+    if (advisori?.jenis !== 'rekomendasi' || sudah.has(advisori.id)) continue;
+    const bulanCek = bulanCheckpoint(advisori?.dasarAngka?.bulan);
+    // Tanpa bulan checkpoint yang sah = jatuh tempo seketika.
+    if (bulanCek && bulanKini <= bulanCek) continue;
+    tertunda.push(evaluasiAdvisori(advisori, bulanMetrics, { kini }));
+  }
+  return tertunda;
+}
+
+/**
  * Nilai hasil penilaian satu advisori — MURNI, tanpa rute, tanpa penulisan.
  *
  * Metode v1: `komparsi-bulan`. Bulan periksa adalah PERSIS bulan sesudah bulan

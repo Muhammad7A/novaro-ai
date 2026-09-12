@@ -401,6 +401,8 @@ All items below are **not recommended now**, each with its governing reason (cla
 | 8 | Exact count discrepancy: `jejak.js` registers 26 event types; the structural test is described in the suite audit as pinning 25 — the pinned-count claim should be re-derived from the test's sorted-equality string before any registry work. | **VERIFIED FACT** (discrepancy exists as a description-level issue) / **OPEN QUESTION** (which number is canonical) | Trivial; resolve during Session H's first registry touch |
 | 9 | Do the demo twin vocabularies (`transaction_added` vs `transactions_added`) get unified before advisories land? | **OPEN QUESTION** (registered divergence, `jejak.js:83-88`) | Owner's pending decision; advisory events do not depend on it |
 
+> **KEPUTUSAN OWNER — direkam 2026-09-12, sesi G fase 2.** Q1 diputuskan: consent v3 **mencakup** evaluasi yang dihitung dari data yang sudah dikumpulkan dan hanya ditampilkan ke peserta sendiri; pemakaian komparatif antar-usaha tetap membutuhkan consent v4 di masa depan. Q8 tertutup di tempatnya: hitungan pin `jejak.test.js` adalah jumlah *emisi* skenario, bukan jumlah *registri* `SKEMA_JEJAK` (lihat komentar pin yang diperbarui sejak `session-g1`).
+
 ---
 
 **END OF REPORT** — Session G produced this file only. No source modified, no commits, no pushes, no deploys, no cloud spend. Per the mission: STOP here; Sessions H–J are proposals, not authorizations.

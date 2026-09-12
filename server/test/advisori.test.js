@@ -35,7 +35,8 @@ const { store } = await import('../lib/store.js');
 const { sanitasiRekomendasi } = await import('../lib/rekomendasi.js');
 const { sanitasiCheckup } = await import('../lib/checkup.js');
 const {
-  buatAdvisori, digestDasarAngka, evaluasiAdvisori, MAKS_PER_JENIS,
+  buatAdvisori, digestDasarAngka, evaluasiAdvisori, evaluasiTertunda,
+  bulanCheckpoint, EVALUASI_MAKS, MAKS_PER_JENIS,
 } = await import('../lib/advisori.js');
 const { CONSENT_VERSION } = await import('../lib/consent.js');
 
@@ -340,6 +341,81 @@ test('evaluasi gagal-aman: bulan hilang, jenis tanpa metode, bulan dasar tak ter
   const tanpaBulan = advisoriUji();
   delete tanpaBulan.dasarAngka;
   assert.equal(evaluasiAdvisori(tanpaBulan, { '2026-08': m(1, 1, 1), '2026-09': m(2, 2, 2) }).status, 'tak-terukur');
+});
+
+/* -------------------------------------------------- Checkpoint read-time (murni) */
+
+const advisoriBulan = (bulan) => buatAdvisori({
+  jenis: 'rekomendasi',
+  isi: { ringkasan: 'r', rekomendasi: [{ judul: 'a' }], peringatan: [], targetBulanIni: [] },
+  dasarAngka: { bulan, hash: 'sha256:aa' },
+  kini: new Date('2026-08-20T03:00:00Z'),
+});
+
+test('checkpoint: jatuh tempo hanya setelah bulan periksa lewat — WIB yang memutuskan', () => {
+  const adv = advisoriBulan('2026-08');
+  const peta = { '2026-08': m(1_000_000, 8, 500_000), '2026-09': m(1_100_000, 8.5, 480_000) };
+
+  // Masih bulan periksa (2026-09): hasilnya memang belum ada — nol rekam.
+  assert.deepEqual(evaluasiTertunda([adv], [], peta, { kini: new Date('2026-09-15T04:00:00Z') }), []);
+  // Tepat pergantian hari WIB: 31 Agu 18:00 UTC = 1 Sep 01:00 WIB → masih '2026-09', belum.
+  assert.deepEqual(evaluasiTertunda([adv], [], peta, { kini: new Date('2026-08-31T18:00:00Z') }), []);
+  // 30 Sep 18:00 UTC = 1 Okt 01:00 WIB → bulan periksa lewat → jatuh tempo.
+  const due = evaluasiTertunda([adv], [], peta, { kini: new Date('2026-09-30T18:00:00Z') });
+  assert.equal(due.length, 1);
+  assert.equal(due[0].status, 'terukur');
+  // Sekali per checkpoint: yang sudah bernilai tidak pernah diulang.
+  assert.deepEqual(evaluasiTertunda([adv], due, peta, { kini: new Date('2026-11-01T04:00:00Z') }), []);
+});
+
+test('checkpoint: input rusak/absen tetap ter-append — kejujuran, bukan keheningan', () => {
+  // Peta kosong saat jatuh tempo: tak-terukur TETAP dikembalikan untuk di-append.
+  const kosong = evaluasiTertunda([advisoriBulan('2026-08')], [], {}, { kini: new Date('2026-10-05T04:00:00Z') });
+  assert.equal(kosong.length, 1);
+  assert.equal(kosong[0].status, 'tak-terukur');
+  assert.match(kosong[0].sebab, /belum tersedia/);
+
+  // Rekam rusak tanpa bulan dasar: jatuh tempo seketika, kejujurannya direkam.
+  const rusak = advisoriBulan('2026-08');
+  delete rusak.dasarAngka;
+  const kena = evaluasiTertunda([rusak], [], {}, { kini: new Date('2026-09-15T04:00:00Z') });
+  assert.equal(kena.length, 1);
+  assert.match(kena[0].sebab, /bulan dasar/);
+});
+
+test('checkpoint: checkup tidak menjadwal penilaian — belum punya metode, bukan input rusak', () => {
+  const cek = buatAdvisori({
+    jenis: 'checkup', isi: { item: [], insight: 'i' },
+    dasarAngka: { bulan: '2026-08', hash: 'sha256:aa' }, kini: new Date('2026-08-20T03:00:00Z'),
+  });
+  assert.deepEqual(evaluasiTertunda([cek], [], {}, { kini: new Date('2026-11-01T04:00:00Z') }), []);
+});
+
+test('bulanCheckpoint: bulan berikutnya, December menggulung tahun', () => {
+  assert.equal(bulanCheckpoint('2026-08'), '2026-09');
+  assert.equal(bulanCheckpoint('2026-12'), '2027-01');
+  assert.equal(bulanCheckpoint('aneh'), null);
+  assert.equal(bulanCheckpoint(undefined), null);
+});
+
+test('trim evaluasi di store: 48 terbaru, dan id idempoten tidak pernah kembar', async () => {
+  const { user } = await store.createUser({ name: 'Bu Trim Hasil', business: 'Warung Trim Hasil', batch: 'B1' });
+  for (let i = 0; i < EVALUASI_MAKS + 2; i++) {
+    await store.tambahEvaluasiAdvisori(user.id, [{
+      advisoriId: `adv_${String(i).padStart(12, '0')}`,
+      metode: 'komparsi-bulan', status: 'tak-terukur', dinilaiAt: new Date().toISOString(),
+    }]);
+  }
+  let u = await store.findUserById(user.id);
+  assert.equal(u.evaluasiAdvisori.length, EVALUASI_MAKS);
+  assert.equal(u.evaluasiAdvisori.at(-1).advisoriId, 'adv_000000000049', 'yang termuda tinggal');
+
+  // Id yang sudah bernilai tidak diulang — juga dari pemanggil yang lalai.
+  await store.tambahEvaluasiAdvisori(user.id, [{ advisoriId: 'adv_000000000049', metode: 'komparsi-bulan', status: 'terukur' }]);
+  u = await store.findUserById(user.id);
+  assert.equal(u.evaluasiAdvisori.length, EVALUASI_MAKS);
+  assert.equal(u.evaluasiAdvisori.filter((e) => e.advisoriId === 'adv_000000000049').length, 1);
+  assert.equal(u.evaluasiAdvisori.at(-1).status, 'tak-terukur', 'rekam pertama yang menang, bukan penimpaan');
 });
 
 /* ------------------------------------------------------------- No-retrofit */

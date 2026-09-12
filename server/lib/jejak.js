@@ -71,6 +71,10 @@ export const SKEMA_JEJAK = {
    * Isi nasihat tinggal di user.advisori; jejaknya tetap tanpa nominal dan
    * tanpa teks — id menghubungkan keduanya. */
   advisori_dibuat: { id: 'id', jenis: 'kata', sumber: 'kata' },
+  /* Checkpoint hasil (Sesi G fase 2): satu per satu, saat jatuh tempo.
+   * status 'terukur'|'tak-terukur' — yang gagal dinilai juga tercatat,
+   * supaya ketiadaan hasil terlihat, bukan hening. */
+  evaluasi_advisori: { id: 'id', metode: 'kata', status: 'kata' },
 
   /* --- dari rute (store.logEvent) --- */
   login: {},

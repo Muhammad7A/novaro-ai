@@ -56,6 +56,8 @@ import { PROFIL_FIELDS, computeMetrics, metricsToText } from './lib/metrics.js';
 import { cashbookContext, LABEL } from './lib/prompts.js';
 import { susunKonteksUsaha } from './lib/konteks-usaha.js';
 import { susunFokusHarian } from './lib/fokus-harian.js';
+import { bulanCheckpoint, evaluasiTertunda } from './lib/advisori.js';
+import { deteksiKonteks } from './lib/deteksi.js';
 import { modulPraktikTerverifikasi } from './lib/praktik.js';
 import { adaLatihan, periksa, sanitasiLatihanAI, soalPublik } from './lib/latihan.js';
 import { GalatMutasi, store } from './lib/store.js';
@@ -314,6 +316,79 @@ async function metricsFor(user) {
 function metricsForBulan(user, transactions, ringkasan) {
   const real = isMonthReliable(ringkasan) ? ringkasan : null;
   return { metrics: computeMetrics(user.profile ?? {}, real, ringkasan) };
+}
+
+/* ------------------------------------------------- Memori advisori (Sesi G) */
+
+/**
+ * Peta bulan → angka inti untuk evaluasi checkpoint dan deteksi konteks.
+ *
+ * Bulan dianggap layak dibandingkan HANYA bila lengkap kalender DAN tercatat
+ * cukup rapat (isMonthComplete + isMonthReliable — ambang milik kernel,
+ * nol ambang baru di sini). Bila tidak, bulanLengkap false dan penilaian
+ * jatuh ke tak-terukur — sebagian bulan tidak pernah dibandingkan dengan
+ * bulan penuh. Saat layak, angka dihitung dari buku kas (ringkasan yang layak
+ * dipakai sebagai sumber nyata), jadi label "dihitung sistem dari angka buku
+ * kas" di permukaan tampilan adalah benar, bukan slogan.
+ */
+function petaBulanInti(transactions, profile, bulanList) {
+  const peta = {};
+  for (const bulan of bulanList) {
+    const ringkasan = summarizeMonth(transactions, bulan);
+    const layak = isMonthComplete(ringkasan) && isMonthReliable(ringkasan);
+    if (!layak) {
+      peta[bulan] = { bulanLengkap: false };
+      continue;
+    }
+    const metrics = computeMetrics(profile ?? {}, ringkasan, ringkasan);
+    peta[bulan] = {
+      labaBersih: metrics.labaBersih,
+      marginBersih: metrics.marginBersih,
+      saldoKas: metrics.saldoKas,
+      prive: metrics.prive,
+      bulanLengkap: true,
+    };
+  }
+  return peta;
+}
+
+/**
+ * Checkpoint hasil nasihat — dibaca saat dibaca, tanpa penjadwal (substrate
+ * penjadwal tidak ada di deploy ini, dan memang tidak dibutuhkan: checkpoint
+ * adalah fakta bulan, bukan jam dinding). Mengembalikan jumlah evaluasi yang
+ * baru saja direkam; 0 berarti tidak ada penulisan sama sekali, jadi
+ * pembacaan yang sering tetap murah.
+ */
+async function evaluasiSaatDibaca(userId) {
+  const user = await store.findUserById(userId);
+  const advisoris = user?.advisori ?? [];
+  if (!advisoris.length) return 0;
+
+  const bulanKini = currentMonth();
+  const sudah = new Set((user.evaluasiAdvisori ?? []).map((e) => e?.advisoriId));
+  const kandidat = advisoris.filter((a) => {
+    if (a?.jenis !== 'rekomendasi' || sudah.has(a.id)) return false;
+    const cek = bulanCheckpoint(a?.dasarAngka?.bulan);
+    // Tanpa bulan checkpoint yang sah = jatuh tempo seketika: kejujuran
+    // "tak terukur" untuk rekam rusak direkam, bukan didiamkan.
+    return !cek || bulanKini > cek;
+  });
+  if (!kandidat.length) return 0;
+
+  const bulanPerlu = new Set();
+  for (const a of kandidat) {
+    if (a.dasarAngka?.bulan) {
+      bulanPerlu.add(a.dasarAngka.bulan);
+      bulanPerlu.add(bulanCheckpoint(a.dasarAngka.bulan));
+    }
+  }
+  const transactions = await store.getTransactions(userId);
+  const peta = petaBulanInti(transactions, user.profile, [...bulanPerlu].filter(Boolean));
+
+  const tertunda = evaluasiTertunda(advisoris, user.evaluasiAdvisori ?? [], peta);
+  if (!tertunda.length) return 0;
+  const tersimpan = await store.tambahEvaluasiAdvisori(userId, tertunda);
+  return tersimpan.length;
 }
 
 /* ------------------------------------------------------------------ Validasi */
@@ -652,6 +727,15 @@ app.get('/api/konteks', authenticate, async (req, res) => {
 app.get('/api/fokus', authenticate, async (req, res) => {
   await store.logEvent(req.user.id, 'fokus_viewed', undefined, { jedaMs: 5 * 60 * 1000 });
 
+  // Checkpoint hasil nasihat ikut jalan saat dibaca — bila ada yang jatuh
+  // tempo, satu penulisan; bila tidak, nol. Kegagalan penilaian tidak boleh
+  // mematikan fokus harian: checkpoint mencoba lagi pada bacaan berikutnya.
+  try {
+    await evaluasiSaatDibaca(req.user.id);
+  } catch (err) {
+    log.warn('advisori', 'checkpoint tertunda gagal dievaluasi', { userId: req.user.id, sebab: err?.message ?? String(err) });
+  }
+
   const { metrics, transactions } = await metricsFor(req.user);
   const perubahan = bandingkanBulan(transactions);
   const done = req.user.progress?.done ?? {};
@@ -668,6 +752,56 @@ app.get('/api/fokus', authenticate, async (req, res) => {
     }),
     dibuatPada: new Date().toISOString(),
   });
+});
+
+/* ------------------------------------------- Riwayat saran (memori advisori) */
+
+/**
+ * Memori nasihat: apa yang pernah disarankan, dan apa yang terjadi setelahnya.
+ *
+ * Checkpoint dievaluasi SAAT DIBACA (lihat evaluasiSaatDibaca). Yang
+ * dikembalikan: riwayat terbaru-dulu dengan hasil penilaiannya yang dihitung
+ * sistem dari angka buku kas, plus satu deteksi konteks deterministik.
+ * Ringkasan nasihat tetap membawa stempel asal-usulnya (sumber/model) —
+ * teks AI tidak pernah melewati rute ini tanpa label.
+ */
+app.get('/api/advisori/riwayat', authenticate, requireConsent, async (req, res) => {
+  try {
+    // Checkpoint dulu, supaya riwayat yang dikembalikan sudah memuat hasil
+    // yang baru saja jatuh tempo. Kegagalan penilaian tidak mematikan
+    // pembacaan — checkpoint mencoba lagi pada bacaan berikutnya.
+    try {
+      await evaluasiSaatDibaca(req.user.id);
+    } catch (err) {
+      log.warn('advisori', 'checkpoint tertunda gagal dievaluasi', { userId: req.user.id, sebab: err?.message ?? String(err) });
+    }
+
+    const user = await store.findUserById(req.user.id);
+    const evaluasiPerId = new Map((user?.evaluasiAdvisori ?? []).map((e) => [e.advisoriId, e]));
+    const kini = Date.now();
+    const riwayat = [...(user?.advisori ?? [])]
+      .reverse() // terbaru dulu — riwayat dibaca dari yang paling dekat
+      .map((a) => ({
+        id: a.id,
+        jenis: a.jenis,
+        dibuat: a.dibuat,
+        sumber: a.sumber,
+        // Model apa adanya dari rekam; tak dikenal tetap null — tidak pernah ditebak.
+        model: a.model ?? null,
+        berlaku: Date.parse(a.berlakuHingga) > kini,
+        ringkasan: String(a.isi?.ringkasan ?? a.isi?.insight ?? ''),
+        evaluasi: evaluasiPerId.get(a.id) ?? null,
+      }));
+
+    // Deteksi konteks: satu pengamatan deterministik dari bulan lengkap terakhir.
+    const transactions = await store.getTransactions(req.user.id);
+    const deteksi = deteksiKonteks(petaBulanInti(transactions, user?.profile ?? null, lastMonths(3)));
+    res.json({ riwayat, deteksi });
+  } catch (err) {
+    const { status, message } = describeError(err);
+    log.error('advisori', 'riwayat gagal', { userId: req.user.id, status, sebab: err?.message ?? String(err) });
+    res.status(status).json({ error: message });
+  }
 });
 
 /* ------------------------------------------- Latihan micro-learning */

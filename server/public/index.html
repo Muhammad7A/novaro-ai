@@ -1095,6 +1095,11 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
       <p class="sub">Rencana perbaikan yang disusun AI berdasarkan angka dan kondisi usahamu sendiri — bukan saran umum.</p>
     </div>
     <div id="recBody"></div>
+    <div class="card" id="riwayatSaran" style="margin-top:14px">
+      <h3 style="margin-top:0">Riwayat Saran</h3>
+      <p class="sub">Nasihat yang pernah diberikan, dan apa yang terjadi setelahnya. Hasil penilaiannya dihitung sistem dari angka buku kas — bukan dari AI.</p>
+      <div id="riwayatBody"><p class="sub" style="margin:0">Memuat…</p></div>
+    </div>
   </div>
 </section>
 
@@ -1624,6 +1629,7 @@ function goTo(page) {
   if (page === 'kas') loadCashbook(kas.month);
   if (page === 'laporan') loadReport();
   if (page === 'papan') loadPapan();
+  if (page === 'rekomendasi') loadRiwayat();
 }
 document.querySelectorAll('#navLinks button, #tabbar button').forEach((b) =>
   b.addEventListener('click', () => goTo(b.dataset.page)));
@@ -2247,6 +2253,64 @@ function stempelRekomendasi(rec) {
   const umur = hari >= 1 ? ` — perbarui bila profil atau angka usahamu sudah berubah` : '';
   const siapa = rec.model ? ` oleh AI ${rec.model}` : ' oleh AI';
   return `Disusun ${kapan}${siapa}${umur}.`;
+}
+
+/* ============================================================
+   Riwayat Saran — memori nasihat + checkpoint hasil
+============================================================ */
+
+/*
+ * Stempel riwayat memakai pola yang sama dengan stempelRekomendasi: sumber
+ * 'contoh' tidak pernah mati sebagai "AI", model disebut persis bila dikenal,
+ * dan umurnya diakui. Hasil checkpoint dihitung SISTEM dari angka buku kas
+ * (server) — setiap baris hasilnya mengatakannya, dan tidak ada satu pun
+ * angka hasil penilaian yang berasal dari model.
+ */
+function stempelAdvisori(a) {
+  const kapan = new Date(a.dibuat).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
+  if (a.sumber === 'contoh') return `Contoh tampilan (data kurasi — bukan keluaran AI), disusun ${kapan}.`;
+  const hari = Math.floor((Date.now() - new Date(a.dibuat).getTime()) / 86400000);
+  const umur = hari >= 1 ? ' — perbarui bila profil atau angka usahamu sudah berubah' : '';
+  const siapa = a.model ? ` oleh AI ${a.model}` : ' oleh AI';
+  return `Disusun ${kapan}${siapa}${umur}.`;
+}
+
+const LABEL_DIMENSI = { labaBersih: 'Laba bersih', marginBersih: 'Margin bersih', saldoKas: 'Saldo kas' };
+const ARAH_HASIL = { membaik: '↗ membaik', memburuk: '↘ menurun', tetap: '→ tetap', 'tak-terukur': 'tak terukur' };
+
+function renderHasilCheckpoint(e) {
+  if (!e) {
+    return '<p class="sub" style="margin:6px 0 0"><b>Hasil</b> (dihitung sistem dari angka buku kas): penilaian muncul otomatis setelah bulan sesudah bulan saran selesai.</p>';
+  }
+  if (e.status !== 'terukur') {
+    return `<p class="sub" style="margin:6px 0 0"><b>Hasil</b> (dihitung sistem dari angka buku kas): belum dapat dinilai — ${escapeHtml(e.sebab ?? 'angka penilaian tidak tersedia')}.</p>`;
+  }
+  const baris = Object.entries(e.dimensi).map(([k, d]) =>
+    `<li>${LABEL_DIMENSI[k] ?? k}: ${fmtRp(d.dasar)} → ${fmtRp(d.kini)} — ${ARAH_HASIL[d.status] ?? d.status}</li>`).join('');
+  return `<p class="sub" style="margin:6px 0 2px"><b>Hasil</b> (dihitung sistem dari angka buku kas):</p>
+    <ul style="margin:2px 0 0;padding-left:18px">${baris}</ul>
+    <p class="sub" style="margin:4px 0 0">Perbandingan bulan saran dengan bulan berikutnya. Arah angka bukan jaminan sebab-akibat.</p>`;
+}
+
+async function loadRiwayat() {
+  const box = el('riwayatBody');
+  if (!box) return;
+  try {
+    const data = await api('/api/advisori/riwayat');
+    if (!data.riwayat.length) {
+      box.innerHTML = '<p class="sub" style="margin:0">Belum ada riwayat — saran yang disusun mulai hari ini akan tercatat di sini, lengkap dengan hasilnya.</p>';
+      return;
+    }
+    box.innerHTML = data.riwayat.map((a) => `
+      <div style="border-top:1px solid rgba(127,127,127,.25);padding:10px 0;margin-top:10px">
+        <b>${a.jenis === 'checkup' ? 'Check-up' : 'Rekomendasi'}</b>
+        <p class="sub" style="margin:2px 0">${escapeHtml(stempelAdvisori(a))}</p>
+        ${a.ringkasan ? `<p style="margin:4px 0">${escapeHtml(a.ringkasan)}</p>` : ''}
+        ${renderHasilCheckpoint(a.evaluasi)}
+      </div>`).join('');
+  } catch {
+    box.innerHTML = '<p class="sub" style="margin:0">Riwayat belum bisa dimuat sekarang.</p>';
+  }
 }
 
 function renderRecommendations() {
