@@ -6,6 +6,24 @@
 
 ---
 
+## STATUS PELAKSANAAN — diperbarui 2026-09-12, sesi G fase 3
+
+| Fase | Isi (§12–§13) | Status | Commit |
+|---|---|---|---|
+| 1 (dulu "SESSION H") | Rekam advisori: append-only, trim 24/jenis, event `advisori_dibuat`, write-through slot, `simpanCheckup`, stempel `featureVersions` M1-lite, fix E-1 | **SELESAI** | `3c2febd` (lantai 569) |
+| 2 (dulu "SESSION I") | Checkpoint hasil read-time (`evaluasiTertunda`, `tambahEvaluasiAdvisori`), `GET /api/advisori/riwayat` + hook `/api/fokus`, `lib/deteksi.js` (3 detektor), permukaan Riwayat Saran | **SELESAI** | `55288a9` (lantai 583) |
+| 3 (dulu "SESSION J") | Instrumentasi keputusan (`evaluasi_advisori` — tercatat: sudah terpenuhi fase 2, dengan delta sadar meta `{id, metode, status}` — status amount-blind dan permanen karena baris evaluasi ter-trim 48 sementara event tidak pernah dipangkas), tabel ekspor `advisori.csv` + `evaluasi_advisori.csv` (disiplin anonim), rung `--ai-route rekomendasi` pada `uji-hidup` | **SELESAI** | sesi ini |
+
+**Rung yang MENUNGGU EKSEKUSI OPERATOR** (window F — semuanya membutuhkan deploy/biaya Cloud, bukan sesi builder):
+
+1. Redeploy `main` → revisi Cloud Run baru (bundle terdeploy saat ini adalah Aug-31, internalnya tidak konsisten — `/api/checkup` 500).
+2. `uji-hidup` penuh (rute chat) pada revisi baru — artefak bertanggal BARU wajib; jangan pernah mengutip artefak 2026-09-11 untuk revisi lain.
+3. `uji-hidup --ai-route checkup` pada revisi yang sama (rung per-metode, keputusan §18).
+4. `uji-hidup --ai-route rekomendasi` (rung baru, disiapkan fase 3 — belum pernah dieksekusi live mana pun).
+5. Build Cloud Build pertama pasca-G3: lantai CI (`uji` step) wajib 583/0 sebelum `deploy` berjalan.
+
+---
+
 ## 1. Repository State Verification
 
 Checked this session before any analysis (VERIFIED FACT for all rows):

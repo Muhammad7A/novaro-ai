@@ -44,6 +44,31 @@ const { store } = await import('../lib/store.js');
   }, { aktor: 'manusia' });
   await store.simpanJawabanLatihan(user.id, 1, 0, true, 'arus kas kecil');
   await store.logEvent(user.id, 'ai_feedback', { rating: 'down', alasan: 'Jawaban meleset soal kas halus', chatIndex: 0 });
+  // Benih memori advisori (Sesi G): prosa nasihat + hasil checkpoint.
+  await store.simpanRekomendasi(user.id, {
+    ringkasan: 'Nasihat rahasia zaraza — prosa uji kebocoran.',
+    rekomendasi: [{ judul: 'Rapikan prive', prioritas: 'tinggi', alasan: 'prive besar', langkah: ['atur jadwal'], dampak: 'kas tertib', modulTerkait: 23 }],
+    peringatan: ['prive hampir menyamai laba'],
+    targetBulanIni: ['tetapkan prive mingguan'],
+  }, { input_tokens: 5, output_tokens: 5 }, { model: 'gemini-2.5-flash-uji' });
+  {
+    const denganAdvisori = await store.findUserById(user.id);
+    await store.tambahEvaluasiAdvisori(user.id, [{
+      advisoriId: denganAdvisori.advisori[0].id,
+      jenis: 'rekomendasi',
+      dinilaiAt: '2026-10-01T03:00:00.000Z',
+      metode: 'komparsi-bulan',
+      status: 'terukur',
+      bulanDasar: '2026-07',
+      bulanCek: '2026-08',
+      dimensi: {
+        labaBersih: { dasar: 1_700_000, kini: 2_000_000, status: 'membaik' },
+        marginBersih: { dasar: 8, kini: 9.5, status: 'membaik' },
+        saldoKas: { dasar: 1_700_000, kini: -3_400_000, status: 'memburuk' },
+      },
+      perItem: [],
+    }]);
+  }
   await store.selesaikanPenulisan();
 }
 
@@ -99,4 +124,36 @@ test('janji di BACA-DULU.txt menyebut apa yang benar-benar dibuang', async () =>
   assert.match(janji, /jejak peristiwa/, 'janji harus menyebut penyaringan events.csv secara eksplisit');
   assert.doesNotMatch(janji, /produk/, 'janji soal kolom "produk" tidak pernah benar — kolom itu tidak ada');
   assert.ok(existsSync(path.join(DIR_ANONIM, 'events.csv')));
+});
+
+test('advisori & evaluasi: prosa nasihat terfilter di anonim — sinyal, asal, dan hasil tetap', async () => {
+  const anonimAdvisori = readFileSync(path.join(DIR_ANONIM, 'advisori.csv'), 'utf8');
+  const anonimEvaluasi = readFileSync(path.join(DIR_ANONIM, 'evaluasi_advisori.csv'), 'utf8');
+  const anonimSemua = anonimAdvisori + anonimEvaluasi;
+
+  // Prosa nasihat (teks bebas dari model): tidak di berkas anonim mana pun.
+  for (const berkas of [readFileSync(path.join(DIR_ANONIM, 'events.csv'), 'utf8'), anonimSemua]) {
+    assert.doesNotMatch(berkas, /zaraza/, 'prosa nasihat bocor ke ekspor anonim');
+  }
+  assert.match(anonimAdvisori, /\(dihapus\)/, 'ringkasan diganti penanda, bukan kolom kosong tanpa jejak');
+  // Sinyal riset tetap utuh: asal keluaran, bentuk, dan sidik dasar angkanya.
+  assert.match(anonimAdvisori, /gemini-2\.5-flash-uji/, 'identitas model adalah sinyal riset, bukan PII');
+  assert.match(anonimAdvisori, /komparsi-bulan|rekomendasi/);
+  assert.match(anonimAdvisori, /sha256:/, 'sidik dasar angka ikut — angkanya sendiri tidak pernah disalin');
+  assert.doesNotMatch(anonimAdvisori.split('\n')[0], /omzet|jumlah:/, 'tabel advisori tidak memuat kolom angka profil');
+  // Hasil checkpoint: angka buku kas dan arahnya adalah isi analisis, bukan PII.
+  assert.match(anonimEvaluasi, /komparsi-bulan/);
+  assert.match(anonimEvaluasi, /membaik/);
+  assert.match(anonimEvaluasi, /memburuk/);
+  assert.match(anonimEvaluasi, /2000000/, 'angka kernel dari buku kas justru isi tabel evaluasi');
+
+  // Mode lengkap: prosa yang sama TETAP ada — penyaring hanya milik anonim.
+  const lengkapAdvisori = readFileSync(path.join(DIR_LENGKAP, 'advisori.csv'), 'utf8');
+  assert.match(lengkapAdvisori, /zaraza/, 'mode lengkap memang memuat prosa nasihat');
+  assert.match(lengkapAdvisori, /gemini-2\.5-flash-uji/);
+
+  // Janji BACA-DULU menyebut tabel baru dan nasihatnya secara eksplisit.
+  const janji = readFileSync(path.join(DIR_ANONIM, 'BACA-DULU.txt'), 'utf8');
+  assert.match(janji, /advisori\.csv/);
+  assert.match(janji, /Prosa nasihat/, 'janji anonim menyebut nasihat yang dibuang');
 });

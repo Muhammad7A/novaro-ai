@@ -112,6 +112,8 @@ const barisPengguna = [];
 const barisProfil = [];
 const barisTransaksi = [];
 const barisPeristiwa = [];
+const barisAdvisori = [];
+const barisEvaluasiAdvisori = [];
 const barisBulanan = [];
 const barisGap = [];
 
@@ -247,6 +249,66 @@ for (const u of users) {
     });
   }
 
+  /* advisori.csv — riwayat nasihat (Sesi G: memori advisori).
+   *
+   * Mode anonim: PROSA nasihat (ringkasan, insight) dibuang lewat teks() —
+   * disiplin yang sama dengan keterangan transaksi; yang selamat adalah
+   * strukturnya (jenis, asal, umur, jumlah butir) plus SIDIK dasar angkanya
+   * (hash, bukan salinan angka). Model ikut apa adanya: itu identitas
+   * teknis keluaran — pertanyaan risetnya ("AI mana menasihati apa, dan apa
+   * hasilnya") membutuhkannya — bukan PII peserta.
+   */
+  for (const a of u.advisori ?? []) {
+    barisAdvisori.push({
+      userId: u.id,
+      batch,
+      advisoriId: a.id,
+      jenis: a.jenis,
+      dibuat: a.dibuat ?? '',
+      tanggal: String(a.dibuat ?? '').slice(0, 10),
+      sumber: a.sumber ?? '',
+      model: a.model ?? '',
+      dasarBulan: a.dasarAngka?.bulan ?? '',
+      dasarSidik: a.dasarAngka?.hash ?? '',
+      berlakuHingga: a.berlakuHingga ?? '',
+      jumlahRekomendasi: Array.isArray(a.isi?.rekomendasi) ? a.isi.rekomendasi.length : 0,
+      jumlahPeringatan: Array.isArray(a.isi?.peringatan) ? a.isi.peringatan.length : 0,
+      ringkasan: teks(a.isi?.ringkasan),
+      insight: teks(a.isi?.insight),
+    });
+  }
+
+  /* evaluasi_advisori.csv — hasil checkpoint per nasihat.
+   *
+   * Angka dasar/kini adalah keluaran kernel atas buku kas (bukan teks, bukan
+   * PII) — isinya di kedua mode. `sebab` adalah kalimat penjelas server yang
+   * PERMANEN dalam kosakata aplikasi (bukan teks peserta atau model), jadi
+   * ikut di kedua mode: ketiadaan hasil yang bisa dijelaskan lebih jujur
+   * daripada status kosong tanpa alasan.
+   */
+  for (const e of u.evaluasiAdvisori ?? []) {
+    barisEvaluasiAdvisori.push({
+      userId: u.id,
+      batch,
+      advisoriId: e.advisoriId,
+      dinilaiPada: e.dinilaiAt ?? '',
+      metode: e.metode ?? '',
+      status: e.status ?? '',
+      sebab: e.sebab ?? '',
+      bulanDasar: e.bulanDasar ?? '',
+      bulanCek: e.bulanCek ?? '',
+      labaDasar: e.dimensi?.labaBersih?.dasar ?? '',
+      labaKini: e.dimensi?.labaBersih?.kini ?? '',
+      labaArah: e.dimensi?.labaBersih?.status ?? '',
+      marginDasar: e.dimensi?.marginBersih?.dasar ?? '',
+      marginKini: e.dimensi?.marginBersih?.kini ?? '',
+      marginArah: e.dimensi?.marginBersih?.status ?? '',
+      kasDasar: e.dimensi?.saldoKas?.dasar ?? '',
+      kasKini: e.dimensi?.saldoKas?.kini ?? '',
+      kasArah: e.dimensi?.saldoKas?.status ?? '',
+    });
+  }
+
   /* monthly.csv — tabel siap analisis, satu baris per pengguna per bulan */
   for (const s of summaries) {
     const profilBulanItu = profilPadaBulan(history, s.month);
@@ -304,6 +366,8 @@ const files = [
   ['profile_versions.csv', barisProfil.length ? toCsv(barisProfil, Object.keys(barisProfil[0])) : ''],
   ['transactions.csv', barisTransaksi.length ? toCsv(barisTransaksi, Object.keys(barisTransaksi[0])) : ''],
   ['events.csv', barisPeristiwa.length ? toCsv(barisPeristiwa, Object.keys(barisPeristiwa[0])) : ''],
+  ['advisori.csv', barisAdvisori.length ? toCsv(barisAdvisori, Object.keys(barisAdvisori[0])) : ''],
+  ['evaluasi_advisori.csv', barisEvaluasiAdvisori.length ? toCsv(barisEvaluasiAdvisori, Object.keys(barisEvaluasiAdvisori[0])) : ''],
   ['monthly.csv', barisBulanan.length ? toCsv(barisBulanan, Object.keys(barisBulanan[0])) : ''],
   ['perkiraan_vs_nyata.csv', barisGap.length ? toCsv(barisGap, Object.keys(barisGap[0])) : ''],
 ];
@@ -334,6 +398,8 @@ Berkas:
   profile_versions.csv    Tiap versi profil. versi=1 adalah GARIS DASAR (perkiraan hari pertama).
   transactions.csv        Tiap transaksi. hariTundaCatat = jeda hari antara kejadian dan pencatatan.
   events.csv              Garis waktu perilaku: login, modul selesai, rekomendasi, laporan dibuka.
+  advisori.csv            Riwayat nasihat: jenis, asal (sumber/model), sidik dasar angka, umur.
+  evaluasi_advisori.csv   Hasil checkpoint per nasihat — dihitung sistem dari angka buku kas.
   monthly.csv             Tabel siap analisis, satu baris per peserta per bulan.
   perkiraan_vs_nyata.csv  Selisih antara perkiraan hari pertama dan angka buku kas.
 ${anonymize ? '' : '  chat.csv                Isi percakapan. TIDAK ada pada ekspor anonim.\n'}
@@ -344,7 +410,7 @@ Catatan analisis:
   yang tercatat rapat. Angka nyata dirata-rata dari bulan-bulan itu saja.
 - transactions.csv: hariTundaCatat=0 berarti dicatat di hari kejadian.
 
-${anonymize ? 'Mode anonim: nama, usaha, lokasi, keterangan transaksi, tantangan, teks bebas pada\njejak peristiwa (nama peserta, alasan umpan balik), konsep AI, dan percakapan sudah dihapus.\nusr_xxx bersifat acak dan tetap dipakai agar baris antar tabel bisa disambungkan.' : 'PERINGATAN: berkas ini memuat nama, lokasi, dan percakapan peserta.\nJangan dibagikan. Untuk analisis atau publikasi, pakai: npm run export -- --anonymize'}
+${anonymize ? 'Mode anonim: nama, usaha, lokasi, keterangan transaksi, tantangan, teks bebas pada\njejak peristiwa (nama peserta, alasan umpan balik), konsep AI, dan percakapan sudah dihapus.\nProsa nasihat (ringkasan/insight pada advisori.csv) juga dihapus; struktur, asal (sumber/model),\nsidik dasar angka, dan hasil penilaiannya tetap utuh.\nusr_xxx bersifat acak dan tetap dipakai agar baris antar tabel bisa disambungkan.' : 'PERINGATAN: berkas ini memuat nama, lokasi, dan percakapan peserta.\nJangan dibagikan. Untuk analisis atau publikasi, pakai: npm run export -- --anonymize'}
 `,
   'utf8',
 );

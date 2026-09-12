@@ -27,6 +27,12 @@
  *   checkup  (--ai-route checkup) — /api/checkup, satu panggilan JSON
  *            terbatas. Jalur rung inilah yang dinamai keputusan §18; pilih
  *            bila revisi yang dideploy sudah membuktikan rutenya sendiri.
+ *   rekomendasi (--ai-route rekomendasi) — /api/recommendations, satu
+ *            panggilan JSON untuk penyusunan termahal di aplikasi. Slot
+ *            rekomendasi akun demo tertimpa apa adanya (satu slot, tanpa
+ *            akumulasi), jadi jalur ini tidak butuh langkah pembersihan.
+ *            Provenansi model yang tersimpan di slot dilaporkan apa adanya
+ *            di artefak — bukti identitas sekaligus bukti penyimpanan.
  *
  * Keduanya murah dan terbatas (puluhan rupiah), tidak menyentuh baris
  * keuangan apa pun — mereka hanya MELIHAT angka demo lalu mencatat pemakaian
@@ -347,6 +353,73 @@ async function langkahCheckup(base, kode, timeoutMs) {
     : gagal('checkup', res.status, res.galat ?? `status ${res.status}: ${potong(res.teks, 300)}`, { ms: res.ms });
 }
 
+/**
+ * Penilai jawaban /api/recommendations — MURNI, dieksor untuk uji.
+ *
+ * Yang membuktikan rung ini bukan sekadar 200: slot rekomendasi harus benar
+ * bentuknya (ada butir), membawa provenansi aslinya (sumber, dan model bila
+ * server mengenalinya — tidak pernah ditebak di sini), dan anggaran server
+ * ikut di jawaban — delta itulah yang membuktikan provider benar-benar
+ * dipakai. Prosa ringkasan dipotong; artefak boleh berisi hasil AI atas data
+ * demo fiktif, bukan data peserta.
+ *
+ * @returns {object} rekam langkah {langkah:'rekomendasi', lulus, ...} —
+ *   rekam gagal lengkapnya dirakit langkahRekomendasi (butuh galat transport).
+ */
+export function rekamRekomendasi(body, status, ms) {
+  const rekomendasi = body?.recommendations;
+  const sah =
+    status === 200 &&
+    rekomendasi && typeof rekomendasi === 'object' &&
+    Array.isArray(rekomendasi.rekomendasi) && rekomendasi.rekomendasi.length > 0;
+  if (!sah) {
+    return {
+      langkah: 'rekomendasi',
+      lulus: false,
+      status,
+      ms,
+      alasan:
+        status !== 200
+          ? `status ${status}`
+          : !rekomendasi || typeof rekomendasi !== 'object'
+            ? 'jawaban tanpa slot rekomendasi'
+            : 'slot rekomendasi tanpa satu pun butir',
+    };
+  }
+  return {
+    langkah: 'rekomendasi',
+    lulus: true,
+    status,
+    ms,
+    jumlah: rekomendasi.rekomendasi.length,
+    jumlahPeringatan: Array.isArray(rekomendasi.peringatan) ? rekomendasi.peringatan.length : 0,
+    jumlahTarget: Array.isArray(rekomendasi.targetBulanIni) ? rekomendasi.targetBulanIni.length : 0,
+    // Provenansi apa adanya dari slot tersimpan — bukti identitas sekaligus
+    // bukti bahwa yang dibaca adalah rekam yang baru ditulis.
+    sumber: rekomendasi.sumber ?? null,
+    model: rekomendasi.model ?? null,
+    pratinjau: potongObjek({ ringkasan: rekomendasi.ringkasan }),
+    anggaranSesudah: body?.anggaran ?? null,
+  };
+}
+
+/** Jalur rekomendasi (pilihan --ai-route rekomendasi): satu panggilan JSON. */
+async function langkahRekomendasi(base, kode, timeoutMs) {
+  const res = await ambil(
+    `${base}/api/recommendations`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${kode}` },
+      body: '{}',
+    },
+    timeoutMs,
+  );
+  const hasil = rekamRekomendasi(res.body, res.status, res.ms);
+  return hasil.lulus
+    ? hasil
+    : gagal('rekomendasi', res.status, res.galat ?? `status ${res.status}: ${potong(res.teks, 300)}`, { ms: res.ms });
+}
+
 /** Membersihkan jejak percakapan uji dari akun demo — best-effort, dicatat. */
 async function langkahPembersihan(base, kode, timeoutMs) {
   const res = await ambil(
@@ -365,7 +438,7 @@ async function langkahPembersihan(base, kode, timeoutMs) {
  *
  * @param {{baseUrl: string, layanan?: string, region?: string, project?: string,
  *          revision?: string|null, healthOnly?: boolean, timeoutMs?: number,
- *          aiRoute?: 'chat'|'checkup'}} sasaran
+ *          aiRoute?: 'chat'|'checkup'|'rekomendasi'}} sasaran
  * @returns {Promise<object>} artefak
  */
 export async function jalankanUji(sasaran) {
@@ -510,6 +583,10 @@ export async function jalankanUji(sasaran) {
   let langkahAi;
   if (sasaran.aiRoute === 'checkup') {
     langkahAi = await langkahCheckup(base, kode, sasaran.timeoutMs);
+  } else if (sasaran.aiRoute === 'rekomendasi') {
+    langkahAi = await langkahRekomendasi(base, kode, sasaran.timeoutMs);
+    // Slot rekomendasi tertimpa isi barunya — tanpa akumulasi sisa uji,
+    // tanpa langkah pembersihan.
   } else {
     langkahAi = await langkahPercakapan(base, kode, sasaran.timeoutMs);
     // Riwayat giliran uji dihapus lagi — akun demo tidak menumpuk sisa uji.
@@ -590,9 +667,9 @@ function bacaArgv(argv) {
   opsi.project = nilai('--project') ?? opsi.project;
   opsi.revision = nilai('--revision') ?? opsi.revision;
   const rute = nilai('--ai-route');
-  if (rute) {
-    if (rute !== 'chat' && rute !== 'checkup') {
-      throw new Error(`--ai-route harus 'chat' atau 'checkup', diterima: ${rute}`);
+  if (rute !== null) {
+    if (rute !== 'chat' && rute !== 'checkup' && rute !== 'rekomendasi') {
+      throw new Error(`--ai-route harus 'chat', 'checkup', atau 'rekomendasi', diterima: ${rute}`);
     }
     opsi.aiRoute = rute;
   }

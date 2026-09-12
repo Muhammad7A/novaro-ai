@@ -12,7 +12,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { parseDeployLog, perkiraanBiaya, potong, saringEnv } from '../scripts/uji-hidup.js';
+import { parseDeployLog, perkiraanBiaya, potong, rekamRekomendasi, saringEnv } from '../scripts/uji-hidup.js';
 
 test('import uji-hidup tidak menjalankan apa pun (uji tetap tanpa jaringan)', () => {
   // Sengaja kosong: keberhasilan impor sendiri sudah buktinya — modul ini
@@ -96,4 +96,53 @@ test('potong memangkas teks panjang dan membiarkan teks pendek utuh', () => {
   assert.equal(potong('abc'), 'abc');
   assert.equal(potong('abc', 2), 'ab…');
   assert.equal(potong(undefined), '');
+});
+
+/* ------------------- Rung rekomendasi (fase 3, tanpa panggilan live) ---- */
+
+const JAWABAN_SAH = {
+  recommendations: {
+    ringkasan: 'Laba sehat, rapikan prive.',
+    rekomendasi: [{ judul: 'Tetapkan prive mingguan', prioritas: 'sedang' }],
+    peringatan: ['prive hampir menyamai laba'],
+    targetBulanIni: ['atur jadwal prive'],
+    generatedAt: '2026-09-12T03:00:00.000Z',
+    sumber: 'ai',
+    model: 'gemini-2.5-flash',
+  },
+  anggaran: { harian: { terpakai: 640 }, mingguan: { terpakai: 900 } },
+};
+
+test('rekamRekomendasi: jawaban sah lulus — provenansi dari slot, anggaran ikut', () => {
+  const r = rekamRekomendasi(JAWABAN_SAH, 200, 1234);
+  assert.equal(r.langkah, 'rekomendasi');
+  assert.equal(r.lulus, true);
+  assert.equal(r.jumlah, 1);
+  assert.equal(r.jumlahPeringatan, 1);
+  assert.equal(r.jumlahTarget, 1);
+  assert.equal(r.sumber, 'ai');
+  assert.equal(r.model, 'gemini-2.5-flash', 'model dilaporkan apa adanya dari slot tersimpan');
+  assert.equal(r.anggaranSesudah?.harian?.terpakai, 640, 'delta anggaran adalah bukti pemakaian provider');
+  assert.ok(r.pratinjau.ringkasan.includes('Laba sehat'), 'pratinjau dipotong, bukan dihapus');
+});
+
+test('rekamRekomendasi: model tak dikenal tetap null — tidak pernah dikarang', () => {
+  const tanpaModel = structuredClone(JAWABAN_SAH);
+  delete tanpaModel.recommendations.model;
+  const r = rekamRekomendasi(tanpaModel, 200, 10);
+  assert.equal(r.lulus, true);
+  assert.equal(r.model, null);
+});
+
+test('rekamRekomendasi gagal jujur: slot hilang, butir kosong, status bukan 200', () => {
+  assert.equal(rekamRekomendasi({}, 200, 5).lulus, false);
+  assert.match(rekamRekomendasi({}, 200, 5).alasan, /tanpa slot/);
+  const kosong = structuredClone(JAWABAN_SAH);
+  kosong.recommendations.rekomendasi = [];
+  const r = rekamRekomendasi(kosong, 200, 5);
+  assert.equal(r.lulus, false);
+  assert.match(r.alasan, /tanpa satu pun butir/);
+  const gagal = rekamRekomendasi(JAWABAN_SAH, 502, 5);
+  assert.equal(gagal.lulus, false);
+  assert.match(gagal.alasan, /status 502/);
 });
