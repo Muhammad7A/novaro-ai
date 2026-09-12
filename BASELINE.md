@@ -85,21 +85,22 @@ No payment/billing system exists. Nothing is stubbed.
 **Command (canonical, matches Cloud Build CI):** `cd server && npm ci && npm test`
 (`npm test` = `node --test --test-concurrency=1`, suite: `server/test/*.test.js`, 37 files, ~8,100 lines; AI is mocked via local fake `ANTHROPIC_BASE_URL`; isolated temp `NOVA_DATA_DIR` per test.)
 
-**Baseline run — 2026-09-08, Node v24.18.0, Windows (Git Bash), npm 12.0.2:**
+**Baseline run — 2026-09-12 (floor diverifikasi ulang pada HEAD `2ad3ea7`; baseline asli 446/0 dijalankan 2026-09-08 pada `5d60203`), Node v24.18.0, Windows (Git Bash), npm 12.0.2:**
 
 ```
-ℹ tests      446
+ℹ tests      535
 ℹ suites     0
-ℹ pass       446
+ℹ pass       535
 ℹ fail       0
 ℹ cancelled  0
 ℹ skipped    0
 ℹ todo       0
-ℹ duration_ms 221842
+ℹ duration_ms 275207
 ```
 
 - **Exit code: 0.** Full log preserved locally at `test_reports/baseline-2026-09-08-node24-win.log` (untracked per `*.log` ignore policy).
-- Note: `test_reports/iteration_3.json` (prior Emergent-agent record) reported **445** pass. The suite has since grown by one test; the delta is expected drift, not a regression. New canonical floor: **446 / 0**.
+- Note: `test_reports/iteration_3.json` (prior Emergent-agent record) reported **445** pass. The suite has since grown by one test; the delta is expected drift, not a regression. New canonical floor: **535 / 0**.
+- Floor diverifikasi ulang 2026-09-12 pada HEAD `2ad3ea7` (Node v24 win32): 535 / 0 — Session G.
 - Not part of `npm test`: `backend/tests/test_novaro.py` (6 pytest live-integration tests against a deployed preview URL, incl. 2 live Gemini calls) and `server/scripts/smoke.js` (`npm run smoke`, one real paid AI call). Neither was run for this baseline.
 
 ## 7. Known deployment dependencies
@@ -168,5 +169,5 @@ Production-relevant environment variables read by the code:
 
 1. `v3-baseline` / `baseline/v3` pin commit `5d60203e938611fa07366fb40282d701b41d740d`. **Do not move or delete them.**
 2. Every V3 change ships as a traceable commit/PR against `main`; PRs should state their delta relative to this baseline.
-3. The test floor is **446 pass / 0 fail** (§6). Any V3 change that lowers the count or turns a test red without an explicitly justified, recorded decision is a regression.
+3. The test floor is **535 pass / 0 fail** (§6). Any V3 change that lowers the count or turns a test red without an explicitly justified, recorded decision is a regression.
 4. The two security flags in §8 must be resolved in dedicated, reviewed commits — never folded into feature work.

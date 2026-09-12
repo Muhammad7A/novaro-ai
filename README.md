@@ -47,7 +47,8 @@ yang diperbarui otomatis sampai hari ini.
 ## Pengujian
 
 ```bash
-npm test                        # 360+ uji regresi, layanan AI ditiru
+cd server
+npm test                        # 535 uji regresi, layanan AI ditiru
 ```
 
 ## Catatan
