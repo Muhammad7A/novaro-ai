@@ -421,6 +421,8 @@ All items below are **not recommended now**, each with its governing reason (cla
 
 > **KEPUTUSAN OWNER — direkam 2026-09-12, sesi G fase 2.** Q1 diputuskan: consent v3 **mencakup** evaluasi yang dihitung dari data yang sudah dikumpulkan dan hanya ditampilkan ke peserta sendiri; pemakaian komparatif antar-usaha tetap membutuhkan consent v4 di masa depan. Q8 tertutup di tempatnya: hitungan pin `jejak.test.js` adalah jumlah *emisi* skenario, bukan jumlah *registri* `SKEMA_JEJAK` (lihat komentar pin yang diperbarui sejak `session-g1`).
 
+> **KEPUTUSAN OWNER — direkam 2026-09-13, sesi G lanjutan.** Q7 diputuskan **YA**: output checkup di-persist sebagai advisori jenis 'checkup' — sanitizer tak berubah, trim per jenis tetap berlaku, provenansi sumber+model pola Sesi D, persist HANYA sebagai advisori (nol tulisan uang — pin pembukuan tak berubah), dan prosanya otomatis keluar dari ekspor anonim lewat aturan whitelist yang ada (ter-pin di `ekspor-anonim`). Pin lama "output checkup tidak pernah persist" diganti secara sadar menjadi "persist HANYA sebagai advisori, tidak ke tempat lain". Tindak lanjut tercatat: evaluasi checkpoint tetap khusus 'rekomendasi' (checkup belum punya metode penilaian bulanan — tidak dipaksa); komentar basi "hasil check-up tidak pernah disimpan" di `fokus-harian.js` (komentar aturan 7 — perilakunya tetap benar, ia membaca slot rekomendasi) menyusul pada giliran pemiliknya.
+
 ---
 
 **END OF REPORT** — Session G produced this file only. No source modified, no commits, no pushes, no deploys, no cloud spend. Per the mission: STOP here; Sessions H–J are proposals, not authorizations.

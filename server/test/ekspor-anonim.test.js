@@ -69,6 +69,12 @@ const { store } = await import('../lib/store.js');
       perItem: [],
     }]);
   }
+  // Benih checkup persist (keputusan YA 2026-09-13): prosa item + insight-nya
+  // wajib ikut dihapus dari ekspor anonim — aturan whitelist yang sama.
+  await store.simpanCheckup(user.id, {
+    item: [{ tipe: 'perhatian', teks: 'Prosa checkup zaraza item — wajib terfilter.' }],
+    insight: 'Prosa checkup zaraza insight — wajib terfilter.',
+  }, { input_tokens: 3, output_tokens: 3 }, { model: 'gemini-2.5-flash-uji' });
   await store.selesaikanPenulisan();
 }
 
@@ -151,6 +157,17 @@ test('advisori & evaluasi: prosa nasihat terfilter di anonim — sinyal, asal, d
   const lengkapAdvisori = readFileSync(path.join(DIR_LENGKAP, 'advisori.csv'), 'utf8');
   assert.match(lengkapAdvisori, /zaraza/, 'mode lengkap memang memuat prosa nasihat');
   assert.match(lengkapAdvisori, /gemini-2\.5-flash-uji/);
+
+  // Prosa CHECKUP (keputusan persist YA 2026-09-13): item DAN insight-nya
+  // keluar dari ekspor anonim lewat aturan whitelist yang sama — item tidak
+  // pernah menjadi kolom sama sekali, insight lewat teks().
+  assert.match(anonimAdvisori, /checkup/, 'rekam checkup ikut terenumerasi di anonim');
+  for (const prosa of ['zaraza item', 'zaraza insight']) {
+    assert.doesNotMatch(anonimSemua, new RegExp(prosa), `prosa checkup "${prosa}" bocor ke ekspor anonim`);
+  }
+  const lengkapCheckupBaris = lengkapAdvisori.split('\n').find((b) => b.includes('checkup'));
+  assert.ok(lengkapCheckupBaris, 'mode lengkap memuat rekam checkup');
+  assert.match(lengkapCheckupBaris, /zaraza insight/, 'insight checkup utuh di mode lengkap');
 
   // Janji BACA-DULU menyebut tabel baru dan nasihatnya secara eksplisit.
   const janji = readFileSync(path.join(DIR_ANONIM, 'BACA-DULU.txt'), 'utf8');

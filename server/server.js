@@ -1535,7 +1535,16 @@ app.post(
         signal: controller.signal,
       });
       const hasil = sanitasiCheckup(mentah);
-      await store.recordUsage(req.user.id, usage);
+      /*
+       * Persist checkup DIAKTIFKAN (keputusan owner YA 2026-09-13 — menutup
+       * Open Question #7): hasil yang sama yang tampil di layar ikut direkam
+       * sebagai advisori jenis 'checkup' — sanitizer tak berubah, trim per
+       * jenis tetap berlaku, provenansi 'ai' + model dari pola Sesi D, dan
+       * usage berangkat dalam penulisan yang sama. Gagal di atas sini
+       * (penyedia/sanitizer) berarti TIDAK ADA yang ter-append — fail-closed
+       * jalur yang sudah ada. Checkup tetap NOL tulisan uang.
+       */
+      await store.simpanCheckup(req.user.id, hasil, usage, { model: modelAktif() });
       res.json({ hasil, anggaran: await anggaranUntuk(req.user) });
     } catch (err) {
       if (controller.signal.aborted) {

@@ -1080,8 +1080,8 @@ export const store = {
   },
 
   /**
-   * Checkup hasil AI kini diingat — keluaran sanitizer yang sama, satu
-   * penulisan untuk usage + rekam advisori.
+   * Checkup hasil AI diingat — keluaran sanitizer yang sama, satu penulisan
+   * untuk usage + rekam advisori.
    *
    * Dulu checkup sengaja tidak pernah disimpan (hanya ke layar) — dan pembersih
    *nya tidak berubah sedikit pun. Yang berubah adalah nasihat yang menguap:
@@ -1089,8 +1089,9 @@ export const store = {
    * apakah kejadiannya". Rekamannya append-only murni: checkup tidak menimpa
    * slot mana pun dan tidak pernah menyentuh transaksi.
    *
-   * Rute checkup (server.js) akan menukar `recordUsage`-nya dengan panggilan
-   * ini pada fase wiring rute — di sini jalannya disiapkan dan diuji.
+   * WIRED (keputusan owner YA 2026-09-13): rute checkup kini memanggil metode
+   * ini menggantikan recordUsage-nya — keputusan Open Question #7 laporan
+   * Sesi G dicatat di sana.
    */
   async simpanCheckup(userId, hasil, usage, provensi = {}) {
     return update((db) => {

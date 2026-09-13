@@ -9,6 +9,13 @@
  *   - jatah anggaran checkup terdaftar,
  *   - dan bahwa check-up tidak pernah menyimpan transaksi apa pun.
  *
+ * PERSIST CHECKUP — keputusan owner YA 2026-09-13 (menutup Open Question #7):
+ * keluaran checkup kini TERSIMPAN, dan hanya sebagai advisori jenis 'checkup'
+ * (bentuk ter-sanitasi, trim per jenis, provenansi sumber+model). Pin lama
+ * "output checkup tidak pernah persist" DIGANTI secara sadar menjadi pin baru
+ * "persist HANYA sebagai advisori, tidak ke tempat lain" — lihat uji di bawah.
+ * Pin pembukuan (nol tulisan uang) TIDAK berubah.
+ *
  *   npm test
  */
 import assert from 'node:assert/strict';
@@ -191,8 +198,83 @@ test('jalur bahagia: AI menjawab, hasil bersih sampai ke peserta dan jatah terca
     assert.ok(hariIni && hariIni.token > 0, 'pemakaian AI checkup harus ikut tercatat');
     const tersimpan = await store.findUserById(user.id);
     assert.ok((tersimpan?.usage?.requests ?? 0) >= 1, 'hitungan permintaan ikut naik');
+
+    // Persist checkup (keputusan YA 2026-09-13): hasil yang tampil di layar
+    // ikut direkam sebagai advisori — bentuk sanitizer PERSIS, provenansi
+    // Sesi D, event contentless; usage berangkat dalam penulisan yang sama.
+    const adv = tersimpan.advisori.filter((a) => a.jenis === 'checkup');
+    assert.equal(adv.length, 1, 'satu rekam checkup ter-append');
+    assert.deepEqual(adv[0].isi, data.hasil, 'isi = keluaran sanitizer persis');
+    assert.equal(adv[0].sumber, 'ai');
+    assert.ok(adv[0].model, 'model ikut tercatat — pola provenansi Sesi D');
+    assert.match(adv[0].id, /^adv_[0-9a-f]{12}$/);
+    const evCheckup = tersimpan.events.find((e) => e.type === 'advisori_dibuat' && e.meta.jenis === 'checkup');
+    assert.deepEqual(evCheckup.meta, { id: adv[0].id, jenis: 'checkup', sumber: 'ai' });
   } finally {
     palsu.close();
+    delete process.env.ANTHROPIC_BASE_URL;
+    delete process.env.ANTHROPIC_API_KEY;
+  }
+});
+
+test('PIN BARU: persist HANYA sebagai advisori — tidak ke tempat lain', async () => {
+  const { user: u2 } = await store.createUser({ name: 'Bu Hanya Advi', business: '', batch: 'B1' });
+  const hasil = sanitasiCheckup({
+    item: [{ tipe: 'ok', teks: 'aman.' }], insight: 'pertahankan.',
+  });
+  await store.simpanCheckup(u2.id, hasil, { input_tokens: 5, output_tokens: 5 }, { model: 'm-cek' });
+  const u = await store.findUserById(u2.id);
+
+  // Satu-satunya jejak: advisori + eventnya + usage. Slot rekomendasi,
+  // transaksi, progres, dan consent tidak tersentuh sama sekali.
+  assert.equal(u.advisori.length, 1);
+  assert.equal(u.recommendations, null, 'slot rekomendasi tidak ikut tersentuh');
+  assert.equal(u.transactions.length, 0, 'nol baris uang — pin pembukuan tetap');
+  assert.deepEqual(u.progress, {});
+  const jenisPeristiwa = [...new Set(u.events.map((e) => e.type))];
+  assert.deepEqual(jenisPeristiwa, ['user_created', 'advisori_dibuat']);
+});
+
+test('trim per jenis: checkup terpegah di kap yang sama dengan rekomendasi', async () => {
+  const { user: u3 } = await store.createUser({ name: 'Bu Trim Cek', business: '', batch: 'B1' });
+  const { MAKS_PER_JENIS } = await import('../lib/advisori.js');
+  const hasil = sanitasiCheckup({ item: [{ tipe: 'ok', teks: 'x.' }], insight: 'y.' });
+
+  for (let i = 0; i < MAKS_PER_JENIS + 3; i++) {
+    await store.simpanCheckup(u3.id, hasil, { input_tokens: 1, output_tokens: 1 });
+  }
+  const u = await store.findUserById(u3.id);
+  const checkup = u.advisori.filter((a) => a.jenis === 'checkup');
+  assert.equal(checkup.length, MAKS_PER_JENIS, 'kap per jenis terpegah — checkup tidak menumpuk tanpa batas');
+  // Jejak eventnya tidak pernah dipangkas — riwayat lengkap tetap ada di sana.
+  assert.equal(u.events.filter((e) => e.type === 'advisori_dibuat').length, MAKS_PER_JENIS + 3);
+});
+
+test('fail-closed: penyedia mati → 502, tidak ada yang ter-append', async () => {
+  const { user: u4 } = await store.createUser({ name: 'Bu Gagal Cek', business: '', batch: 'B1' });
+  await store.saveConsent(u4.id, CONSENT_VERSION);
+  const sebelum = await store.findUserById(u4.id);
+
+  // Port yang SUDAH ditutup: koneksi ditolak — kegagalan transport nyata
+  // (E-2: → 502, refund). Env lengkap supaya lolos gerbang isConfigured()
+  // dan yang diuji benar-benar kegagalan provider, bukan 503 konfigurasi.
+  const { createServer: buatServer } = await import('node:http');
+  const mati = buatServer(() => {});
+  await new Promise((r) => mati.listen(0, r));
+  const portMati = mati.address().port;
+  await new Promise((r) => mati.close(r));
+  process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${portMati}`;
+  process.env.ANTHROPIC_API_KEY = 'sk-ant-uji';
+
+  try {
+    const res = await minta('/api/checkup', { kode: u4.accessCode, method: 'POST' });
+    assert.equal(res.status, 502);
+
+    const sesudah = await store.findUserById(u4.id);
+    assert.equal(sesudah.advisori?.length ?? 0, 0, 'kegagalan provider tidak meninggalkan rekam');
+    assert.equal(sesudah.usage.requests, sebelum.usage.requests, 'usage juga tak bergerak — nol efek samping');
+    assert.equal(sesudah.events.filter((e) => e.type === 'advisori_dibuat').length, 0);
+  } finally {
     delete process.env.ANTHROPIC_BASE_URL;
     delete process.env.ANTHROPIC_API_KEY;
   }
