@@ -9,6 +9,11 @@
 # Kredensial service-account (Google Vertex AI) — jangan pernah di-commit
 credentials/
 
+# Kredensial uji riset (kode validator/demo) — dikelola di luar git.
+# Sudah pernah ter-commit di sejarah awal; kode validator harus dirotasi
+# owner — sejarah lama tetap berisi, tanpa history rewrite.
+memory/test_credentials.md
+
 # Dependensi
 node_modules/
 

@@ -1,0 +1,259 @@
+{
+  "alat": "eval-advisori",
+  "versi": 1,
+  "dijalankan": "2026-09-13T12:33:04.482Z",
+  "fixture": "scripts/fixtures/golden-advisori.json",
+  "skor": "23/23",
+  "ok": true,
+  "liputan": {
+    "terliput": 30,
+    "total": 30,
+    "takTerliput": [],
+    "aturanAsing": []
+  },
+  "kasus": [
+    {
+      "id": "r01",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "lolos-utuh"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "r02",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "potong-ringkasan-600",
+        "potong-judul-80",
+        "potong-alasan-400",
+        "potong-dampak-200",
+        "potong-langkah-200",
+        "maks-4-langkah",
+        "maks-5-peringatan",
+        "potong-peringatan-200",
+        "maks-3-target",
+        "potong-target-200"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "r03",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "maks-5-rekomendasi"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "r04",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "buang-hantu"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "r05",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "prioritas-tengah"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "r06",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "modul-rentang"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "r07",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "langkah-kosong-dibuang"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "r08",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "502-rekomendasi-kosong"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "r09",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "502-bukan-obyek"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "r10",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "502-ringkasan-kosong"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "r11",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "medan-asing-dibuang"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "r12",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "elemen-bukan-obyek",
+        "maks-5-rekomendasi"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "r13",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "langkah-bukan-daftar"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "r14",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "502-bukan-obyek"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "r15",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "batas-presisi",
+        "modul-rentang"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "c01",
+      "jenis": "checkup",
+      "aturan": [
+        "lolos-utuh"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "c02",
+      "jenis": "checkup",
+      "aturan": [
+        "tipe-jatuh-perhatian"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "c03",
+      "jenis": "checkup",
+      "aturan": [
+        "maks-6-item",
+        "teks-kosong-dibuang"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "c04",
+      "jenis": "checkup",
+      "aturan": [
+        "potong-teks-200",
+        "potong-insight-400"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "c05",
+      "jenis": "checkup",
+      "aturan": [
+        "502-item-kosong"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "c06",
+      "jenis": "checkup",
+      "aturan": [
+        "502-insight-kosong"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "c07",
+      "jenis": "checkup",
+      "aturan": [
+        "502-bukan-obyek"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "c08",
+      "jenis": "checkup",
+      "aturan": [
+        "batas-presisi"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    }
+  ]
+}

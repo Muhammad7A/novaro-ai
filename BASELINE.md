@@ -99,8 +99,9 @@ No payment/billing system exists. Nothing is stubbed.
 ```
 
 - **Exit code: 0.** Full log preserved locally at `test_reports/baseline-2026-09-08-node24-win.log` (untracked per `*.log` ignore policy).
-- Note: `test_reports/iteration_3.json` (prior Emergent-agent record) reported **445** pass. The suite has since grown by one test; the delta is expected drift, not a regression. New canonical floor: **535 / 0**.
+- Note: `test_reports/iteration_3.json` (prior Emergent-agent record) reported **445** pass. The suite has since grown by one test; the delta is expected drift, not a regression. New canonical floor: **616 / 0**.
 - Floor diverifikasi ulang 2026-09-12 pada HEAD `2ad3ea7` (Node v24 win32): 535 / 0 — Session G.
+- Floor diverifikasi ulang 2026-09-13 pada HEAD `73895ee` (Node v24 win32): **616 / 0** — Session C. Sejak aturan governance §Baseline governance-3 diubah (2026-09-13), angka kanonik adalah hasil `cd server && npm test` pada HEAD terkini — dokumen ini berhenti menjadi patokan angka kaku.
 - Not part of `npm test`: `backend/tests/test_novaro.py` (6 pytest live-integration tests against a deployed preview URL, incl. 2 live Gemini calls) and `server/scripts/smoke.js` (`npm run smoke`, one real paid AI call). Neither was run for this baseline.
 
 ## 7. Known deployment dependencies
@@ -169,6 +170,6 @@ Production-relevant environment variables read by the code:
 
 1. `v3-baseline` / `baseline/v3` pin commit `5d60203e938611fa07366fb40282d701b41d740d`. **Do not move or delete them.**
 2. Every V3 change ships as a traceable commit/PR against `main`; PRs should state their delta relative to this baseline.
-3. The test floor is **535 pass / 0 fail** (§6). Any V3 change that lowers the count or turns a test red without an explicitly justified, recorded decision is a regression.
+3. **Angka kanonik = hasil `cd server && npm test` pada HEAD terkini.** Floor naik per sesi — dokumen ini berhenti menjadi patokan angka kaku; §6 hanya menyimpan riwayat pengukuran. Patokan yang tetap: nol fail, nol skip, dan setiap test merah tanpa keputusan tercatat yang eksplisit adalah regresi. (Rekaman terakhir: 616/0, diverifikasi 2026-09-13 di HEAD `73895ee`, Node v24 win32.)
 4. Every change to `server/lib/prompts.js` MUST run the advisory regression harness first — `cd server && node scripts/eval-advisori.js --simpan` — and attach the dated result artifact (`test_reports/eval-advisori-<date>.json`) to the commit/PR. The harness is an operator gate over the prompt↔sanitizer contract (golden set: `server/scripts/fixtures/golden-advisori.json`, 23 cases / 30 rules); it deliberately sits OUTSIDE the CI floor. Qualitative comparison of two prompt drafts uses the research rubric `server/scripts/judge-rubrik-advisori.md` + `eval-judge-advisori.js` (agreement between drafts, never a single number — research tool, never a CI gate).
 5. The two security flags in §8 must be resolved in dedicated, reviewed commits — never folded into feature work.
