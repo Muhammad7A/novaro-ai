@@ -601,12 +601,28 @@ function bangunProgres(persona) {
 }
 
 /** Kejadian (events) yang wajar untuk peserta seaktif ini — dibatasi agar tidak membengkak. */
-function bangunEvents(persona, hariIni, jumlahTrx) {
+function bangunEvents(persona, hariIni, transactions) {
   const ev = [];
   // Bentuk sama dengan pushEvent di store.js: {ts, type, meta} — ekspor
   // penelitian membaca 'type'; bentuk lain diam-diacatatan kosong di events.csv.
   const dorong = (type, ts, meta = {}) => ev.push({ ts, type, ...(Object.keys(meta).length ? { meta } : {}) });
   const waktu = (hariLalu, h = 9) => `${tanggalMundur(hariIni, hariLalu)}T${String(h).padStart(2, '0')}:${String((hariLalu * 13) % 60).padStart(2, '0')}:00.000Z`;
+
+  // Kosakata SATU sumber (Sesi G lanjutan — menutup tanya terbuka #9 laporan
+  // Sesi G): demo memancarkan transaction_added PER BARIS, meta bentuk SAMA
+  // PERSIS dengan mutator store (jenis, kategori, tanggal, mundur, origin) —
+  // bukan lagi ringkasan jamak. Nominal tetap tidak pernah masuk jejak. Baris
+  // didorong PALING AWAL supaya sapuan batas 60 di bawah memangkas yang
+  // terlama dulu dan peristiwa lain (login, modul) tetap hidup di jejak demo.
+  for (const t of transactions) {
+    dorong('transaction_added', t.createdAt, {
+      jenis: t.jenis,
+      kategori: t.kategori,
+      tanggal: t.tanggal,
+      mundur: t.tanggal < String(t.createdAt ?? '').slice(0, 10),
+      origin: 'manual',
+    });
+  }
 
   dorong('user_created', waktu(persona.hariMulaiLalu + 1), { batch: 'DEMO', seed: true });
   for (let s = 1; s <= persona.sesiSelesai; s += 1) {
@@ -619,7 +635,6 @@ function bangunEvents(persona, hariIni, jumlahTrx) {
   dorong('report_viewed', waktu(3, 10), { bulan: 3 });
   dorong('chat_turn', waktu(4, 10), { pesan: 2 });
   dorong('recommendations_generated', waktu(5, 8), { jumlah: 3, peringatan: 0 });
-  dorong('transactions_added', waktu(1, 20), { jumlah: jumlahTrx });
 
   return ev.slice(-60);
 }
@@ -655,7 +670,7 @@ export function isiDemoPenuh(persona, hariIni = tanggalWIB(), kunciSeed = person
     recommendations: susunRekomendasi(persona, transactions, hariIni),
     chat: susunChat(persona, transactions, hariIni),
     transactions,
-    events: bangunEvents(persona, hariIni, transactions.length),
+    events: bangunEvents(persona, hariIni, transactions),
     usage: { requests: 23, inputTokens: 41200, outputTokens: 9800 },
     demoMeta: { versi: 1, dibuatPada: new Date().toISOString(), generatedHingga: hariIni },
   };

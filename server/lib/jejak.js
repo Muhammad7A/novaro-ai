@@ -102,12 +102,12 @@ export const SKEMA_JEJAK = {
   ai_feedback: { rating: 'kata', 'alasan?': 'teks500?', 'chatIndex?': 'angka?' },
 
   /* --- dari lib/demo-data.js (dorong; akun batch DEMO) --- */
-  /* Catatan: demo memakai nama jamak `transactions_added` dengan meta hitungan
-   * — berbeda dari `transaction_added` milik store. didaftarkan APA ADANYA di
-   * sini supaya tidak gagal uji, tapi percabangan kosakata ini perlu
-   * diputuskan pemilik demo: dua nama untuk dua bentuk adalah utang kecil
-   * yang menagih mahal nanti. */
-  transactions_added: { jumlah: 'angka' },
+  /* Sejak unifikasi kosakata (Sesi G lanjutan — menutup tanya terbuka #9),
+   * demo memancarkan `transaction_added` PER BARIS dengan meta bentuk sama
+   * persis dengan store — nama jamak `transactions_added {jumlah}` DIHAPUS
+   * dari registri (declared change): dua nama untuk dua bentuk tidak pernah
+   * menagih murah, dan jejak demo kini terbaca dengan kosakata yang sama
+   * dengan jejak peserta sungguhan. */
 };
 
 /*

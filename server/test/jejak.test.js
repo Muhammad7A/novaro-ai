@@ -81,7 +81,7 @@ test('seluruh mutator menghasilkan peristiwa yang terdaftar dan sah bentuknya', 
   // Catatan hitung (menutup tanya terbuka Sesi G — 25 vs 26): angka di pin ini
   // adalah jumlah EMISI skenario ini, bukan jumlah REGISTRI. SKEMA_JEJAK sengaja
   // bisa memuat lebih banyak jenis daripada yang terlihat di sini (mis.
-  // `transactions_added` hanya dipancarkan hidrasi demo) — dua angka itu beda
+  // `proposal_rejected` belum ada di skenario ini) — dua angka itu beda
   // konteks, bukan kontradiksi.
   assert.equal(
     jenisTerlihat,
