@@ -76,8 +76,19 @@ export function tandaBatasStream(signalLuar) {
     controller.abort();
     tolakSekarang();
   };
+  /*
+   * Sengaja TANPA unref. Timer yang di-unref tidak menjaga event loop tetap
+   * hidup: bila pembacaan stream adalah satu-satunya yang menunggu (uji dengan
+   * loop kosong; drain saat shutdown), loop habis dan deadline TIDAK PERNAH
+   * menembak — proses selesai dengan janji yang masih menggantung. Node 22 dan
+   * Node 24 berbeda perilaku drainnya, jadi cacat ini hijau di satu versi dan
+   * merah di CI (bukti: build e152256c, node:22-slim). Deadline yang ref'd
+   * menembak bahkan di loop kosong di versi Node mana pun, dan tidak menambah
+   * risiko di produksi: loop server selalu dijaga listener HTTP, dan
+   * `selesai()` di finally pemanggil menjamin timer tidak hidup lebih lama
+   * dari pembacaan yang dijaganya.
+   */
   const timer = setTimeout(saatHabis, batasStreamMs());
-  timer.unref?.();
 
   const saatLuar = () => controller.abort(signalLuar?.reason);
   if (signalLuar) {
