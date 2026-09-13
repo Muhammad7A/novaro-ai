@@ -4,6 +4,20 @@
 **Scope authority:** AI-TRUST-AUTOPILOT-DECISION.md (B′, prerequisite §"Mutator hardening", items 1–2, 5) + FINANCIAL-DATA-MODEL.md §1.1 validation rules.
 **Base:** HEAD `c751756`. **Concurrent session:** Session B worked in this same tree during this batch (recommendations sanitizer: `lib/rekomendasi.js`, `test/rekomendasi.test.js`, `SESSION-B-AI-TRUST-AUDIT.md`, two import-line edits in `server.js`). Edits are disjoint; both suites green. See §8.
 
+## 9. M3 addendum — modal boundary ('modal-masuk', laba:false) — 2026-09-13, HEAD 73895ee
+
+Owner decision: capital moved INTO the business is not income. Withdrawal was NOT created — it already exists as `prive`. Scope held to: `cashbook.js`, `metrics.js`, `store.js`, `nota.js`, tests. Untouched by instruction: `jejak.js`, `advisori.js`, `demo-data.js`, `index.html`.
+
+- `cashbook.js`: `KATEGORI.masuk['modal-masuk'] { label:'Modal', laba:false }` (the declared enum widening); summary gains named column `modalMasuk`; `KOLOM_RUPIAH` includes it so setara-sebulan carries it. The laba math needed NO change: `labaMasuk` only sums `laba:true` categories — exclusion falls out of the flag, one source, no re-declaration.
+- `metrics.js`: zero edits — verified by identity tests that `computeMetrics` reads only summary columns (`omzet = setara.penjualan + setara.lainMasuk`, `labaBersih = setara.labaBersih`, `saldoKas` includes modal). Score, timeline, fokus, KUR, kartu all consume the same fields (grepped every consumer: prompts.js, fokus-harian.js, export.js, server.js routes — all read summary columns, none re-declare the enum).
+- `store.js`: zero edits — mutator gate is `isValidKategori`, so the widened enum flows into the hardened mutator automatically; the conscious gate-pin is the new tests (acceptance for `masuk`, refusal for `keluar` — withdrawal is prive — and still-closed enum).
+- `nota.js`: keyword map — `'modal masuk'` REMOVED from `lain-masuk` (was silently counting capital deposits as laba — the exact lie M3 stops); new `'modal-masuk': ['modal', 'setoran']`; `refund/pengembalian/cashback` stay in `lain-masuk` (genuine income corrections).
+- Export: verified `scripts/export.js:224` writes `t.kategori` raw → new category appears verbatim; covered e2e via the `/api/my-data` assertion (user-facing download path).
+- SPA & prompts verified dynamic (index.html builds chips from the GET `/api/cashbook` payload `kas.kategoriDef`; prompts use free-form keywords + `kategoriLabel`) — **no index.html touch (by instruction), no prompts.js edit → no eval-advisori harness obligation triggered.**
+- `modal.test.js` (9 tests): enum gate + mutator pin; kas-not-laba math (raw + setara); one-source identity via computeMetrics (omzet/laba/skor unchanged by modal, saldoKas exact +2jt on `berjalan`); route e2e (201, origin manual, dasbor/me/my-data consistent, keluar→400); NO-RETROFIT (legacy `lain-masuk` row stays as recorded and stays counted in laba — honest degraded mode); nota keyword mapping incl. jenis leak guard; event meta stays closed-vocabulary (jejak-compatible).
+- No-retrofit stance: rows recorded as `lain-masuk` before M3 are NOT reclassified; they remain counted in laba as recorded. Per-row remediation (void-and-restate) belongs to M4, consent-v3-gated.
+- Follow-up (outside Session A files, for owner to assign): `latihan.js` module-3 quiz penjelasan still says pinjaman "dicatat sebagai pemasukan lain" — kunci B stays correct; the explanation should name the Modal category when a latihan window opens.
+
 ---
 
 ## 1. Repository evidence map

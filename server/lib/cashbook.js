@@ -30,6 +30,20 @@ const num = (v) => {
 export const KATEGORI = {
   masuk: {
     penjualan: { label: 'Penjualan', short: 'Penjualan', laba: true },
+    /*
+     * MODAL BUKAN PENGHASILAN (batas modal — M3, keputusan 2026-09-13).
+     *
+     * Uang yang dipindahkan pemilik ke kas usaha — setoran awal, tambahan
+     * modal — bukan hasil jualan. Sebelum kategori ini ada, catatan semacam
+     * ini hanya punya dua tempat, dan dua-duanya salah: "penjualan"
+     * menggelembungkan omzet dan laba di laporan yang dibaca bank,
+     * "lain-masuk" ikut menggelembungkan laba karena laba:true. Di sini
+     * modal-masuk mengubah SALDO KAS saja — uang nyata memang berpindah —
+     * tanpa pernah menyentuh laba. Cermin dari prive di sisi keluar, yang
+     * juga mengurangi kas tanpa mengurangi laba; penarikan modal tidak
+     * dibuat karena memang sudah ada kategori itu.
+     */
+    'modal-masuk': { label: 'Modal', short: 'Modal', laba: false },
     'lain-masuk': { label: 'Pemasukan lain', short: 'Lain-lain', laba: true },
   },
   keluar: {
@@ -279,6 +293,9 @@ export function summarizeMonth(transactions = [], month, now = new Date()) {
     cakupan: hariBerjalan > 0 ? Math.min(1, hariTercatat / hariBerjalan) : 0,
     penjualan,
     lainMasuk: perKategori['lain-masuk'] ?? 0,
+    // Modal punya kolom sendiri: kenaikan saldo kas yang datang dari
+    // pindahan modal tidak boleh terbaca seperti usaha yang meledak.
+    modalMasuk: perKategori['modal-masuk'] ?? 0,
     belanjaBahan: perKategori['belanja-bahan'] ?? 0,
     operasional: perKategori.operasional ?? 0,
     lainKeluar: perKategori['lain-keluar'] ?? 0,
@@ -299,7 +316,7 @@ export function summarizeMonth(transactions = [], month, now = new Date()) {
 
 /** Kolom rupiah yang ikut disetarakan ke sebulan penuh. Rasio TIDAK ikut. */
 const KOLOM_RUPIAH = [
-  'penjualan', 'lainMasuk', 'belanjaBahan', 'operasional', 'lainKeluar',
+  'penjualan', 'lainMasuk', 'modalMasuk', 'belanjaBahan', 'operasional', 'lainKeluar',
   'cicilan', 'prive', 'totalMasuk', 'totalKeluar', 'labaBersih', 'saldoKas',
 ];
 

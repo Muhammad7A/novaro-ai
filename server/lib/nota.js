@@ -45,7 +45,15 @@ const PETA_KATEGORI = {
   cicilan: ['cicilan', 'angsuran', 'kredit'],
   'lain-keluar': ['donasi', 'sumbangan', 'hampers'],
   penjualan: ['penjualan', 'jualan', 'terjual', 'omzet'],
-  'lain-masuk': ['modal masuk', 'refund', 'pengembalian', 'cashback'],
+  /*
+   * Modal/setoran → modal-masuk, BUKAN lain-masuk (batas modal, M3).
+   * "modal masuk" pindah dari lain-masuk ke sini: kata kunci itu dulunya
+   * justru membuat setoran modal ikut dihitung laba lewat lain-masuk yang
+   * laba:true — kebohongan angka yang paling disembunyikan, karena kena di
+   * bulan pemilik justru menanam uang ke usahanya.
+   */
+  'modal-masuk': ['modal', 'setoran'],
+  'lain-masuk': ['refund', 'pengembalian', 'cashback'],
 };
 
 /** Format berkas yang boleh dikirim ke AI, beserta tanda pengenal byte-nya. */
