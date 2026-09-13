@@ -2308,10 +2308,41 @@ async function loadRiwayat() {
         <p class="sub" style="margin:2px 0">${escapeHtml(stempelAdvisori(a))}</p>
         ${a.ringkasan ? `<p style="margin:4px 0">${escapeHtml(a.ringkasan)}</p>` : ''}
         ${renderHasilCheckpoint(a.evaluasi)}
+        ${renderTindakAdvisori(a)}
       </div>`).join('');
+    // Satu ketuk: tandai "saya sudah coba" — tombol dilumpuhkan sejak klik
+    // (penangkal ketukan ganda sebelum jawaban server), lalu riwayat dimuat
+    // ulang supaya labelnya disusun ulang dari data server, bukan tebakan UI.
+    box.querySelectorAll('[data-tindak]').forEach((b) => b.addEventListener('click', async () => {
+      b.disabled = true;
+      b.textContent = 'Menandai…';
+      try {
+        await api('/advisori/tindak', { method: 'POST', body: JSON.stringify({ advisoriId: b.dataset.tindak }) });
+        await loadRiwayat();
+      } catch (err) {
+        b.disabled = false;
+        b.textContent = 'Saya sudah coba';
+        toast(err.message || 'Penandaan gagal, coba lagi.');
+      }
+    }));
   } catch {
     box.innerHTML = '<p class="sub" style="margin:0">Riwayat belum bisa dimuat sekarang.</p>';
   }
+}
+
+/*
+ * Tap tindak lanjut (Sesi G lanjutan): pada entri AKTIF, satu ketukan "Saya
+ * sudah coba" merekam peristiwa eksplisit — sinyal yang mengalahkan derivasi
+ * korelasional bila keduanya ada. Yang tampil setelahnya dibaca dari data
+ * server: "kamu menandai mencoba ini (tanggal)" — bukan status karangan UI.
+ */
+function renderTindakAdvisori(a) {
+  if (a.ditindakiPada) {
+    const kapan = new Date(a.ditindakiPada).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    return `<p class="sub" style="margin:6px 0 0">✅ kamu menandai mencoba ini (${escapeHtml(kapan)})</p>`;
+  }
+  if (!a.berlaku) return '';
+  return `<div style="margin-top:8px"><button class="btn btn-ghost" data-tindak="${escapeHtml(a.id)}" type="button">Saya sudah coba</button></div>`;
 }
 
 function renderRecommendations() {

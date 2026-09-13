@@ -129,6 +129,10 @@ test('setiap jenis peristiwa di kode terdaftar — dan tidak ada pendaftaran yan
   const jenisDari = (teks, pola) => [...teks.matchAll(pola)].map((m) => m[1]);
   const terlihat = new Set([
     ...jenisDari(baca('lib/store.js'), /(?:pushEvent|logEvent)\(\s*[^,()\n]+,\s*'([a-z_]+)'/g),
+    // lib/advisori.js ikut dipindai sejak tap tindak lanjut (Sesi G): emitor
+    // advisori_ditindaki hidup di sana (catatTindakAdvisori → store.logEvent),
+    // bukan di store.js — pemindai mengikuti emitor, bukan sebaliknya.
+    ...jenisDari(baca('lib/advisori.js'), /logEvent\(\s*[^,()\n]+,\s*'([a-z_]+)'/g),
     ...jenisDari(baca('server.js'), /logEvent\(\s*[^,()\n]+,\s*'([a-z_]+)'/g),
     // Hanya dorong PERISTIWA (bangunEvents), bukan dorong baris transaksi —
     // pemisahnya definisinya yang bertanda (type, ts, meta).

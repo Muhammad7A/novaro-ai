@@ -75,6 +75,11 @@ export const SKEMA_JEJAK = {
    * status 'terukur'|'tak-terukur' — yang gagal dinilai juga tercatat,
    * supaya ketiadaan hasil terlihat, bukan hening. */
   evaluasi_advisori: { id: 'id', metode: 'kata', status: 'kata' },
+  /* Tap tindak lanjut (Sesi G lanjutan): peserta menandai "saya sudah coba"
+   * pada satu advisori — SATU peristiwa per advisori (idempoten di lib/
+   * advisori.js). Sinyal EKSPLISIT ini mengalahkan derivasi korelasional
+   * bila keduanya ada; contentless — tanpa isi nasihat, tanpa teks bebas. */
+  advisori_ditindaki: { id: 'id' },
   /* Rel proposal T1 surface #1 (scan-nota; addendum §25 2026-09-12).
    * proposal_shown: usulan tampil di layar — id + tingkat keyakinan tutup
    * ('ok'|'warning'|'low'), menunggangi tulisan usage rute scan. TANPA delta

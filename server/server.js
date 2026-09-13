@@ -56,7 +56,7 @@ import { PROFIL_FIELDS, computeMetrics, metricsToText } from './lib/metrics.js';
 import { cashbookContext, LABEL } from './lib/prompts.js';
 import { susunKonteksUsaha } from './lib/konteks-usaha.js';
 import { susunFokusHarian } from './lib/fokus-harian.js';
-import { bulanCheckpoint, evaluasiTertunda } from './lib/advisori.js';
+import { bulanCheckpoint, catatTindakAdvisori, evaluasiTertunda } from './lib/advisori.js';
 import { deteksiKonteks } from './lib/deteksi.js';
 import { buatIdProposal, proposalScanAktif, terbitkanToken } from './lib/proposal.js';
 import { modulPraktikTerverifikasi } from './lib/praktik.js';
@@ -834,6 +834,11 @@ app.get('/api/advisori/riwayat', authenticate, requireConsent, async (req, res) 
 
     const user = await store.findUserById(req.user.id);
     const evaluasiPerId = new Map((user?.evaluasiAdvisori ?? []).map((e) => [e.advisoriId, e]));
+    // Tap eksplisit "saya sudah coba" — sinyal yang mengalahkan derivasi
+    // korelasional bila keduanya ada (ketukan manusia = kata final).
+    const tindakPerId = new Map(
+      (user?.events ?? []).filter((e) => e.type === 'advisori_ditindaki').map((e) => [e.meta.id, e.ts]),
+    );
     const kini = Date.now();
     const riwayat = [...(user?.advisori ?? [])]
       .reverse() // terbaru dulu — riwayat dibaca dari yang paling dekat
@@ -847,6 +852,7 @@ app.get('/api/advisori/riwayat', authenticate, requireConsent, async (req, res) 
         berlaku: Date.parse(a.berlakuHingga) > kini,
         ringkasan: String(a.isi?.ringkasan ?? a.isi?.insight ?? ''),
         evaluasi: evaluasiPerId.get(a.id) ?? null,
+        ditindakiPada: tindakPerId.get(a.id) ?? null,
       }));
 
     // Deteksi konteks: satu pengamatan deterministik dari bulan lengkap terakhir.
@@ -856,6 +862,28 @@ app.get('/api/advisori/riwayat', authenticate, requireConsent, async (req, res) 
   } catch (err) {
     const { status, message } = describeError(err);
     log.error('advisori', 'riwayat gagal', { userId: req.user.id, status, sebab: err?.message ?? String(err) });
+    res.status(status).json({ error: message });
+  }
+});
+
+/**
+ * Tap "saya sudah coba" pada satu advisori (Sesi G lanjutan).
+ *
+ * Pola rute G-2: authenticate + requireConsent, galat bertipe dari lib.
+ * Logikanya (validasi id, idempotensi, append lewat logEvent) milik
+ * catatTindakAdvisori di lib/advisori.js — rute hanya pembungkus HTTP.
+ */
+app.post('/api/advisori/tindak', authenticate, requireConsent, async (req, res) => {
+  try {
+    const hasil = await catatTindakAdvisori(req.user.id, String(req.body?.advisoriId ?? '').trim());
+    if (!hasil) return res.status(404).json({ error: 'Advisori tidak dikenali.' });
+    res.json(hasil);
+  } catch (err) {
+    if (err?.kode === 'id-advisori') {
+      return res.status(400).json({ error: err.message });
+    }
+    const { status, message } = describeError(err);
+    log.error('advisori', 'tap tindak lanjut gagal', { userId: req.user.id, status, sebab: err?.message ?? String(err) });
     res.status(status).json({ error: message });
   }
 });

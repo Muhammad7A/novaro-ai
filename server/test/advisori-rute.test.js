@@ -32,6 +32,7 @@ process.on('exit', () => rmSync(DATA_DIR, { recursive: true, force: true }));
 
 const { store } = await import('../lib/store.js');
 const { sanitasiRekomendasi } = await import('../lib/rekomendasi.js');
+const { periksaMetaJejak } = await import('../lib/jejak.js');
 const { CONSENT_VERSION } = await import('../lib/consent.js');
 const app = (await import('../server.js')).default;
 
@@ -234,6 +235,69 @@ test('hook /api/fokus: checkpoint ikut berjalan saat fokus dibaca', async () => 
 
   const disk = penggunaDisk(fokusUser.user.id);
   assert.equal(disk.evaluasiAdvisori.length, 1, 'fokus membawa checkpoint yang jatuh tempo');
+});
+
+/* ---------------------------------------------------- Tap "saya sudah coba" */
+
+const tapUser = await store.createUser({ name: 'Bu Tap', business: '', batch: 'B2' });
+await store.saveConsent(tapUser.user.id, CONSENT_VERSION);
+await store.simpanRekomendasi(tapUser.user.id, rekomendasiBersih(), { input_tokens: 5, output_tokens: 5 }, { model: 'm-uji' });
+const advTap = (await store.findUserById(tapUser.user.id)).advisori[0].id;
+
+test('tap: 401 tanpa kode; 451 tanpa persetujuan; 400 id asing; 404 id tak ada', async () => {
+  const kosong = await minta('/api/advisori/tindak', { method: 'POST', body: JSON.stringify({ advisoriId: advTap }) });
+  assert.equal(kosong.status, 401);
+
+  const belum = await store.createUser({ name: 'Belum Tap', business: '', batch: 'B2' });
+  const t451 = await minta('/api/advisori/tindak', { kode: belum.accessCode, method: 'POST', body: JSON.stringify({ advisoriId: advTap }) });
+  assert.equal(t451.status, 451);
+
+  const asing = await minta('/api/advisori/tindak', { kode: tapUser.accessCode, method: 'POST', body: JSON.stringify({ advisoriId: 'bukan-id' }) });
+  assert.equal(asing.status, 400);
+
+  const hantu = await minta('/api/advisori/tindak', { kode: tapUser.accessCode, method: 'POST', body: JSON.stringify({ advisoriId: 'adv_000000000000' }) });
+  assert.equal(hantu.status, 404);
+});
+
+test('tap: satu ketukan = satu peristiwa; tap kedua id sama = no-op idempoten', async () => {
+  const t1 = await minta('/api/advisori/tindak', { kode: tapUser.accessCode, method: 'POST', body: JSON.stringify({ advisoriId: advTap }) });
+  assert.equal(t1.status, 200);
+  assert.deepEqual(await t1.json(), { sudah: false });
+
+  // Kebenaran disk: peristiwa contentless {id}, tanpa teks, tanpa nominal.
+  let disk = penggunaDisk(tapUser.user.id);
+  const tap = disk.events.filter((e) => e.type === 'advisori_ditindaki');
+  assert.equal(tap.length, 1);
+  assert.deepEqual(tap[0].meta, { id: advTap });
+  assert.deepEqual(periksaMetaJejak('advisori_ditindaki', tap[0].meta), []);
+
+  // Riwayat membeberkannya dengan tanggal — sinyal eksplisit tampil apa adanya.
+  const r1 = await (await minta('/api/advisori/riwayat', { kode: tapUser.accessCode })).json();
+  assert.ok(r1.riwayat[0].ditindakiPada, 'riwayat membawa waktu tap');
+
+  // Tap kedua: no-op — bukan peristiwa kedua, bukan penimpaan.
+  const t2 = await minta('/api/advisori/tindak', { kode: tapUser.accessCode, method: 'POST', body: JSON.stringify({ advisoriId: advTap }) });
+  assert.equal(t2.status, 200);
+  assert.deepEqual(await t2.json(), { sudah: true });
+  disk = penggunaDisk(tapUser.user.id);
+  assert.equal(disk.events.filter((e) => e.type === 'advisori_ditindaki').length, 1, 'idempoten: satu keputusan, satu peristiwa');
+});
+
+test('tap: nol tulisan uang — transaksi dan slot tidak tersentuh', async () => {
+  const sebelum = penggunaDisk(tapUser.user.id);
+  await minta('/api/advisori/tindak', { kode: tapUser.accessCode, method: 'POST', body: JSON.stringify({ advisoriId: advTap }) });
+  const sesudah = penggunaDisk(tapUser.user.id);
+  assert.equal(sesudah.transactions.length, sebelum.transactions.length);
+  assert.equal(sesudah.recommendations?.ringkasan, sebelum.recommendations?.ringkasan, 'slot tetap utuh — tap bukan tulisan uang');
+});
+
+test('HTML: tombol "Saya sudah coba" + label kejujuran + endpoint terekam', () => {
+  const html = readFileSync(path.join(AKAR, 'public', 'index.html'), 'utf8');
+  assert.match(html, /Saya sudah coba/, 'tombol satu-ketuknya ada');
+  assert.match(html, /kamu menandai mencoba ini \(/, 'label kebenaran tampilan membaca data server');
+  assert.match(html, /\/advisori\/tindak/, 'endpoint eksplisit yang dipanggil');
+  assert.match(html, /renderTindakAdvisori/, 'hanya entri aktif yang menawarkan tombol');
+  assert.doesNotMatch(html, /gemini/i);
 });
 
 /* --------------------------------------------------- Kejujuran tampilan */

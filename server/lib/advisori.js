@@ -223,6 +223,47 @@ export function evaluasiTertunda(advisoris, evaluasiAda, bulanMetrics, { kini = 
 }
 
 /**
+ * Tap tindak lanjut: peserta menandai "saya sudah coba" pada satu advisori.
+ *
+ * Append-nya lewat store.logEvent — jalur tulis terserialisasi publik untuk
+ * peristiwa yang berdiri sendiri (lock, antrean, satu flush) — TANPA
+ * menyentuh store.js (milik window A). Impor store di dalam fungsi, bukan di
+ * kepala modul: store.js mengimpor advisori.js, jadi siklusnya sengaja
+ * dibuat lazy supaya tidak ada pemuatan melingkar saat modul dievaluasi.
+ *
+ * IDEMPOTEN — dan batasnya diakui terbuka: pemeriksaan "sudah pernah" adalah
+ * baca-cek lalu tulis, BUKAN satu mutator atomik. Ketukan berurutan (kasus
+ * yang di-pin: tap kedua untuk id sama) aman — tulisan pertama sudah menjadi
+ * peristiwa sebelum bacaan kedua. Dua tap SUNGGUHAN bersamaan masih punya
+ * jendela balapan; penangkal praktisnya tombol peramban yang dilumpuhkan
+ * sejak klik, dan deployment satu-penulis. Idempotensi di-dalam-kunci
+ * menuntut metode store baru — urusan window A bila pernah dibutuhkan.
+ *
+ * Sinyal EKSPLISIT ini mengalahkan derivasi korelasional ("ada tindakan
+ * tercatat" dari praktik/angka) bila keduanya ada — ketukan manusia adalah
+ * kata final soal "sudah dicoba".
+ *
+ * @returns {Promise<{sudah: boolean}|null>} null = pengguna atau advisori tidak ada (404 di rute)
+ */
+export async function catatTindakAdvisori(userId, id) {
+  if (!/^adv_[0-9a-f]{12}$/.test(String(id ?? ''))) {
+    const err = new Error('Id advisori tidak dikenali.');
+    err.kode = 'id-advisori';
+    err.status = 400;
+    throw err;
+  }
+  const { store } = await import('./store.js');
+  const user = await store.findUserById(userId);
+  if (!user?.advisori?.some((a) => a.id === id)) return null;
+  const peristiwa = user.events ?? [];
+  if (peristiwa.some((e) => e.type === 'advisori_ditindaki' && e.meta?.id === id)) {
+    return { sudah: true };
+  }
+  const ev = await store.logEvent(userId, 'advisori_ditindaki', { id });
+  return ev ? { sudah: false } : null;
+}
+
+/**
  * Nilai hasil penilaian satu advisori — MURNI, tanpa rute, tanpa penulisan.
  *
  * Metode v1: `komparsi-bulan`. Bulan periksa adalah PERSIS bulan sesudah bulan
