@@ -46,9 +46,10 @@ test('teks persetujuan menyebut hal-hal yang wajib diberitahukan', () => {
   assert.match(semua, /buku kas|catatan/, 'harus menyebut data apa yang disimpan');
   assert.match(semua, /claude|anthropic/, 'harus menyebut data dikirim ke layanan AI mana');
   assert.match(semua, /gemini|google/, 'dan jalur Gemini (Vertex AI, Google Cloud) ikut disebut — versi 2 dulu menyebut SATU pemroses padahal ada tiga jalur');
-  assert.match(semua, /uji coba/, 'harus jelas bahwa ini uji coba');
+  assert.match(semua, /ketentuan layanan/, 'kerangka komersial: layanan, bukan uji coba (v4)');
   assert.match(semua, /hapus/, 'harus menyebut hak menghapus data');
-  assert.match(semua, /tanpa nama|anonim/, 'harus menjelaskan pemakaian untuk penelitian');
+  assert.match(semua, /meningkatkan layanan/, 'pemakaian data kini untuk layanan pengguna, bukan penelitian (v4)');
+  assert.doesNotMatch(semua, /penelitian|uji coba|peserta/, 'sisa framing riset tidak boleh kembali ke teks persetujuan');
   assert.ok(CONSENT_TEXT.poin.length >= 4, 'teks terlalu ringkas untuk disebut informed consent');
 });
 

@@ -234,21 +234,22 @@ test('kartu publik menyebut asal-usul catatan AI, bukan mengatasnamakan pemilik'
   assert.ok(!/Catatan utama/.test(html), 'kepala generik yang menyamakan catatan AI dengan catatan pemilik sudah tiada');
 });
 
-/* ---------------------------------------------------- D5 — persetujuan v3 */
+/* ------------------------------------------------- D5/G — persetujuan v4 */
 
-test('persetujuan v3: semua pemroses disebut, dan v2 wajib menyetujui ulang', async () => {
+test('persetujuan v4: semua pemroses disebut, kerangka komersial, dan versi lama wajib menyetujui ulang', async () => {
   const { CONSENT_VERSION, CONSENT_TEXT, hasConsented } = await import('../lib/consent.js');
   /*
-   * Keputusan pemilik (SESSION-D5-CONSENT-DECISION.md, opsi 2): redaksi v2
-   * menyebut SATU layanan padahal NOVA_AI_BACKEND punya tiga jalur — dusta
-   * pemroses pada dua konfigurasi. Menurunkan versi di sini berarti
-   * membatalkan keputusan itu; naikkan lagi hanya dengan keputusan baru.
+   * Dua keputusan pemilik menaikkan versi ke 4: D5 (opsi 2) mewajibkan SEMUA
+   * pemroses disebut, dan RESEARCH-DEPENDENCY-REMOVAL.md (2026-09-13) mengganti
+   * kerangka "peserta pilot" dengan ketentuan layanan komersial. Menurunkan
+   * versi di sini berarti membatalkan keduanya; naikkan lagi hanya dengan
+   * keputusan baru.
    */
-  assert.equal(CONSENT_VERSION, 3);
+  assert.equal(CONSENT_VERSION, 4);
   const semua = JSON.stringify(CONSENT_TEXT).toLowerCase();
   assert.match(semua, /claude|anthropic/, 'jalur Anthropic tetap disebut');
   assert.match(semua, /gemini|google/, 'jalur Gemini (Vertex AI, Google Cloud) ikut disebut');
-  assert.equal(hasConsented({ consent: { versi: 2 } }), false, 'partisipan v2 HARUS melihat layar persetujuan lagi');
+  assert.equal(hasConsented({ consent: { versi: CONSENT_VERSION - 1 } }), false, 'persetujuan versi sebelumnya HARUS melihat layar persetujuan lagi');
   assert.equal(hasConsented({ consent: { versi: CONSENT_VERSION } }), true);
 });
 

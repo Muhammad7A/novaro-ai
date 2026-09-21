@@ -1,14 +1,14 @@
 /**
- * Persetujuan peserta pilot.
+ * Ketentuan layanan & privasi Novaro.
  *
- * Program ini mengumpulkan pembukuan keuangan dari pemilik usaha kecil dan
- * mengirim sebagiannya ke layanan AI pihak ketiga. Itu bukan sesuatu yang boleh
- * dianggap disetujui hanya karena seseorang diberi kode akses.
+ * Novaro mengumpulkan pembukuan keuangan dari pemilik usaha dan mengirim
+ * sebagiannya ke layanan AI pihak ketiga untuk diproses. Itu bukan sesuatu
+ * yang boleh dianggap disetujui hanya karena seseorang membuat akun.
  *
- * Persetujuan disimpan BERSAMA NOMOR VERSINYA. Kalau teksnya berubah, orang yang
- * menyetujui teks lama tidak otomatis dianggap menyetujui yang baru — dia akan
- * ditanya lagi. Tanpa nomor versi, catatan persetujuan hanya berarti "pernah
- * menekan tombol", bukan "menyetujui hal yang ini".
+ * Persetujuan disimpan BERSAMA NOMOR VERSINYA. Kalau teksnya berubah, orang
+ * yang menyetujui teks lama tidak otomatis dianggap menyetujui yang baru —
+ * dia akan ditanya lagi. Tanpa nomor versi, catatan persetujuan hanya berarti
+ * "pernah menekan tombol", bukan "menyetujui hal yang ini".
  */
 
 /**
@@ -22,25 +22,28 @@
  *
  * Dua hal diperbaiki bersamaan, dan urutannya penting: nama usaha & lokasi
  * BERHENTI dikirim (lihat prompts.js), lalu teks ini menyebutkan apa yang masih
- * benar-benar terkirim. Memperbaiki teksnya saja berarti hanya membuat
- * pengakuan yang lebih rapi atas hal yang seharusnya tidak dilakukan.
+ * benar-benar terkirim.
  *
  * Versi 3 (keputusan pemilik, tercatat di SESSION-D5-CONSENT-DECISION.md):
  * pernyataan pemroses dulu menyebut SATU layanan, "layanan Claude (Anthropic)",
  * padahal NOVA_AI_BACKEND memilih salah satu dari tiga jalur — anthropic
- * (Anthropic), vertex, dan gemini (keduanya Vertex AI, Google Cloud). Pada dua
- * dari tiga konfigurasi, pernyataan itu keliru menunjuk pemroses datanya.
- * Kini teks menyebut semua pemroses yang mungkin. Perubahan substantif atas
- * siapa yang menerima data → persetujuan ulang diwajibkan, sesuai mekanisme
- * versi yang sudah ada.
+ * (Anthropic), vertex, dan gemini (keduanya Vertex AI, Google Cloud). Kini
+ * teks menyebut semua pemroses yang mungkin.
+ *
+ * Versi 4 (keputusan pemilik 2026-09-13, RESEARCH-DEPENDENCY-REMOVAL.md):
+ * Novaro V3 adalah produk komersial, bukan program uji coba. Kerangka
+ * "persetujuan peserta pilot" diganti ketentuan layanan & privasi biasa:
+ * klaim "uji coba" dan klausul pemakaian data untuk penelitian dihapus; data
+ * dipakai untuk menyediakan dan meningkatkan layanan bagi penggunanya sendiri.
+ * Mekanisme versi, hak unduh, dan hak hapus tidak berubah.
  */
-export const CONSENT_VERSION = 3;
+export const CONSENT_VERSION = 4;
 
 export const CONSENT_TEXT = {
   versi: CONSENT_VERSION,
-  judul: 'Sebelum mulai — apa yang perlu kamu tahu',
+  judul: 'Sebelum mulai — ketentuan layanan & privasi',
   ringkas:
-    'Novaro adalah program pendampingan yang masih dalam tahap uji coba. Kamu bebas berhenti kapan saja, dan datamu bisa kamu unduh atau hapus sendiri.',
+    'Novaro membantu kamu mencatat dan memahami keuangan usahamu. Kamu bebas berhenti kapan saja, dan datamu bisa kamu unduh atau hapus sendiri.',
   poin: [
     {
       judul: 'Apa yang kami simpan',
@@ -61,19 +64,19 @@ export const CONSENT_TEXT = {
         'Karena keterangan transaksi ikut terkirim, sebaiknya jangan menulis nama pelanggan di kolom keterangan — tulis saja "bon pelanggan".',
     },
     {
-      judul: 'Ini uji coba, bukan nasihat profesional',
-      isi: 'Aplikasi ini alat bantu belajar. Ia bukan pengganti akuntan, konsultan pajak, atau penasihat hukum. Keputusan pemberian KUR sepenuhnya ada di bank.',
+      judul: 'Ini alat bantu, bukan nasihat profesional',
+      isi: 'Aplikasi ini alat bantu belajar dan pencatatan. Ia bukan pengganti akuntan, konsultan pajak, atau penasihat hukum. Keputusan pemberian KUR sepenuhnya ada di bank.',
     },
     {
       judul: 'Datamu tetap milikmu',
-      isi: 'Kapan saja kamu bisa mengunduh seluruh datamu, atau menghapusnya sekaligus berhenti dari program. Menghapus berarti benar-benar dihapus — buku kas, profil, dan riwayat percakapan.',
+      isi: 'Kapan saja kamu bisa mengunduh seluruh datamu, atau menghapusnya sekaligus berhenti dari layanan. Menghapus berarti benar-benar dihapus — buku kas, profil, dan riwayat percakapan.',
     },
     {
-      judul: 'Kalau hasilnya dipelajari',
-      isi: 'Pengelola program dapat mempelajari data peserta untuk menilai apakah pendampingan ini membantu. Untuk keperluan itu, data dipakai dalam bentuk tanpa nama: nama, nama usaha, lokasi, dan isi percakapan dihapus lebih dulu.',
+      judul: 'Bagaimana kami meningkatkan layanan',
+      isi: 'Pola pemakaian aplikasi dianalisis untuk memperbaiki layanan ini bagi penggunanya. Analisis memakai data tanpa nama: nama, nama usaha, lokasi, dan isi percakapan dihapus lebih dulu. Data tidak dibagikan ke pihak lain untuk keperluan apa pun.',
     },
   ],
-  penutup: 'Dengan menekan "Saya mengerti dan setuju", kamu bersedia ikut program uji coba ini dengan ketentuan di atas.',
+  penutup: 'Dengan menekan "Saya mengerti dan setuju", kamu menyetujui ketentuan layanan dan keterangan privasi di atas.',
 };
 
 /** Apakah persetujuan pengguna masih berlaku untuk versi teks saat ini? */
