@@ -4,7 +4,7 @@
  * Menyajikan aplikasi web dan menjadi perantara aman ke Claude Sonnet 5.
  * Kunci API hanya ada di server; browser tidak pernah melihatnya.
  */
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -66,9 +66,6 @@ import { KODE_DEMO, isiDemoPenuh, lanjutkanDemo, personaDemo, PERSONA_DEMO } fro
 import { kenaliGambar, sanitasiHasilNota } from './lib/nota.js';
 import { sanitasiCheckup } from './lib/checkup.js';
 import { sanitasiRekomendasi } from './lib/rekomendasi.js';
-import { hitungHasil, instrumen, periksaPengiriman, rekapValidasi } from './lib/validasi.js';
-import { hitungHasilIT, instrumenIT, periksaPengirimanIT, rekapValidasiIT } from './lib/validasi-it.js';
-import { validasiStore } from './lib/validasi-store.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 3000;
@@ -1866,264 +1863,6 @@ app.put('/api/progress', authenticate, requireConsent, async (req, res) => {
   res.json({ progress: await store.saveProgress(req.user.id, progress) });
 });
 
-/* ------------------------------------------------- Validasi materi (ahli) */
-
-/*
- * Lembar validasi materi diisi VALIDATOR AHLI, bukan peserta.
- *
- * Karena itu ia tidak memakai kode akses peserta sama sekali: seorang ahli
- * akuntansi yang menilai kelayakan materi tidak punya — dan tidak boleh punya —
- * jalan masuk ke buku kas peserta mana pun. Yang dipakai satu kode tersendiri
- * dari `.env` (`VALIDASI_KODE`), dibagikan pengelola kepada para validator.
- *
- * Dibaca setiap permintaan, bukan sekali saat start: pengelola bisa mengganti
- * kodenya di tengah jalan tanpa menyalakan ulang server, dan uji otomatis bisa
- * mengatur kodenya sendiri.
- *
- * Bila kodenya belum diatur, seluruh rute ini menjawab 503 dengan kalimat yang
- * menyebutkan apa yang harus diisi. Membiarkannya terbuka tanpa kode akan
- * membuat siapa pun yang menemukan alamatnya bisa menitipkan lembar validasi —
- * dan lembar palsu di antara lembar sungguhan tidak bisa dibedakan lagi
- * sesudahnya.
- */
-const kodeValidasi = () => String(process.env.VALIDASI_KODE ?? '').trim();
-
-/**
- * Membandingkan dua kode tanpa membocorkan panjang atau isi lewat lama waktu.
- * Keduanya di-hash dulu supaya panjangnya selalu sama.
- */
-function kodeCocok(diberikan, benar) {
-  const a = createHash('sha256').update(String(diberikan)).digest();
-  const b = createHash('sha256').update(String(benar)).digest();
-  return timingSafeEqual(a, b);
-}
-
-/**
- * Penjaga rute validasi — memakai pembatas percobaan yang sama dengan peserta.
- *
- * Tanpa pembatas itu, kode validasi bisa ditebak tanpa batas dan tanpa
- * meninggalkan satu baris pun di log. `periksaKodeAkses` sudah menangani
- * penundaan, pencatatan, dan penguncian; yang perlu diberikan hanya cara
- * mencocokkan kodenya.
- */
-async function autentikasiValidator(req, res, next) {
-  const kodeBenar = kodeValidasi();
-  if (!kodeBenar) {
-    return res.status(503).json({
-      error: 'Sistem validasi materi belum diaktifkan. Isi VALIDASI_KODE di berkas .env server, lalu coba lagi.',
-      belumAktif: true,
-    });
-  }
-  const header = req.get('authorization') ?? '';
-  const dikirim = header.startsWith('Bearer ') ? header.slice(7).trim() : String(req.body?.kode ?? '').trim();
-  const hasil = await periksaKodeAkses(
-    req.ip ?? 'tak-dikenal',
-    dikirim,
-    (c) => (c && kodeCocok(c, kodeBenar) ? { rol: 'validator' } : null),
-    req.path,
-  );
-  if (!hasil.user) {
-    return res.status(hasil.status).json({ error: hasil.error ?? 'Kode validasi tidak dikenali. Minta kode ke pengelola penelitian.' });
-  }
-  next();
-}
-
-/*
- * Kode PENGELOLA — terpisah dari kode validator, dan itu bukan kerumitan yang
- * dicari-cari.
- *
- * Rute pengiriman sudah memutuskan bahwa satu validator tidak boleh melihat
- * penilaian rekannya sebelum semuanya selesai. Kalau unduhan rekap dijaga kode
- * yang sama, keputusan itu batal dengan sendirinya: siapa pun yang bisa mengisi
- * lembar juga bisa membaca seluruh lembar yang sudah masuk.
- */
-const kodePengelola = () => String(process.env.VALIDASI_PENGELOLA_KODE ?? '').trim();
-
-/**
- * Penjaga rute pengelola.
- *
- * Menolak dua keadaan sebelum kodenya sempat dicocokkan sama sekali: kode yang
- * belum diatur, dan kode yang diatur SAMA PERSIS dengan kode validator. Yang
- * kedua kelihatannya sepele — menyalin satu kode ke dua variabel itu hal yang
- * wajar dilakukan orang yang sedang buru-buru — tapi akibatnya persis sama
- * dengan tidak memasang penjaga apa pun. Lebih baik layanannya menolak menyala
- * di jalur ini daripada diam-diam membuka rekap ke semua validator.
- */
-async function autentikasiPengelola(req, res, next) {
-  const kodeBenar = kodePengelola();
-  if (!kodeBenar) {
-    return res.status(503).json({
-      error: 'Unduhan hasil validasi belum diaktifkan. Isi VALIDASI_PENGELOLA_KODE di berkas .env server, lalu coba lagi.',
-      belumAktif: true,
-    });
-  }
-  const kodeValidator = kodeValidasi();
-  if (kodeValidator && kodeCocok(kodeBenar, kodeValidator)) {
-    log.error('validasi', 'VALIDASI_PENGELOLA_KODE sama dengan VALIDASI_KODE — unduhan rekap ditutup');
-    return res.status(503).json({
-      error: 'VALIDASI_PENGELOLA_KODE tidak boleh sama dengan VALIDASI_KODE. Pakai kode yang berbeda, lalu coba lagi.',
-      belumAktif: true,
-    });
-  }
-
-  const header = req.get('authorization') ?? '';
-  const dikirim = header.startsWith('Bearer ') ? header.slice(7).trim() : String(req.body?.kode ?? '').trim();
-  const hasil = await periksaKodeAkses(
-    req.ip ?? 'tak-dikenal',
-    dikirim,
-    (c) => (c && kodeCocok(c, kodeBenar) ? { rol: 'pengelola' } : null),
-    req.path,
-  );
-  if (!hasil.user) {
-    return res.status(hasil.status).json({ error: hasil.error ?? 'Kode pengelola tidak dikenali.' });
-  }
-  next();
-}
-
-/**
- * Unduhan seluruh lembar validasi beserta rekapnya.
- *
- * Ini satu-satunya jalan mengambil hasil validasi dari mesin yang tidak bisa
- * dimasuki lewat shell. `npm run validasi` mengandalkan akses ke berkasnya
- * langsung; di Cloud Run akses itu tidak ada, sehingga tanpa rute ini lembar
- * yang sudah diisi validator ahli tidak bisa dibaca oleh siapa pun — termasuk
- * penelitinya sendiri.
- *
- * Kodenya sengaja HANYA dibaca dari header Authorization, tidak dari query
- * string. Query string ikut tercatat utuh di log permintaan Cloud Run, dan
- * kode yang tersimpan di sana bertahan jauh lebih lama daripada yang mengetik
- * mengira. Konsekuensinya rute ini dipakai lewat curl, bukan dengan membuka
- * alamatnya di peramban — lihat PANDUAN-VALIDASI.md.
- */
-app.get('/api/validasi/hasil', autentikasiPengelola, async (req, res) => {
-  const daftar = await validasiStore.daftar();
-  const daftarMateri = daftar.filter((d) => d?.jenis !== 'it' && d?.jawaban?.IT01 === undefined);
-  const daftarIT = daftar.filter((d) => d?.jenis === 'it' || d?.jawaban?.IT01 !== undefined);
-
-  const rekapMateri = rekapValidasi(daftarMateri);
-  const rekapIT = rekapValidasiIT(daftarIT);
-  const rekap = rekapMateri; // backward-compatibility
-
-  log.info('validasi', 'rekap validasi diunduh', {
-    jumlah: daftar.length,
-    jumlahMateri: daftarMateri.length,
-    jumlahIT: daftarIT.length,
-  });
-  res.setHeader('Content-Disposition', `attachment; filename="nova-validasi-${todayISO()}.json"`);
-  res.json({
-    diunduhPada: new Date().toISOString(),
-    jumlah: daftar.length,
-    rekap,
-    rekapMateri,
-    rekapIT,
-    hasil: daftar,
-  });
-});
-
-/** Instrumen validasi: aspek, butir, skala, dan kriteria interpretasinya. */
-app.get('/api/validasi/instrumen', autentikasiValidator, (req, res) => {
-  const jenis = String(req.query?.jenis ?? '').toLowerCase();
-  if (jenis === 'it') {
-    return res.json({ instrumen: instrumenIT() });
-  }
-  res.json({ instrumen: instrumen(), instrumenIT: instrumenIT() });
-});
-
-app.get('/api/validasi/it/instrumen', autentikasiValidator, (req, res) => {
-  res.json({ instrumen: instrumenIT() });
-});
-
-/**
- * Menerima satu lembar validasi yang sudah diisi (Materi atau IT).
- *
- * Skornya dihitung ULANG di server dari jawaban mentah, dan yang disimpan
- * adalah hasil hitungan server — bukan angka yang dikirim halaman.
- */
-app.post('/api/validasi/kirim', autentikasiValidator, async (req, res) => {
-  const isIT =
-    req.body?.jenis === 'it' ||
-    (req.body?.jawaban && Object.keys(req.body.jawaban).some((k) => k.startsWith('IT')));
-
-  if (isIT) {
-    const { data, errors } = periksaPengirimanIT(req.body, { hariIni: todayISO() });
-    if (errors.length) return res.status(400).json({ error: errors.join(' '), errors });
-
-    const hasil = hitungHasilIT(data.jawaban);
-    const tersimpan = await validasiStore.simpan({ ...data, jenis: 'it', hasil });
-
-    log.info('validasi', 'lembar validasi IT diterima', {
-      lembarId: tersimpan.id,
-      jenis: 'it',
-      skor: hasil.skorDiperoleh,
-      skorMaksimum: hasil.skorMaksimum,
-      persentase: hasil.persentase,
-      kategori: hasil.kategori?.label ?? '',
-      bidang: data.validator?.bidang ?? [],
-      tanggalValidasi: data.validator?.tanggalValidasi ?? null,
-      kesimpulan: data.kesimpulan,
-      jawaban: data.jawaban,
-      aspek: hasil.aspek,
-      catatanUmum: data.catatanUmum ?? '',
-      rekomendasi: data.rekomendasi ?? '',
-      materiPerluRevisi: data.materiPerluRevisi ?? [],
-    });
-
-    return res.status(201).json({ id: tersimpan.id, dikirimPada: tersimpan.dikirimPada, hasil });
-  }
-
-  const { data, errors } = periksaPengiriman(req.body, { hariIni: todayISO() });
-  if (errors.length) return res.status(400).json({ error: errors.join(' '), errors });
-
-  const hasil = hitungHasil(data.jawaban);
-  const tersimpan = await validasiStore.simpan({ ...data, jenis: 'materi', hasil });
-
-  log.info('validasi', 'lembar validasi diterima', {
-    lembarId: tersimpan.id,
-    jenis: 'materi',
-    skor: hasil.skorDiperoleh,
-    skorMaksimum: hasil.skorMaksimum,
-    persentase: hasil.persentase,
-    kategori: hasil.kategori.label,
-    bidang: data.validator?.bidang ?? [],
-    tanggalValidasi: data.validator?.tanggalValidasi ?? null,
-    kesimpulan: data.kesimpulan,
-    jawaban: data.jawaban,
-    aspek: hasil.aspek,
-    catatanUmum: data.catatanUmum ?? '',
-    rekomendasi: data.rekomendasi ?? '',
-    materiPerluRevisi: data.materiPerluRevisi ?? [],
-  });
-
-  res.status(201).json({ id: tersimpan.id, dikirimPada: tersimpan.dikirimPada, hasil });
-});
-
-app.post('/api/validasi/it/kirim', autentikasiValidator, async (req, res) => {
-  const { data, errors } = periksaPengirimanIT(req.body, { hariIni: todayISO() });
-  if (errors.length) return res.status(400).json({ error: errors.join(' '), errors });
-
-  const hasil = hitungHasilIT(data.jawaban);
-  const tersimpan = await validasiStore.simpan({ ...data, jenis: 'it', hasil });
-
-  log.info('validasi', 'lembar validasi IT diterima', {
-    lembarId: tersimpan.id,
-    jenis: 'it',
-    skor: hasil.skorDiperoleh,
-    skorMaksimum: hasil.skorMaksimum,
-    persentase: hasil.persentase,
-    kategori: hasil.kategori?.label ?? '',
-    bidang: data.validator?.bidang ?? [],
-    tanggalValidasi: data.validator?.tanggalValidasi ?? null,
-    kesimpulan: data.kesimpulan,
-    jawaban: data.jawaban,
-    aspek: hasil.aspek,
-    catatanUmum: data.catatanUmum ?? '',
-    rekomendasi: data.rekomendasi ?? '',
-    materiPerluRevisi: data.materiPerluRevisi ?? [],
-  });
-
-  res.status(201).json({ id: tersimpan.id, dikirimPada: tersimpan.dikirimPada, hasil });
-});
-
 /* --------------------------------------------------------------- Aset statis */
 
 /*
@@ -2177,7 +1916,6 @@ const MODUL_JS = `window.NOVA_MODUL=${JSON.stringify(KURIKULUM_PUBLIK)};window.N
 const ASET_MODUL = asetDariNilai(MODUL_JS, 'application/javascript; charset=utf-8');
 const ASET_APLIKASI = asetDariBerkas(path.join(HERE, 'public', 'index.html'), 'text/html; charset=utf-8');
 const ASET_LANDING = asetDariBerkas(path.join(HERE, 'public', 'landing.html'), 'text/html; charset=utf-8');
-const ASET_VALIDASI = asetDariBerkas(path.join(HERE, 'public', 'validasi.html'), 'text/html; charset=utf-8');
 /*
  * Halaman publik kartu kesehatan. Statik dan tanpa satu pun data pengguna —
  * datanya diambil peramban dari /api/kartu/publik/:token, satu-satunya
@@ -2228,10 +1966,6 @@ app.get('/', sajikanAset(ASET_LANDING, { cacheControl: 'no-cache' }));
 for (const jalur of ['/app', '/index.html']) {
   app.get(jalur, sajikanAset(ASET_APLIKASI, { cacheControl: 'no-cache' }));
 }
-for (const jalur of ['/validasi', '/validasi.html', '/validasi-it']) {
-  app.get(jalur, sajikanAset(ASET_VALIDASI, { cacheControl: 'no-cache' }));
-}
-
 /*
  * Aplikasi peserta tidak boleh muncul di hasil pencarian.
  *
@@ -2474,16 +2208,6 @@ if (dijalankanLangsung) {
   );
   console.log(`  Batas AI    : ${RATE_LIMIT} permintaan/jam per pengguna`);
   console.log(`  Data        : ${JENIS_PENYIMPANAN === 'json' ? store.DB_PATH : `${JENIS_PENYIMPANAN} (persisten)`}`);
-  console.log(
-    `  Validasi    : ${kodeValidasi() ? `aktif di /validasi (hasil di ${validasiStore.FILE_PATH})` : 'nonaktif — isi VALIDASI_KODE di .env bila lembar validasi materi akan dipakai'}`,
-    /*
-     * Ditampilkan terpisah karena inilah yang paling mahal bila baru disadari
-     * belakangan: lembar boleh masuk sementara tidak ada satu pun jalan
-     * mengambilnya kembali. Di mesin tanpa shell, itu berarti kehilangan
-     * penilaian ahli yang tidak bisa diminta dua kali.
-     */
-    `  Unduh hasil : ${kodePengelola() ? 'aktif di GET /api/validasi/hasil (kode pengelola)' : 'NONAKTIF — VALIDASI_PENGELOLA_KODE belum diisi; hasil validasi tidak bisa diunduh dari mesin ini'}`,
-  );
 
   // Cadangan dinyalakan lebih dulu: kalau pembacaan data gagal, justru itulah
   // saat pencadangan paling tidak boleh ikut batal.

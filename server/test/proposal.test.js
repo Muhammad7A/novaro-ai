@@ -284,7 +284,7 @@ test('manifest: set-berkas-ter terenumerasi — yang hilang terlihat, sha256 ter
   assert.ok(jalur['users.json']?.ada, 'users.json tercantum dengan sha256');
   assert.match(jalur['users.json'].sha256, /^[0-9a-f]{64}$/);
   assert.equal(jalur['users-seed.json'].ada, false, 'berkas yang tidak ada tetap tercantum — temuan, bukan keheningan');
-  assert.ok('validasi.json' in jalur, 'set-berkas-ter lengkap');
+  assert.ok(!('validasi.json' in jalur), 'instrumen validasi sudah keluar dari set (RESEARCH-DEPENDENCY-REMOVAL)');
 
   // Sidiknya benar: hash ulang isi users.json cocok.
   const isi = readFileSync(path.join(DATA_DIR, 'users.json'));

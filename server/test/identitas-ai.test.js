@@ -252,10 +252,3 @@ test('persetujuan v3: semua pemroses disebut, dan v2 wajib menyetujui ulang', as
   assert.equal(hasConsented({ consent: { versi: CONSENT_VERSION } }), true);
 });
 
-test('lembar validasi ahli IT: identitas AI dari runtime, bukan penyebutan statis', () => {
-  const html = bacaPublik('validasi.html');
-  assert.ok(!/gemini/i.test(html), 'nol literal penyedia di HTML statis — halaman ini dulu menyebut satu penyedia padahal ada tiga jalur');
-  assert.ok(html.includes('modelAiRuntime'), 'deskripsi IT membawa tampungan identitas runtime');
-  assert.ok(html.includes('/api/health'), 'identitas diambil dari /api/health — pola index.html');
-  assert.ok(html.includes('identitas model tidak tersedia'), 'tanpa runtime, halaman jujur menyebut tak-tersedia — tidak pernah menebak');
-});

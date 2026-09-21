@@ -45,7 +45,7 @@ test('saringEnv hanya merekam nilai kunci yang aman; rahasia jadi nama saja', ()
     { name: 'GEMINI_MODEL', value: 'gemini-2.5-flash' },
     { name: 'NODE_ENV', value: 'production' },
     { name: 'DATABASE_URL', value: 'postgresql://rahasia' },
-    { name: 'VALIDASI_KODE', value: 'NILAI-YANG-TIDAK-BOLEH-TEREKAM' },
+      { name: 'NOVA_PROPOSAL_SECRET', value: 'NILAI-YANG-TIDAK-BOLEH-TEREKAM' },
     { name: 'ANTHROPIC_API_KEY', valueFrom: { secretKeyRef: { name: 'anthropic-api-key', key: 'latest' } } },
   ]);
 
@@ -57,7 +57,7 @@ test('saringEnv hanya merekam nilai kunci yang aman; rahasia jadi nama saja', ()
   // Nilainya TIDAK BOLEH ikut di mana pun — termasuk daftar nama.
   const teks = JSON.stringify({ bernilai, hanyaNama });
   assert.ok(!teks.includes('rahasia'), 'nilai DATABASE_URL bocor');
-  assert.ok(!teks.includes('NILAI-YANG-TIDAK-BOLEH-TEREKAM'), 'nilai kode validasi bocor');
+  assert.ok(!teks.includes('NILAI-YANG-TIDAK-BOLEH-TEREKAM'), 'nilai secret proposal bocor');
 
   const db = hanyaNama.find((e) => e.nama === 'DATABASE_URL');
   assert.ok(db && db.secret === false);

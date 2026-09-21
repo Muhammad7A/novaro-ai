@@ -15,8 +15,7 @@
     "smoke": "node scripts/smoke.js",
     "users": "node scripts/users.js",
     "export": "node scripts/export.js",
-    "backup": "node scripts/backup.js",
-    "validasi": "node scripts/validasi.js"
+    "backup": "node scripts/backup.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",

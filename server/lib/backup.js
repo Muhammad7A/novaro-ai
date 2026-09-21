@@ -44,7 +44,7 @@ const BACKUP_DIR = path.join(DATA_DIR, 'backup');
  * (mongo/postgres) tidak dicover manifest ini; pencadangan lib ini memang
  * hanya untuk jalur JSON (lihat scripts/backup.js yang menolak backend lain).
  */
-const BERKAS_TER = ['users.json', 'users-seed.json', 'validasi.json'];
+const BERKAS_TER = ['users.json', 'users-seed.json'];
 const DIR_TER = ['backup', 'export'];
 
 async function sha256Berkas(p) {

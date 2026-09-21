@@ -54,6 +54,11 @@ const minta = (jalur, { kode, ...opts } = {}) =>
 const hariIni = tanggalWIB();
 const bulanIni = hariIni.slice(0, 7);
 const hari = (n) => `${bulanIni}-${String(n).padStart(2, '0')}`;
+// Hari ke-berapa bulan ini (WIB). Fixture dibangun relatif terhadap angka ini:
+// tes M3 pernah date-rot karena mengasumsikan cakupan catatan ≥ 0,6 berlaku
+// pada hari ke-13 — asumsi yang kedaluwarsa seiring kalender berjalan.
+const hariBerjalan = Number(hariIni.slice(8, 10));
+const hKe = (n) => Math.min(n, hariBerjalan);
 
 async function penggunaSiap(nama = 'Bu Modal') {
   const { user, accessCode } = await store.createUser({ name: nama });
@@ -77,7 +82,7 @@ test('mutator menerima modal-masuk — pin gerbang enum yang diperluas', async (
   const { user } = await penggunaSiap();
   const row = await store.addTransaction(
     user.id,
-    { jenis: 'masuk', kategori: 'modal-masuk', jumlah: 2_000_000, keterangan: 'setoran awal', tanggal: hari(5) },
+    { jenis: 'masuk', kategori: 'modal-masuk', jumlah: 2_000_000, keterangan: 'setoran awal', tanggal: hari(hKe(5)) },
     { aktor: 'manusia' },
   );
   assert.equal(row.kategori, 'modal-masuk');
@@ -94,13 +99,13 @@ test('mutator menerima modal-masuk — pin gerbang enum yang diperluas', async (
 
 test('modal masuk mengubah saldo kas dan total masuk — laba bersih sama sekali tidak bergeser', async () => {
   const { user } = await penggunaSiap();
-  await store.addTransaction(user.id, { jenis: 'masuk', kategori: 'penjualan', jumlah: 1_000_000, tanggal: hari(5) }, { aktor: 'manusia' });
-  await store.addTransaction(user.id, { jenis: 'keluar', kategori: 'belanja-bahan', jumlah: 400_000, tanggal: hari(5) }, { aktor: 'manusia' });
+  await store.addTransaction(user.id, { jenis: 'masuk', kategori: 'penjualan', jumlah: 1_000_000, tanggal: hari(hKe(5)) }, { aktor: 'manusia' });
+  await store.addTransaction(user.id, { jenis: 'keluar', kategori: 'belanja-bahan', jumlah: 400_000, tanggal: hari(hKe(5)) }, { aktor: 'manusia' });
 
   const trx0 = await store.getTransactions(user.id);
   const s0 = summarizeMonth(trx0, bulanIni);
 
-  await store.addTransaction(user.id, { jenis: 'masuk', kategori: 'modal-masuk', jumlah: 2_000_000, tanggal: hari(5) }, { aktor: 'manusia' });
+  await store.addTransaction(user.id, { jenis: 'masuk', kategori: 'modal-masuk', jumlah: 2_000_000, tanggal: hari(hKe(5)) }, { aktor: 'manusia' });
   const s1 = summarizeMonth(await store.getTransactions(user.id), bulanIni);
 
   assert.equal(s0.labaBersih, 600_000);
@@ -124,9 +129,9 @@ test('modal masuk mengubah saldo kas dan total masuk — laba bersih sama sekali
 
 test('skor kesehatan dan omzet tidak tersentuh modal — identitas satu sumber computeMetrics', async () => {
   const { user } = await penggunaSiap();
-  // 10 transaksi di 8 hari berbeda → bulan terhitung andal (cakupan 8/13 ≥ 0,6).
-  const hariAndal = [1, 2, 3, 4, 5, 6, 7, 8, 8, 8];
-  for (const h of hariAndal) {
+  // Satu catatan per hari berjalan → cakupan 1,0 (bulan andal) pada tanggal
+  // berapa pun; jalur metrik yang diuji selalu jalur yang sama.
+  for (let h = 1; h <= hariBerjalan; h += 1) {
     await store.addTransaction(user.id, { jenis: 'masuk', kategori: 'penjualan', jumlah: 300_000, tanggal: hari(h) }, { aktor: 'manusia' });
   }
   await store.addTransaction(user.id, { jenis: 'keluar', kategori: 'operasional', jumlah: 50_000, tanggal: hari(2) }, { aktor: 'manusia' });
@@ -141,7 +146,7 @@ test('skor kesehatan dan omzet tidak tersentuh modal — identitas satu sumber c
 
   // Modal pada hari yang SUDAH tercatat → hariTercatat tetap, skor murni
   // menguji efek modal (bukan efek hari catatan baru).
-  await store.addTransaction(user.id, { jenis: 'masuk', kategori: 'modal-masuk', jumlah: 2_000_000, tanggal: hari(8) }, { aktor: 'manusia' });
+  await store.addTransaction(user.id, { jenis: 'masuk', kategori: 'modal-masuk', jumlah: 2_000_000, tanggal: hari(hariBerjalan) }, { aktor: 'manusia' });
   const s2 = summarizeMonth(await store.getTransactions(user.id), bulanIni);
   const m2 = computeMetrics({}, s2, s2);
 
@@ -167,11 +172,11 @@ test('rute: modal-masuk tersimpan seperti ketukan biasa, laba di semua laporan t
   const dorong = (kategori, jumlah, tanggal) =>
     minta('/api/cashbook', { method: 'POST', kode: accessCode, body: JSON.stringify({ jenis: 'masuk', kategori, jumlah, keterangan: '', tanggal }) });
 
-  for (const h of [1, 2, 3, 4, 5, 6, 7, 8, 8, 8]) await dorong('penjualan', 300_000, hari(h));
+  for (let h = 1; h <= hariBerjalan; h += 1) await dorong('penjualan', 300_000, hari(h));
   const dasbor0 = await minta('/api/cashbook', { kode: accessCode }).then((r) => r.json());
   const me0 = await minta('/api/me', { kode: accessCode }).then((r) => r.json());
 
-  const res = await dorong('modal-masuk', 2_000_000, hari(8));
+  const res = await dorong('modal-masuk', 2_000_000, hari(hariBerjalan));
   assert.equal(res.status, 201);
   const { transaction: row } = await res.json();
   assert.equal(row.kategori, 'modal-masuk');
@@ -196,7 +201,7 @@ test('rute: modal-masuk tersimpan seperti ketukan biasa, laba di semua laporan t
   // Penarikan modal tetap ditolak rute — itu prive, bukan kategori baru.
   const tarik = await minta('/api/cashbook', {
     method: 'POST', kode: accessCode,
-    body: JSON.stringify({ jenis: 'keluar', kategori: 'modal-masuk', jumlah: 1000, tanggal: hari(8) }),
+    body: JSON.stringify({ jenis: 'keluar', kategori: 'modal-masuk', jumlah: 1000, tanggal: hari(hKe(8)) }),
   });
   assert.equal(tarik.status, 400);
 });
@@ -207,11 +212,11 @@ test('tidak ada retrofit: catatan lama tetap apa catatannya, dihitung sesuai cat
   const { user, accessCode } = await penggunaSiap('Bu Lama');
   // Simulasi baris prabel batas modal: setoran modal 2jt yang dulu hanya
   // bisa dicatat "lain-masuk" — dan waktu itu memang ikut laba.
-  await store.addTransaction(user.id, { jenis: 'masuk', kategori: 'lain-masuk', jumlah: 2_000_000, keterangan: 'modal usaha', tanggal: hari(3) }, { aktor: 'manusia' });
-  await store.addTransaction(user.id, { jenis: 'masuk', kategori: 'penjualan', jumlah: 500_000, tanggal: hari(4) }, { aktor: 'manusia' });
+  await store.addTransaction(user.id, { jenis: 'masuk', kategori: 'lain-masuk', jumlah: 2_000_000, keterangan: 'modal usaha', tanggal: hari(hKe(3)) }, { aktor: 'manusia' });
+  await store.addTransaction(user.id, { jenis: 'masuk', kategori: 'penjualan', jumlah: 500_000, tanggal: hari(hKe(4)) }, { aktor: 'manusia' });
 
   // Penulisan baru sesudah batas — memastikan siklus muat/tulis berjalan.
-  await store.addTransaction(user.id, { jenis: 'keluar', kategori: 'operasional', jumlah: 20_000, tanggal: hari(5) }, { aktor: 'manusia' });
+  await store.addTransaction(user.id, { jenis: 'keluar', kategori: 'operasional', jumlah: 20_000, tanggal: hari(hKe(5)) }, { aktor: 'manusia' });
 
   const trx = await store.getTransactions(user.id);
   const lama = trx.find((t) => t.keterangan === 'modal usaha');
@@ -252,7 +257,7 @@ test('sanitasi hasil nota membawa modal-masuk sebagai usulan — bukan tersimpan
 
 test('transaction_added untuk modal memakai meta kosakata tertutup yang sama', async () => {
   const { user } = await penggunaSiap();
-  await store.addTransaction(user.id, { jenis: 'masuk', kategori: 'modal-masuk', jumlah: 2_000_000, tanggal: hari(5) }, { aktor: 'manusia' });
+  await store.addTransaction(user.id, { jenis: 'masuk', kategori: 'modal-masuk', jumlah: 2_000_000, tanggal: hari(hKe(5)) }, { aktor: 'manusia' });
   const ev = (await store.getEvents(user.id)).find((e) => e.type === 'transaction_added');
   assert.equal(ev.meta.kategori, 'modal-masuk');
   assert.equal(ev.meta.origin, 'manual');
