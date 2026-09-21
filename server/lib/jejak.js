@@ -52,8 +52,6 @@
 export const SKEMA_JEJAK = {
   /* --- dari lib/store.js (pushEvent) --- */
   user_created: { batch: 'kata?', seed: 'bool?' },
-  batch_assigned: { batch: 'kata', sebelum: 'kata' },
-  belajar_dimulai: { mulaiPada: 'tanggal?', sebelum: 'tanggal?' },
   peserta_dinamai: { sebelum: 'identitas', sesudah: 'identitas' },
   consent_given: { versi: 'angka' },
   profile_saved: { versi: 'angka', garisDasar: 'bool' },
@@ -123,8 +121,6 @@ export const TEKS_BEBAS = {
 };
 
 const POLA = {
-  // Kata boleh kosong: `batch_assigned.sebelum` sah berupa '' (peserta belum
-  // punya batch) — kosong bukan teks bebas.
   kata: /^[A-Za-z0-9-]{0,32}$/,
   tanggal: /^\d{4}-\d{2}-\d{2}$/,
   waktu: /^\d{4}-\d{2}-\d{2}T/,

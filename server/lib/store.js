@@ -560,52 +560,6 @@ export const store = {
   },
 
   /**
-   * Menetapkan atau mengubah kelompok peserta.
-   *
-   * Peristiwanya ikut dicatat BESERTA kelompok lama. Kapan pengacakan terjadi
-   * adalah bagian dari catatan metodologi: pengacakan yang dilakukan setelah
-   * pre-test bukan pengacakan yang sama dengan sebelum pre-test, dan penguji
-   * berhak bisa memeriksanya. Tanpa jejak ini, urutannya tidak bisa dibuktikan
-   * dari data mana pun setelah pilot selesai.
-   */
-  async setBatch(userId, batch) {
-    const bersih = normalBatch(batch);
-    return update((db) => {
-      const user = db.users.find((u) => u.id === userId);
-      if (!user) return null;
-      const sebelum = user.batch ?? '';
-      if (sebelum === bersih) return user.batch; // tidak ada perubahan: jangan mengotori jejak
-      user.batch = bersih;
-      pushEvent(user, 'batch_assigned', { batch: bersih, sebelum });
-      return user.batch;
-    });
-  },
-
-  /**
-   * Menetapkan tanggal mulai jalur belajar peserta.
-   *
-   * Peristiwanya dicatat BESERTA tanggal sebelumnya, sama seperti `setBatch`.
-   * Kapan jadwal seseorang dimulai adalah bagian dari catatan metodologi:
-   * jadwal yang ditetapkan sebelum pre-test bukan hal yang sama dengan yang
-   * ditetapkan sesudahnya, dan penguji berhak bisa memeriksanya dari data —
-   * bukan dari ingatan pendamping.
-   *
-   * `null` mengosongkan kembali (mis. jadwal ditetapkan ke peserta yang keliru).
-   */
-  async setMulai(userId, tanggal) {
-    return update((db) => {
-      const user = db.users.find((u) => u.id === userId);
-      if (!user) return null;
-      const sebelum = user.mulaiPada ?? null;
-      const baru = tanggal ?? null;
-      if (sebelum === baru) return { mulaiPada: baru, berubah: false };
-      user.mulaiPada = baru;
-      pushEvent(user, 'belajar_dimulai', { mulaiPada: baru, sebelum });
-      return { mulaiPada: baru, berubah: true };
-    });
-  },
-
-  /**
    * Mengganti nama peserta (dan nama usahanya).
    *
    * Dipakai setelah `users -- massal`, ketika kartu kode yang tadinya

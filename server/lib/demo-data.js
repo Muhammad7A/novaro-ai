@@ -4,9 +4,9 @@
  * ------------------------------------------------------------------
  * KENAPA BERKAS INI ADA
  *
- * Akun batch DEMO (101–105) dibuat untuk diperlihatkan: ke juri kontes,
- * ke calon pendamping, ke siapa pun yang ingin mencoba aplikasi tanpa
- * ikut penelitian. Akun tanpa data membuat aplikasi tampak setengah jadi —
+ * Akun batch DEMO (101–105) dibuat untuk diperlihatkan: ke calon pembeli,
+ * ke mitra, ke siapa pun yang ingin mencoba aplikasi tanpa mengisi data
+ * sungguhan. Karantina batch tetap memisahkannya dari akun nyata. Akun tanpa data membuat aplikasi tampak setengah jadi —
  * grafik kosong, rekomendasi kosong, riwayat chat kosong — padahal yang
  * kosong hanyalah akunnya, bukan fiturnya.
  *

@@ -19,7 +19,6 @@ import { fileURLToPath } from 'node:url';
 
 import { runBackup } from '../lib/backup.js';
 import { tanggalWIB } from '../lib/cashbook.js';
-import { JUMLAH_SESI, ringkasJadwal, tanggalSah, tanggalSesiTerbuka } from '../lib/jadwal.js';
 import { BATCH_SAH, normalBatch, store } from '../lib/store.js';
 
 const [, , command, ...args] = process.argv;
@@ -40,27 +39,15 @@ function usage() {
 Pengelola peserta Novaro
 
   npm run users -- list                              Tampilkan semua peserta
-  npm run users -- add "<nama>" ["<usaha>"] [--batch B1]
-                                                     Tambah peserta + kode akses
-  npm run users -- massal <jumlah> [--batch B1]      Buat banyak kode sekaligus + CSV untuk diisi tangan
+  npm run users -- add "<nama>" ["<usaha>"]          Tambah peserta + kode akses
+  npm run users -- massal <jumlah>                   Buat banyak kode sekaligus + CSV untuk diisi tangan
   npm run users -- nama <userId> "<nama>" ["<usaha>"]
                                                      Ganti nama sementara dengan nama sebenarnya
-  npm run users -- mulai <userId> [YYYY-MM-DD]      Mulai jalur belajar 7 hari (default: hari ini)
-  npm run users -- mulai --batch B1 [YYYY-MM-DD]    Mulai satu kelompok sekaligus
-  npm run users -- buka-semua <userId|--batch B1>   Buka seluruh 7 modul langsung untuk pengujian/validasi
-  npm run users -- reset-jadwal <userId|--batch B1> Kosongkan jadwal (kembali terkunci sebelum dimulai)
-  npm run users -- batch <userId> <B1|B2|->          Tetapkan/ubah kelompok ('-' mengosongkan)
-  npm run users -- acak --yes                        Acak peserta yang belum berkelompok ke B1/B2
   npm run users -- reset <userId>                    Buat ulang kode akses
   npm run users -- remove <userId> --yes             Hapus peserta beserta datanya (permanen)
 
-Kelompok (batch) dipakai rancangan waitlist control: B1 diberi perlakuan lebih
-dulu, B2 menyusul setelah post-test. Kolom ini ikut ke seluruh berkas ekspor —
-tanpanya kedua kelompok tidak bisa dipisahkan saat analisis.
-
-Sesi harian terbuka satu per hari sejak tanggal 'mulai', dan sesi yang sudah
-terbuka TIDAK pernah menutup lagi. Selama tanggal itu belum ditetapkan, tidak
-ada sesi harian yang bisa dibuka peserta — tetapkan saat pendampingan.
+Sejak self-paced (RESEARCH-DEPENDENCY-REMOVAL.md), tidak ada penetapan jadwal
+maupun kelompok B1/B2 — batch hanya menyisakan flag 'DEMO' untuk showroom.
 `);
 }
 
@@ -121,19 +108,6 @@ switch (command) {
       const cache = (t.cacheBacaTokens ?? 0) + (t.cacheTulisTokens ?? 0);
       const tanda = u.batch ? `[${u.batch}]` : '[ - ]';
       console.log(`  ${tanda} ${u.id}  ${u.name}${u.business ? ` — ${u.business}` : ''}`);
-      /*
-       * Baris jadwal ditampilkan untuk SEMUA peserta, termasuk yang belum
-       * dimulai — justru yang belum dimulai itulah yang perlu terlihat. Peserta
-       * yang jadwalnya lupa ditetapkan tidak akan pernah bisa membuka satu sesi
-       * pun, dan tidak ada satu pun pesan galat yang memberitahu pendamping.
-       */
-      const j = ringkasJadwal(u);
-      console.log(
-        j.dimulai
-          ? `     jadwal: mulai ${j.mulaiPada} · hari ke-${j.hariKe} · sesi terbuka ${j.sesiTerbuka}/${j.jumlahSesi}` +
-              (j.sesiBerikut ? ` · sesi ${j.sesiBerikut} terbuka ${j.berikutTerbukaPada}` : ' · seluruh sesi terbuka')
-          : `     jadwal: BELUM DIMULAI  <-- peserta belum bisa membuka sesi harian mana pun`,
-      );
       console.log(
         `     profil: ${u.hasProfile ? 'terisi' : 'belum'} · transaksi: ${u.transaksi} · pesan: ${u.messages} · permintaan AI: ${t.requests}`,
       );
@@ -262,245 +236,6 @@ switch (command) {
       break;
     }
     console.log(`\n${id} sekarang bernama "${user.name}"${user.business ? ` (${user.business})` : ''}.\n`);
-    break;
-  }
-
-  case 'mulai': {
-    /*
-     * Tanggal mulai ditetapkan pendamping, tidak pernah terisi sendiri.
-     *
-     * Peserta didaftarkan berhari-hari sebelum pendampingan, dan rancangan
-     * waitlist menaruh B2 jauh di belakang B1. Kalau hitungan hari dimulai
-     * sendiri saat peserta membuka aplikasi karena penasaran, hari ke-1
-     * seseorang bisa jatuh sebelum pre-test-nya sendiri — dan tidak ada cara
-     * memperbaikinya setelah pilot berjalan.
-     */
-    const { batch: batchTarget, salah: batchSalah } = batchDariArgs(args);
-    const [idAtauTanggal, tanggalKedua] = posisional(args);
-    const mentah = batchTarget ? idAtauTanggal : tanggalKedua;
-    const tanggal = mentah ? tanggalSah(mentah) : tanggalWIB(new Date());
-
-    if (batchSalah !== null) {
-      console.error(`\nKelompok "${batchSalah}" tidak dikenali. Pilihannya: ${BATCH_SAH.join(', ')}.\n`);
-      process.exitCode = 1;
-      break;
-    }
-    if (mentah && !tanggal) {
-      console.error(`\nTanggal "${mentah}" tidak dikenali. Pakai bentuk YYYY-MM-DD, mis. 2026-08-17.\n`);
-      process.exitCode = 1;
-      break;
-    }
-    if (!batchTarget && !idAtauTanggal) {
-      console.error('\nSertakan userId atau --batch.\n  npm run users -- mulai usr_xxxx 2026-08-17\n  npm run users -- mulai --batch B1 2026-08-17\n');
-      process.exitCode = 1;
-      break;
-    }
-
-    const semua = await store.listUsers();
-    const sasaran = batchTarget
-      ? semua.filter((u) => (u.batch ?? '') === batchTarget)
-      : semua.filter((u) => u.id === idAtauTanggal);
-
-    if (!sasaran.length) {
-      console.error(batchTarget ? `\nTidak ada peserta di kelompok ${batchTarget}.\n` : `\nPeserta ${idAtauTanggal} tidak ditemukan.\n`);
-      process.exitCode = 1;
-      break;
-    }
-
-    console.log(`\nJalur belajar dimulai ${tanggal} untuk ${sasaran.length} peserta:\n`);
-    for (const u of sasaran) {
-      const hasil = await store.setMulai(u.id, tanggal);
-      const sebelum = u.mulaiPada;
-      console.log(
-        `  ${u.id}  ${u.name}` +
-          (hasil.berubah ? (sebelum ? `   (sebelumnya ${sebelum})` : '') : '   (tidak berubah)'),
-      );
-    }
-    console.log(`\n  Sesi 1 terbuka ${tanggal}, lalu satu sesi per hari sampai sesi ${JUMLAH_SESI} pada ${tanggalSesiTerbuka(JUMLAH_SESI, tanggal)}.`);
-    console.log('  Sesi yang sudah terbuka tidak pernah menutup lagi.\n');
-    break;
-  }
-
-  case 'buka-semua': {
-    const { batch: batchTarget, salah: batchSalah } = batchDariArgs(args);
-    const [idTarget] = posisional(args);
-
-    if (batchSalah !== null) {
-      console.error(`\nKelompok "${batchSalah}" tidak dikenali. Pilihannya: ${BATCH_SAH.join(', ')}.\n`);
-      process.exitCode = 1;
-      break;
-    }
-    if (!batchTarget && !idTarget) {
-      console.error('\nSertakan userId atau --batch.\n  npm run users -- buka-semua usr_xxxx\n  npm run users -- buka-semua --batch B1\n');
-      process.exitCode = 1;
-      break;
-    }
-
-    const semua = await store.listUsers();
-    const sasaran = batchTarget
-      ? semua.filter((u) => (u.batch ?? '') === batchTarget)
-      : semua.filter((u) => u.id === idTarget);
-
-    if (!sasaran.length) {
-      console.error(batchTarget ? `\nTidak ada peserta di kelompok ${batchTarget}.\n` : `\nPeserta ${idTarget} tidak ditemukan.\n`);
-      process.exitCode = 1;
-      break;
-    }
-
-    // Tetapkan tanggal 7 hari yang lalu agar seluruh sesi (1-7) langsung terbuka
-    const tanggalBuka = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
-    console.log(`\nMembuka seluruh 7 sesi untuk ${sasaran.length} peserta:\n`);
-    for (const u of sasaran) {
-      await store.setMulai(u.id, tanggalBuka);
-      console.log(`  ✓ ${u.id}  ${u.name} (semua modul terbuka)`);
-    }
-    console.log(`\nSeluruh 7 sesi dasar sekarang terbuka untuk peserta di atas.\n`);
-    break;
-  }
-
-  case 'reset-jadwal': {
-    const { batch: batchTarget, salah: batchSalah } = batchDariArgs(args);
-    const [idTarget] = posisional(args);
-
-    if (batchSalah !== null) {
-      console.error(`\nKelompok "${batchSalah}" tidak dikenali. Pilihannya: ${BATCH_SAH.join(', ')}.\n`);
-      process.exitCode = 1;
-      break;
-    }
-    if (!batchTarget && !idTarget) {
-      console.error('\nSertakan userId atau --batch.\n  npm run users -- reset-jadwal usr_xxxx\n  npm run users -- reset-jadwal --batch B1\n');
-      process.exitCode = 1;
-      break;
-    }
-
-    const semua = await store.listUsers();
-    const sasaran = batchTarget
-      ? semua.filter((u) => (u.batch ?? '') === batchTarget)
-      : semua.filter((u) => u.id === idTarget);
-
-    if (!sasaran.length) {
-      console.error(batchTarget ? `\nTidak ada peserta di kelompok ${batchTarget}.\n` : `\nPeserta ${idTarget} tidak ditemukan.\n`);
-      process.exitCode = 1;
-      break;
-    }
-
-    console.log(`\nMengosongkan jadwal untuk ${sasaran.length} peserta:\n`);
-    for (const u of sasaran) {
-      await store.setMulai(u.id, null);
-      console.log(`  🔒 ${u.id}  ${u.name} (jadwal di-reset ke belum dimulai)`);
-    }
-    console.log(`\nJalur belajar peserta di atas telah dikembalikan ke status 'belum dimulai'.\n`);
-    break;
-  }
-
-  case 'batch': {
-    const [userId, nilai] = args;
-    if (!userId || !nilai) {
-      console.error('Sertakan userId dan kelompok.\n  npm run users -- batch usr_xxxx B1');
-      process.exitCode = 1;
-      break;
-    }
-    // '-' adalah cara eksplisit mengosongkan; nilai lain yang tak dikenal ditolak,
-    // supaya salah ketik tidak diam-diam menghapus kelompok peserta.
-    const batch = nilai === '-' ? '' : normalBatch(nilai);
-    if (nilai !== '-' && !batch) {
-      console.error(`\nKelompok "${nilai}" tidak dikenali. Pilihannya: ${BATCH_SAH.join(', ')}, atau '-' untuk mengosongkan.\n`);
-      process.exitCode = 1;
-      break;
-    }
-    const hasil = await store.setBatch(userId, batch);
-    if (hasil === null) {
-      console.error(`\nPeserta ${userId} tidak ditemukan.\n`);
-      process.exitCode = 1;
-      break;
-    }
-    console.log(`\n${userId} → kelompok ${hasil || '- (dikosongkan)'}\n`);
-    break;
-  }
-
-  /*
-   * Pengacakan ke dalam kelompok.
-   *
-   * Hanya menyentuh peserta yang BELUM berkelompok, sehingga menjalankannya lagi
-   * setelah menambah beberapa peserta baru tidak akan mengocok ulang orang yang
-   * sudah terlanjur diberi tahu jadwalnya.
-   *
-   * KESEIMBANGAN: tiap peserta (setelah dikocok) masuk ke kelompok yang SAAT ITU
-   * lebih sedikit isinya, dihitung ulang tiap langkah.
-   *
-   * Dulu penetapannya berselang-seling — `urutan[i % 2]` — dengan giliran
-   * pertama diberikan ke kelompok yang lebih kecil. Cara itu seimbang hanya bila
-   * berangkat dari keadaan yang sudah seimbang, dan komentar di sini dulu
-   * menjanjikan "selisihnya tidak pernah lebih dari satu orang" — yang tidak
-   * benar begitu ada ketimpangan awal (mudah terjadi karena `add --batch` ada):
-   *
-   *     awal B1=5 B2=0, +5 peserta  ->  berselang-seling: 7/3   (selisih 4)
-   *     awal B1=8 B2=2, +6 peserta  ->  berselang-seling: 11/5  (selisih 6)
-   *
-   * Dengan selalu mengisi yang lebih kecil, kedua contoh itu berakhir 5/5 dan
-   * 8/8. Keacakannya tidak berkurang: yang acak adalah SIAPA yang masuk ke mana
-   * (ditentukan pengocokan kriptografis di atas), sedangkan berapa banyak per
-   * kelompok memang sengaja dipaksa seimbang — inilah yang membuat uji antar
-   * kelompok punya daya.
-   *
-   * Bila jumlah peserta baru tidak cukup untuk menutup ketimpangan lama, sisanya
-   * dilaporkan apa adanya, bukan didiamkan.
-   */
-  case 'acak': {
-    const semua = await store.listUsers();
-    const belum = semua.filter((u) => !u.batch);
-    if (!belum.length) {
-      console.log('\nSemua peserta sudah punya kelompok. Tidak ada yang diacak.\n');
-      break;
-    }
-
-    const sudah = { B1: semua.filter((u) => u.batch === 'B1').length, B2: semua.filter((u) => u.batch === 'B2').length };
-
-    if (!args.includes('--yes')) {
-      console.error(
-        `\n${belum.length} peserta akan diacak ke dalam kelompok B1/B2.\n` +
-          `Kelompok saat ini — B1: ${sudah.B1}, B2: ${sudah.B2}\n\n` +
-          'Penetapan kelompok adalah keputusan metodologis dan ikut tercatat waktunya.\n' +
-          'Lakukan SETELAH perekrutan selesai dan SEBELUM perlakuan dimulai.\n\n' +
-          'Kalau memang siap, ulangi dengan --yes:\n  npm run users -- acak --yes\n',
-      );
-      process.exitCode = 1;
-      break;
-    }
-
-    const jumlah = { ...sudah };
-    const diacak = kocok(belum);
-    const hasil = [];
-    for (const u of diacak) {
-      const batch = jumlah.B1 <= jumlah.B2 ? 'B1' : 'B2';
-      jumlah[batch] += 1;
-      await store.setBatch(u.id, batch);
-      hasil.push({ ...u, batch });
-    }
-
-    console.log(`\n${hasil.length} peserta diacak:\n`);
-    for (const u of hasil.sort((a, b) => a.batch.localeCompare(b.batch) || a.name.localeCompare(b.name))) {
-      console.log(`  [${u.batch}] ${u.id}  ${u.name}${u.business ? ` — ${u.business}` : ''}`);
-    }
-    const akhir = await store.listUsers();
-    const akhirB1 = akhir.filter((u) => u.batch === 'B1').length;
-    const akhirB2 = akhir.filter((u) => u.batch === 'B2').length;
-    console.log(`\nTotal — B1: ${akhirB1}  ·  B2: ${akhirB2}\n`);
-    /*
-     * Ketimpangan yang tersisa DILAPORKAN, tidak didiamkan. Ia hanya mungkin
-     * bila peserta baru tidak cukup untuk menutup ketimpangan yang sudah ada
-     * sebelumnya — dan itu hal yang perlu diketahui peneliti saat menulis
-     * metodologi, bukan ditemukan sendiri saat menganalisis.
-     */
-    if (Math.abs(akhirB1 - akhirB2) > 1) {
-      console.log(
-        `PERHATIAN: kedua kelompok masih timpang ${Math.abs(akhirB1 - akhirB2)} orang.\n` +
-          'Peserta baru tidak cukup untuk menutup ketimpangan yang sudah ada sebelum pengacakan ini.\n' +
-          'Tambahkan peserta lalu jalankan lagi, atau catat ketimpangannya di naskah metodologi.\n',
-      );
-    }
-    console.log('Penetapan ini tercatat sebagai peristiwa "batch_assigned" beserta waktunya,');
-    console.log('dan ikut terbawa ke events.csv saat ekspor.\n');
     break;
   }
 

@@ -173,7 +173,6 @@ test('progres hanya menerima nomor modul yang benar-benar ada', async () => {
    * bisa ditandai selesai selama pendamping belum memulai jalurnya
    * (gerbangnya sendiri diuji tersendiri di jadwal-rute.test.js).
    */
-  await store.setMulai(user.id, new Date().toISOString().slice(0, 10));
 
   const res = await minta('/api/progress', {
     kode: accessCode,

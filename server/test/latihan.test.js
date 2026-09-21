@@ -10,9 +10,7 @@
  *     milik server (kunci tidak ke peramban), dan dinilai server;
  *   - progres latihan selamat dari saveProgress (backward compatible).
  *
- * UNLOCK_ALL_MODULES=1: pengguna uji dibuat tanpa jadwal pendamping, jadi
- * gerbang sesi dibuka penuh lewat saklar evaluasi yang sama dengan lembar
- * validasi ahli.
+ * Sejak self-paced (RESEARCH-DEPENDENCY-REMOVAL.md), seluruh sesi selalu terbuka.
  *
  *   npm test
  */
@@ -27,7 +25,6 @@ process.env.NOVA_DATA_DIR = DATA_DIR;
 process.env.PORT = '0';
 process.env.NOVA_AI_BACKEND = 'anthropic';
 process.env.ANTHROPIC_API_KEY = '';
-process.env.UNLOCK_ALL_MODULES = '1';
 delete process.env.GOOGLE_CLOUD_PROJECT;
 process.on('exit', () => rmSync(DATA_DIR, { recursive: true, force: true }));
 

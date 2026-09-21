@@ -50,7 +50,7 @@ import { asetDariBerkas, asetDariNilai, sajikanAset } from './lib/aset.js';
 import { forceHttps, periksaKodeAkses, punyaPublicHost, securityHeaders } from './lib/guard.js';
 import { periksaPenyimpanan, wajibBisaMenyimpan } from './lib/kesehatan.js';
 import { log } from './lib/log.js';
-import { jadwalUntukAI, modulTerbuka, ringkasJadwal, tanggalSesiTerbuka } from './lib/jadwal.js';
+import { jadwalUntukAI, ringkasJadwal } from './lib/jadwal.js';
 import { JALUR, KURIKULUM, SESI_HARIAN, materiModul, nomorModulSah, ringkasKemajuan } from './lib/kurikulum.js';
 import { PROFIL_FIELDS, computeMetrics, metricsToText } from './lib/metrics.js';
 import { cashbookContext, LABEL } from './lib/prompts.js';
@@ -793,7 +793,7 @@ app.get('/api/fokus', authenticate, async (req, res) => {
   const perubahan = bandingkanBulan(transactions);
   const done = req.user.progress?.done ?? {};
   const sesiBerikut = SESI_HARIAN
-    .find((m) => !done[m.no] && modulTerbuka(m.no, req.user.mulaiPada)) ?? null;
+    .find((m) => !done[m.no]) ?? null;
 
   res.json({
     fokus: susunFokusHarian({
@@ -897,18 +897,6 @@ app.get('/api/latihan/:no', authenticate, (req, res) => {
   if (!nomorModulSah(no)) return res.status(404).json({ error: 'Modul tidak ditemukan.' });
   if (!adaLatihan(no)) return res.status(404).json({ error: 'Latihan belum tersedia untuk modul ini.' });
 
-  if (!modulTerbuka(no, req.user.mulaiPada)) {
-    const jadwal = ringkasJadwal(req.user);
-    const sesi = KURIKULUM.find((x) => x.no === no)?.sesi ?? null;
-    return res.status(403).json({
-      error: jadwal.dimulai
-        ? `Latihan sesi ini terbuka pada ${tanggalSesiTerbuka(sesi, jadwal.mulaiPada)}.`
-        : 'Jalur belajarmu belum dimulai. Pendamping akan membukanya saat pendampingan.',
-      terkunci: true,
-      jadwal,
-    });
-  }
-
   const entri = req.user.progress?.latihan?.[no] ?? {};
   res.json({
     soal: soalPublik(no),
@@ -925,7 +913,6 @@ app.get('/api/latihan/:no', authenticate, (req, res) => {
 app.post('/api/latihan/:no', authenticate, requireConsent, async (req, res) => {
   const no = Number(req.params.no);
   if (!nomorModulSah(no) || !adaLatihan(no)) return res.status(404).json({ error: 'Latihan tidak ditemukan.' });
-  if (!modulTerbuka(no, req.user.mulaiPada)) return res.status(403).json({ error: 'Latihan sesi ini belum terbuka.' });
 
   let hasil;
   try {
@@ -1101,21 +1088,15 @@ app.delete('/api/chat', authenticate, async (req, res) => {
 });
 
 /** Konsultasi chat — jawaban dialirkan sebagai Server-Sent Events. */
-/**
- * Nomor modul yang sah DAN sudah terbuka untuk peserta ini, atau null.
- *
- * Penjagaan jadwal ikut di sini, bukan hanya di halaman modul. Tanpa itu AI
- * menjadi pintu bocornya: peserta hari ke-2 tinggal mengirim `modul: 6` dan
- * seluruh isi sesi 6 disisipkan ke prompt, lengkap. Sesi yang belum terbuka
- * diperlakukan seperti pertanyaan biasa — tanpa materi, bukan dengan penolakan,
- * karena bertanya sendiri tidak pernah salah.
+/*
+ * Nomor modul yang diminta lewat chat diikutkan ke konteks hanya bila nomornya
+ * benar-benar ada — nomor asing tidak pernah diam-diam disisipkan sebagai
+ * materi. Sejak self-paced, setiap modul yang sah boleh dibahas kapan saja.
  */
 const modulDiminta = (req) => {
   if (!nomorModulSah(req.body?.modul)) return null;
-  const no = Number(req.body.modul);
-  return modulTerbuka(no, req.user?.mulaiPada) ? no : null;
+  return Number(req.body.modul);
 };
-
 app.post(
   '/api/chat',
   authenticate,
@@ -1236,17 +1217,6 @@ app.get('/api/sesi/:no', authenticate, (req, res) => {
   }
 
   const jadwal = ringkasJadwal(req.user);
-  if (!modulTerbuka(m.no, req.user.mulaiPada)) {
-    return res.status(403).json({
-      error: jadwal.dimulai
-        ? `Sesi ${m.sesi} terbuka pada ${tanggalSesiTerbuka(m.sesi, jadwal.mulaiPada)}. Hari ini kamu di hari ke-${jadwal.hariKe}.`
-        : 'Jalur belajarmu belum dimulai. Pendamping akan membukanya saat pendampingan.',
-      terkunci: true,
-      jadwal,
-      terbukaPada: tanggalSesiTerbuka(m.sesi, jadwal.mulaiPada),
-    });
-  }
-
   res.json({ no: m.no, isi: m.isi, praktik: m.praktik, aksi: m.aksi ?? null, jadwal });
 });
 
@@ -1690,7 +1660,7 @@ app.post('/api/cashbook', authenticate, requireConsent, async (req, res) => {
     sudah: req.user.progress?.praktik ?? {},
     jenis: 'transaksi',
     sesiBerikutNo: SESI_HARIAN
-      .find((x) => !doneKas[x.no] && modulTerbuka(x.no, req.user.mulaiPada))?.no ?? null,
+      .find((x) => !doneKas[x.no])?.no ?? null,
   });
   if (praktikBaru.length) await store.tandaiPraktik(req.user.id, praktikBaru, 'transaksi');
   // Bukti tambahan untuk penelitian sudah disediakan store.addTransaction
@@ -1735,7 +1705,7 @@ app.get('/api/report', authenticate, async (req, res) => {
     sudah: req.user.progress?.praktik ?? {},
     jenis: 'laporan',
     sesiBerikutNo: SESI_HARIAN
-      .find((x) => !doneLaporan[x.no] && modulTerbuka(x.no, req.user.mulaiPada))?.no ?? null,
+      .find((x) => !doneLaporan[x.no])?.no ?? null,
   });
   if (praktikLaporan.length) await store.tandaiPraktik(req.user.id, praktikLaporan, 'laporan');
 
@@ -1836,7 +1806,7 @@ function saringProgres(done, user) {
      * jadwal akan diam-diam menghapus riwayat penyelesaian peserta — dan
      * `module_completed` di events.csv sudah terlanjur mencatat sebaliknya.
      */
-    if (sudah[no] || modulTerbuka(no, user?.mulaiPada)) bersih[no] = true;
+    if (sudah[no] || nomorModulSah(no)) bersih[no] = true;
   }
   return bersih;
 }

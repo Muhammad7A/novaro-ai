@@ -36,9 +36,6 @@ test('seluruh mutator menghasilkan peristiwa yang terdaftar dan sah bentuknya', 
   const id = user.id;
   idPeserta = id;
 
-  await store.setMulai(id, '2026-09-01');
-  await store.setMulai(id, null);
-  await store.setBatch(id, 'B2'); // batch_assigned: pindahan B1 → B2 tercatat dengan sebelumnya
   await store.renameUser(id, { name: 'Bu Sari Santoso', business: 'Warung Sari Rasa' });
   await store.saveConsent(id, CONSENT_VERSION);
   await store.saveProfile(id, { ...PERSONA_DEMO[0].profil });
@@ -86,8 +83,7 @@ test('seluruh mutator menghasilkan peristiwa yang terdaftar dan sah bentuknya', 
   assert.equal(
     jenisTerlihat,
     [
-      'advisori_dibuat', 'ai_feedback', 'anggaran_habis', 'batch_assigned',
-      'belajar_dimulai', 'belajar_dimulai', 'chat_cleared', 'chat_turn',
+      'advisori_dibuat', 'ai_feedback', 'anggaran_habis', 'chat_cleared', 'chat_turn',
       'consent_given', 'data_downloaded', 'fokus_viewed', 'konteks_viewed',
       'latihan_ai_dibuat', 'latihan_ai_dijawab', 'latihan_dijawab', 'login',
       'module_completed', 'papan_viewed', 'peserta_dinamai',
