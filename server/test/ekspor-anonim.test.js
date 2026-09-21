@@ -7,7 +7,7 @@
  * ke berkas yang dijanjikan aman dibagikan. Uji ini menjalankan skrip
  * ekspor SUNGGUHAN (proses anak, bukan salinan logikanya) di atas toko
  * berisi pelanggaran, lalu memeriksa berkasnya:
- *   - mode anonim: teks terdaftar TIDAK ada; sinyal perilaku (batch, rating,
+ *   - mode anonim: teks terdaftar TIDAK ada; sinyal perilaku (rating,
  *     jumlah) TETAP ada — anonim bukan berarti jejaknya kosong;
  *   - mode lengkap: teks yang sama TETAP ada (penyaring hanya milik anonim);
  *   - janji di BACA-DULU.txt menyebut apa yang benar-benar dibuang.
@@ -35,7 +35,7 @@ process.on('exit', () => {
 process.env.NOVA_DATA_DIR = DIR_DATA;
 const { store } = await import('../lib/store.js');
 {
-  const { user } = await store.createUser({ name: 'Peserta Ekspor', business: 'Warung Asal', batch: 'B1' });
+  const { user } = await store.createUser({ name: 'Peserta Ekspor', business: 'Warung Asal' });
   await store.renameUser(user.id, { name: 'Bu Sari Purnama', business: 'Warung Purnama' });
   await store.saveProfile(user.id, { omzetBulanan: 5_000_000, belanjaBulanan: 2_000_000, biayaOperasional: 500_000 });
   await store.addTransaction(user.id, {
@@ -109,8 +109,6 @@ test('ekspor anonim tidak memuat teks bebas; sinyal perilakunya tetap utuh', asy
   assert.match(barisUmpan, /down/, 'rating harus selamat dari penyaringan');
   assert.doesNotMatch(barisUmpan, /meleset/, 'alasan harus hilang dari baris yang sama');
 
-  // batch ikut terbangun demi analisis antar kelompok.
-  assert.match(acara, /B1/, 'kolom batch adalah sinyal riset, bukan PII');
 });
 
 test('ekspor lengkap tetap memuat teks bebas — penyaring hanya milik mode anonim', async () => {

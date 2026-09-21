@@ -79,24 +79,6 @@ function nyataRataRata(summaries) {
 
 const selisih = (nyata, kira) => (kira > 0 ? Number((((nyata - kira) / kira) * 100).toFixed(1)) : null);
 
-/**
- * Versi profil yang BERLAKU pada akhir sebuah bulan.
- *
- * Skor kesehatan memuat hal-hal yang berubah sepanjang program: punya NIB,
- * rekening usaha sudah dipisah, cara mencatat. Memakai profil terakhir untuk
- * semua bulan berarti NIB yang baru diurus bulan April ikut menaikkan skor bulan
- * Januari — kolom yang terlihat seperti ukuran perubahan dari waktu ke waktu,
- * padahal sebagian isinya datang dari masa depan.
- */
-function profilPadaBulan(history, month) {
-  const akhirBulan = `${month}-32`; // batas atas; perbandingan teks ISO sudah cukup
-  let dipakai = null;
-  for (const p of history) {
-    if (String(p.recordedAt ?? '') <= akhirBulan) dipakai = p;
-  }
-  // Bulan sebelum profil pertama diisi: pakai versi pertama, tandai di kolomnya.
-  return dipakai ?? history[0] ?? null;
-}
 
 /* ------------------------------------------------------------------ Jalan */
 
@@ -109,7 +91,6 @@ if (!users.length) {
 }
 
 const barisPengguna = [];
-const barisProfil = [];
 const barisTransaksi = [];
 const barisPeristiwa = [];
 const barisAdvisori = [];
@@ -119,50 +100,26 @@ const barisGap = [];
 
 for (const u of users) {
   const transactions = u.transactions ?? [];
-  const history = u.profileHistory ?? (u.profile ? [{ ...u.profile, recordedAt: u.profile.updatedAt }] : []);
-  const garisDasar = history[0] ?? null;
-  const terakhir = history.at(-1) ?? null;
+  const profil = u.profile ?? null;
 
   const months = monthsWithData(transactions);
   const summaries = months.map((m) => summarizeMonth(transactions, m));
   const nyata = nyataRataRata(summaries);
 
-  /*
-   * `batch` ikut di SETIAP tabel, bukan hanya users.csv.
-   *
-   * Tanpa itu, tiap analisis per-transaksi, per-bulan, atau per-peristiwa harus
-   * digabungkan dulu ke users.csv sebelum bisa dikelompokkan — langkah manual
-   * yang diulang tiap kali, dan tiap pengulangan adalah satu kesempatan
-   * menggabungkan yang keliru. Satu kolom tambahan jauh lebih murah daripada
-   * satu tabel yang salah gabung tanpa disadari.
-   */
-  const batch = u.batch ?? '';
-
   /* users.csv — satu baris per peserta */
   barisPengguna.push({
     userId: u.id,
-    batch,
     nama: teks(u.name),
     usaha: teks(u.business),
     terdaftar: u.createdAt,
-    /*
-     * Tanggal mulai jalur belajar, ditetapkan pendamping. Wajib ada di sini:
-     * tanpanya `module_completed` di events.csv tidak bisa diubah menjadi
-     * "selesai pada hari ke berapa", dan analisis kepatuhan harian — inti dari
-     * klaim micro-learning tujuh hari — tidak bisa dihitung sama sekali.
-     */
-    mulaiBelajar: u.mulaiPada ?? '',
-    jenisUsaha: garisDasar?.jenisUsaha ?? '',
-    lokasi: teks(garisDasar?.lokasi),
-    lamaUsahaBulan: num(garisDasar?.lamaUsahaBulan),
-    jumlahKaryawan: num(garisDasar?.jumlahKaryawan),
-    pencatatanAwal: garisDasar?.pencatatan ?? '',
-    tujuan: garisDasar?.tujuan ?? '',
-    rekeningTerpisahAwal: garisDasar?.rekeningTerpisah ? 1 : 0,
-    punyaNibAwal: garisDasar?.punyaNib ? 1 : 0,
-    rekeningTerpisahAkhir: terakhir?.rekeningTerpisah ? 1 : 0,
-    punyaNibAkhir: terakhir?.punyaNib ? 1 : 0,
-    versiProfil: history.length,
+    jenisUsaha: profil?.jenisUsaha ?? '',
+    lokasi: teks(profil?.lokasi),
+    lamaUsahaBulan: num(profil?.lamaUsahaBulan),
+    jumlahKaryawan: num(profil?.jumlahKaryawan),
+    pencatatan: profil?.pencatatan ?? '',
+    tujuan: profil?.tujuan ?? '',
+    rekeningTerpisah: profil?.rekeningTerpisah ? 1 : 0,
+    punyaNib: profil?.punyaNib ? 1 : 0,
     bulanTercatat: months.length,
     jumlahTransaksi: transactions.length,
     jumlahPesanChat: u.chat?.length ?? 0,
@@ -174,26 +131,6 @@ for (const u of users) {
     // terlihat jauh lebih kecil dari tagihan yang sebenarnya.
     tokenCacheBaca: u.usage?.cacheBacaTokens ?? 0,
     tokenCacheTulis: u.usage?.cacheTulisTokens ?? 0,
-  });
-
-  /* profile_versions.csv — tiap versi profil, versi 1 = garis dasar */
-  history.forEach((p, i) => {
-    barisProfil.push({
-      userId: u.id,
-      batch,
-      versi: i + 1,
-      garisDasar: i === 0 ? 1 : 0,
-      dicatatPada: p.recordedAt ?? '',
-      omzetBulanan: num(p.omzetBulanan),
-      belanjaBulanan: num(p.belanjaBulanan),
-      biayaOperasional: num(p.biayaOperasional),
-      cicilanBulanan: num(p.cicilanBulanan),
-      pencatatan: p.pencatatan ?? '',
-      rekeningTerpisah: p.rekeningTerpisah ? 1 : 0,
-      punyaNib: p.punyaNib ? 1 : 0,
-      tujuan: p.tujuan ?? '',
-      tantangan: teks(p.tantangan),
-    });
   });
 
   /* transactions.csv — inti perilaku: kapan dicatat vs kapan terjadi */
@@ -214,7 +151,6 @@ for (const u of users) {
         : '';
     barisTransaksi.push({
       userId: u.id,
-      batch,
       transaksiId: t.id,
       tanggal: t.tanggal,
       bulan: bulanDariTanggal(t.tanggal),
@@ -241,7 +177,6 @@ for (const u of users) {
     const metaBersih = anonymize ? bangMetaAnonim(e.type, e.meta) : e.meta;
     barisPeristiwa.push({
       userId: u.id,
-      batch,
       ts: e.ts,
       tanggal: String(e.ts).slice(0, 10),
       type: e.type,
@@ -261,7 +196,6 @@ for (const u of users) {
   for (const a of u.advisori ?? []) {
     barisAdvisori.push({
       userId: u.id,
-      batch,
       advisoriId: a.id,
       jenis: a.jenis,
       dibuat: a.dibuat ?? '',
@@ -289,7 +223,6 @@ for (const u of users) {
   for (const e of u.evaluasiAdvisori ?? []) {
     barisEvaluasiAdvisori.push({
       userId: u.id,
-      batch,
       advisoriId: e.advisoriId,
       dinilaiPada: e.dinilaiAt ?? '',
       metode: e.metode ?? '',
@@ -311,10 +244,9 @@ for (const u of users) {
 
   /* monthly.csv — tabel siap analisis, satu baris per pengguna per bulan */
   for (const s of summaries) {
-    const profilBulanItu = profilPadaBulan(history, s.month);
+    const profilBulanItu = profil;
     barisBulanan.push({
       userId: u.id,
-      batch,
       bulan: s.month,
       lengkap: s.lengkap ? 1 : 0,
       layakRataRata: isMonthComplete(s) ? 1 : 0,
@@ -332,28 +264,27 @@ for (const u of users) {
       labaBersih: s.labaBersih,
       saldoKas: s.saldoKas,
       marginBersih: s.marginBersih,
-      // Skor dihitung dengan profil yang berlaku SAAT ITU, bukan profil hari ini.
+      // Skor dihitung dengan profil berlaku pengguna (profil tunggal sejak
+      // RESEARCH-DEPENDENCY-REMOVAL.md — tidak ada lagi versi per bulan).
       skorKesehatan: computeMetrics(profilBulanItu ?? {}, isMonthComplete(s) ? s : null, s).skorKesehatan,
-      versiProfilDipakai: profilBulanItu ? history.indexOf(profilBulanItu) + 1 : '',
     });
   }
 
   /* perkiraan_vs_nyata.csv — temuan utama */
-  if (garisDasar && nyata) {
+  if (profil && nyata) {
     barisGap.push({
       userId: u.id,
-      batch,
       bulanNyataDipakai: nyata.bulanDipakai,
-      omzetPerkiraan: num(garisDasar.omzetBulanan),
+      omzetPerkiraan: num(profil.omzetBulanan),
       omzetNyata: nyata.omzet,
-      omzetSelisihPersen: selisih(nyata.omzet, num(garisDasar.omzetBulanan)),
-      hppPerkiraan: num(garisDasar.belanjaBulanan),
+      omzetSelisihPersen: selisih(nyata.omzet, num(profil.omzetBulanan)),
+      hppPerkiraan: num(profil.belanjaBulanan),
       hppNyata: nyata.hpp,
-      hppSelisihPersen: selisih(nyata.hpp, num(garisDasar.belanjaBulanan)),
-      biayaPerkiraan: num(garisDasar.biayaOperasional),
+      hppSelisihPersen: selisih(nyata.hpp, num(profil.belanjaBulanan)),
+      biayaPerkiraan: num(profil.biayaOperasional),
       biayaNyata: nyata.biaya,
-      biayaSelisihPersen: selisih(nyata.biaya, num(garisDasar.biayaOperasional)),
-      labaPerkiraan: num(garisDasar.omzetBulanan) - num(garisDasar.belanjaBulanan) - num(garisDasar.biayaOperasional),
+      biayaSelisihPersen: selisih(nyata.biaya, num(profil.biayaOperasional)),
+      labaPerkiraan: num(profil.omzetBulanan) - num(profil.belanjaBulanan) - num(profil.biayaOperasional),
       labaNyata: nyata.labaBersih,
     });
   }
@@ -363,7 +294,6 @@ for (const u of users) {
 
 const files = [
   ['users.csv', toCsv(barisPengguna, Object.keys(barisPengguna[0]))],
-  ['profile_versions.csv', barisProfil.length ? toCsv(barisProfil, Object.keys(barisProfil[0])) : ''],
   ['transactions.csv', barisTransaksi.length ? toCsv(barisTransaksi, Object.keys(barisTransaksi[0])) : ''],
   ['events.csv', barisPeristiwa.length ? toCsv(barisPeristiwa, Object.keys(barisPeristiwa[0])) : ''],
   ['advisori.csv', barisAdvisori.length ? toCsv(barisAdvisori, Object.keys(barisAdvisori[0])) : ''],
@@ -375,7 +305,7 @@ const files = [
 if (!anonymize) {
   // Percakapan hanya ikut pada ekspor lengkap — isinya teks bebas dari pengguna.
   const chat = users.flatMap((u) =>
-    (u.chat ?? []).map((m, i) => ({ userId: u.id, batch: u.batch ?? '', urutan: i + 1, ts: m.ts ?? '', role: m.role, isi: m.content })),
+    (u.chat ?? []).map((m, i) => ({ userId: u.id, urutan: i + 1, ts: m.ts ?? '', role: m.role, isi: m.content })),
   );
   if (chat.length) files.push(['chat.csv', toCsv(chat, Object.keys(chat[0]))]);
 }

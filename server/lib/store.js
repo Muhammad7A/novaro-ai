@@ -93,9 +93,9 @@ function hashCode(code) {
  * perekrutan selesai. Membedakan "belum diacak" dari "B1" penting — keduanya
  * tidak boleh diam-diam menjadi hal yang sama di data penelitian.
  */
-export const BATCH_SAH = ['B1', 'B2', 'DEMO'];
+export const BATCH_SAH = ['DEMO'];
 
-/** Menormalkan masukan batch menjadi 'B1', 'B2', atau '' (belum ditetapkan). */
+/** Menormalkan masukan batch: 'DEMO' (showroom) atau '' (akun nyata). B1/B2 waitlist-control sudah dihapus — lihat RESEARCH-DEPENDENCY-REMOVAL.md. */
 export function normalBatch(nilai) {
   const t = String(nilai ?? '').trim().toUpperCase();
   return BATCH_SAH.includes(t) ? t : '';
@@ -172,7 +172,6 @@ async function load() {
       batch: row.batch,
       codeHash: row.code_hash,
       createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
-      mulaiPada: row.mulai_pada ? (typeof row.mulai_pada === 'string' ? row.mulai_pada.slice(0, 10) : new Date(row.mulai_pada).toISOString().slice(0, 10)) : null,
       consent: row.consent_versi ? { versi: row.consent_versi, agreedAt: row.consent_agreed_at ? new Date(row.consent_agreed_at).toISOString() : null } : null,
       progress: row.progress ?? {},
       recommendations: row.recommendations ?? null,
@@ -213,17 +212,16 @@ async function flush(dbToFlush) {
     try {
       await client.query('BEGIN');
       for (const user of db.users) {
-          const { id, name, business, batch, codeHash, createdAt, mulaiPada, consent, progress, recommendations, ...rest } = user;
+          const { id, name, business, batch, codeHash, createdAt, consent, progress, recommendations, ...rest } = user;
           await client.query(
             `
-            INSERT INTO users (id, name, business, batch, code_hash, created_at, mulai_pada, consent_versi, consent_agreed_at, progress, recommendations, data)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            INSERT INTO users (id, name, business, batch, code_hash, created_at, consent_versi, consent_agreed_at, progress, recommendations, data)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             ON CONFLICT (id) DO UPDATE SET
               name = EXCLUDED.name,
               business = EXCLUDED.business,
               batch = EXCLUDED.batch,
               code_hash = EXCLUDED.code_hash,
-              mulai_pada = EXCLUDED.mulai_pada,
               consent_versi = EXCLUDED.consent_versi,
               consent_agreed_at = EXCLUDED.consent_agreed_at,
               progress = EXCLUDED.progress,
@@ -237,7 +235,6 @@ async function flush(dbToFlush) {
               batch ?? null,
               codeHash,
               createdAt ? new Date(createdAt) : new Date(),
-              mulaiPada ? new Date(mulaiPada) : null,
               consent?.versi ?? null,
               consent?.agreedAt ? new Date(consent.agreedAt) : null,
               JSON.stringify(progress ?? {}),
@@ -383,9 +380,6 @@ function publicUser(user) {
     id: user.id,
     name: user.name,
     business: user.business ?? null,
-    // Tanggal mulai ikut: peramban memakainya untuk mengatakan kapan sesi
-    // berikutnya terbuka, dan itu bukan rahasia dari pesertanya sendiri.
-    mulaiPada: user.mulaiPada ?? null,
     profile: user.profile ?? null,
     recommendations: user.recommendations ?? null,
     progress: user.progress ?? {},
@@ -424,7 +418,6 @@ export const store = {
       name: u.name,
       business: u.business ?? null,
       batch: u.batch ?? '',
-      mulaiPada: u.mulaiPada ?? null,
       hasProfile: Boolean(u.profile),
       messages: u.chat?.length ?? 0,
       transaksi: u.transactions?.length ?? 0,
@@ -530,14 +523,12 @@ export const store = {
       codeHash: hashCode(code),
       createdAt: new Date().toISOString(),
       profile: null,
-      profileHistory: [], // append-only: garis dasar penelitian tidak boleh hilang
       /*
        * Tanggal mulai jalur belajar, ditetapkan pendamping — BUKAN createdAt.
        * Peserta didaftarkan berhari-hari sebelum pendampingan, dan B2 menyusul
        * jauh di belakang B1; memulai hitungan sendiri saat pendaftaran berarti
        * hari ke-1 seseorang bisa jatuh sebelum pre-test-nya sendiri.
        */
-      mulaiPada: null,
       recommendations: null,
       chat: [],
       transactions: [],
@@ -642,11 +633,6 @@ export const store = {
     return salin(db.users.find((u) => u.id === userId)?.events);
   },
 
-  /** Seluruh versi profil, terlama dulu. Versi pertama adalah garis dasar. */
-  async getProfileHistory(userId) {
-    const db = await load();
-    return salin(db.users.find((u) => u.id === userId)?.profileHistory);
-  },
 
   /** Seluruh data mentah — hanya untuk alat ekspor, tidak dipakai rute mana pun. */
   async dump() {
@@ -687,15 +673,12 @@ export const store = {
   },
 
   /**
-   * Menyimpan profil usaha — dan MENYIMPAN VERSI LAMANYA.
+   * Simpan profil usaha (self-report pengguna).
    *
-   * Angka perkiraan yang diisi pengguna di hari pertama adalah garis dasar
-   * penelitian ini: satu-satunya catatan tentang apa yang dia KIRA dia hasilkan,
-   * sebelum buku kas menunjukkan apa yang benar-benar terjadi. Sebelumnya baris
-   * ini menimpa profil begitu saja, jadi garis dasar itu hilang permanen pada
-   * pertama kali seseorang mengoreksi omzetnya — dan tidak bisa disusun ulang
-   * dari mana pun. Selisih perkiraan vs kenyataan justru temuan paling menarik
-   * yang bisa dihasilkan aplikasi ini; ia tidak boleh ditimpa.
+   * Sejak RESEARCH-DEPENDENCY-REMOVAL.md tidak ada lagi riwayat versi profil
+   * (garis dasar riset): profil yang tersimpan selalu versi terakhir, dan
+   * rekomendasi lama otomatis dilucuti karena tidak lagi cocok dengan profil
+   * yang baru.
    */
   async saveProfile(userId, profile) {
     return update((db) => {
@@ -703,22 +686,12 @@ export const store = {
       if (!user) return null;
 
       const now = new Date().toISOString();
-      let history = user.profileHistory ?? [];
-
-      // Pengguna lama yang sudah punya profil tapi belum punya riwayat:
-      // selamatkan dulu versi yang masih ada sebelum menambah yang baru.
-      if (!history.length && user.profile) {
-        history = [{ ...user.profile, recordedAt: user.profile.updatedAt ?? user.createdAt ?? now }];
-      }
-
-      const pertama = history.length === 0;
-      user.profileHistory = [...history, { ...profile, recordedAt: now }];
       user.profile = { ...profile, updatedAt: now };
       // Rekomendasi lama tidak lagi cocok dengan profil baru.
       user.recommendations = null;
       if (profile.namaUsaha) user.business = profile.namaUsaha;
 
-      pushEvent(user, 'profile_saved', { versi: user.profileHistory.length, garisDasar: pertama });
+      pushEvent(user, 'profile_saved', {});
       return user.profile;
     });
   },

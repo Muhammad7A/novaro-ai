@@ -54,7 +54,7 @@ export const SKEMA_JEJAK = {
   user_created: { batch: 'kata?', seed: 'bool?' },
   peserta_dinamai: { sebelum: 'identitas', sesudah: 'identitas' },
   consent_given: { versi: 'angka' },
-  profile_saved: { versi: 'angka', garisDasar: 'bool' },
+  profile_saved: {},
   chat_turn: { pesan: 'angka', 'modul?': 'angka?' },
   chat_cleared: { pesan: 'angka' },
   transaction_added: { jenis: 'kata', kategori: 'kata', tanggal: 'tanggal', mundur: 'bool', origin: 'kata' },

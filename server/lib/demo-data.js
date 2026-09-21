@@ -663,7 +663,6 @@ export function isiDemoPenuh(persona, hariIni = tanggalWIB(), kunciSeed = person
     name: persona.nama,
     business: persona.bisnis,
     profile: { ...persona.profil },
-    profileHistory: [],
     mulaiPada,
     consent: { versi: CONSENT_VERSION, agreedAt: `${tanggalMundur(hariIni, persona.hariMulaiLalu)}T08:00:00.000Z` },
     progress: bangunProgres(persona),
