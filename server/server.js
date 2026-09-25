@@ -131,17 +131,17 @@ app.post(
   async (req, res) => {
     const gambar = req.body;
     if (!Buffer.isBuffer(gambar) || gambar.length === 0) {
-      return res.status(400).json({ error: 'Berkas nota tidak terkirim. Coba pilih atau foto ulang gambarnya.' });
+      return res.status(400).json({ error: 'The receipt file was not received. Try picking or photographing the image again.' });
     }
 
     // Jenis berkas dari byte, bukan dari header — header bisa apa saja.
     const mime = kenaliGambar(gambar);
     if (!mime) {
-      return res.status(400).json({ error: 'Berkas ini bukan gambar yang dikenali. Gunakan JPG, PNG, atau WebP.' });
+      return res.status(400).json({ error: 'This file is not a recognized image. Use JPG, PNG, or WebP.' });
     }
 
     if (!isConfigured()) {
-      return res.status(503).json({ error: 'Layanan AI belum diatur di server ini, jadi scan nota belum bisa dipakai.' });
+      return res.status(503).json({ error: 'The AI service is not configured on this server, so receipt scanning is unavailable.' });
     }
 
     const controller = new AbortController();
@@ -216,12 +216,12 @@ app.use(express.json({ limit: '256kb' }));
 app.post('/api/proposal/tolak', authenticate, requireConsent, async (req, res) => {
   const proposalId = String(req.body?.proposalId ?? '').trim();
   if (!/^prop_[0-9a-f]{12}$/.test(proposalId)) {
-    return res.status(400).json({ error: 'Id usulan tidak dikenali.' });
+    return res.status(400).json({ error: 'Unknown proposal id.' });
   }
   const alasanBersih = req.body?.alasan == null ? '' : String(req.body.alasan).trim();
   try {
     const hasil = await store.tolakProposal(req.user.id, proposalId, alasanBersih);
-    if (!hasil) return res.status(404).json({ error: 'Peserta tidak ditemukan.' });
+    if (!hasil) return res.status(404).json({ error: 'User not found.' });
     res.json(hasil);
   } catch (err) {
     if (err instanceof GalatMutasi) {
@@ -254,7 +254,7 @@ async function authenticate(req, res, next) {
         hasil.error ??
         (lewatSesi
           ? 'Sign-in session not recognized. Please request a new sign-in link.'
-          : 'Kode akses tidak dikenali. Minta kode baru ke pengelola.'),
+          : 'Access code not recognized. Ask the operator for a new code.'),
     });
   }
   // Token sesi dicatat di req supaya rute keluar tahu persis mana yang dicabut.
@@ -298,7 +298,7 @@ function rateLimit(req, res, next) {
 const isServiceFailure = (status) => status === 503 || status === 429 || status === 502;
 
 /** Ditempelkan ke jawaban yang berhenti karena kepanjangan, dan ikut tersimpan. */
-const POTONG = 'Maaf, jawaban ini terpotong karena kepanjangan. Coba tanya lagi dengan pertanyaan yang lebih fokus untuk mendapat lanjutannya.';
+const POTONG = 'Sorry, this answer was cut off for length. Try asking again with a more focused question to get the rest.';
 
 /* ------------------------------------------------------- Anggaran token */
 
@@ -344,7 +344,7 @@ async function anggaranUntuk(user) {
 function requireConsent(req, res, next) {
   if (hasConsented(req.user)) return next();
   return res.status(451).json({
-    error: 'Persetujuan peserta diperlukan sebelum data bisa disimpan.',
+    error: 'Your agreement to the terms is required before data can be saved.',
     consentRequired: true,
     consent: CONSENT_TEXT,
   });
@@ -580,7 +580,7 @@ function batasiDemo(req, res, next) {
   const kini = Date.now();
   const segar = (demoHits.get(ip) ?? []).filter((t) => t > kini - demoJendelaMs);
   if (segar.length >= demoBatas) {
-    return res.status(429).json({ error: 'Terlalu banyak permintaan demo. Tunggu beberapa menit.' });
+    return res.status(429).json({ error: 'Too many demo requests. Please wait a few minutes.' });
   }
   segar.push(kini);
   demoHits.set(ip, segar);
@@ -607,7 +607,7 @@ app.post('/api/demo', batasiDemo, async (req, res) => {
     if (u?.batch === 'DEMO' && u.profile) siap.push({ kode, user: u });
   }
   if (!siap.length) {
-    return res.status(503).json({ error: 'Akun demo belum siap. Coba beberapa saat lagi.' });
+    return res.status(503).json({ error: 'Demo accounts are not ready yet. Please try again shortly.' });
   }
 
   const { kode, user } = siap[giliranDemo++ % siap.length];
@@ -838,8 +838,8 @@ function susunKartuPublik(user, metrics) {
     ? rekomendasi
     : [{
         judul: m.statusCicilan === 'safe'
-          ? 'Beban cicilan usaha dalam batas sehat'
-          : 'Tinjau kembali beban cicilan terhadap laba usaha',
+          ? 'Loan payments are within the healthy limit'
+          : 'Review loan payments against business profit',
         prioritas: m.statusCicilan === 'safe' ? 'low' : 'high',
       }];
 
@@ -896,7 +896,7 @@ app.post('/api/kartu', authenticate, requireConsent, async (req, res) => {
   if (!token) {
     token = tokenKartuBaru();
     if (!(await store.aturTokenKartu(req.user.id, token))) {
-      return res.status(500).json({ error: 'Kartu belum bisa dibuat. Coba lagi.' });
+      return res.status(500).json({ error: 'The card could not be created right now. Please try again.' });
     }
   }
   const { metrics } = await metricsFor(req.user);
@@ -911,11 +911,11 @@ app.post('/api/kartu', authenticate, requireConsent, async (req, res) => {
 app.get('/api/kartu/publik/:token', async (req, res) => {
   const token = String(req.params.token ?? '');
   if (!FORMAT_TOKEN_KARTU.test(token)) {
-    return res.status(404).json({ error: 'Kartu tidak ditemukan.' });
+    return res.status(404).json({ error: 'Card not found.' });
   }
   const user = await store.cariDenganTokenKartu(token);
   if (!user || !user.profile) {
-    return res.status(404).json({ error: 'Kartu tidak ditemukan.' });
+    return res.status(404).json({ error: 'Card not found.' });
   }
   const { metrics } = await metricsFor(user);
   res.json({ kartu: susunKartuPublik(user, metrics) });
@@ -1065,7 +1065,7 @@ app.get('/api/advisori/riwayat', authenticate, requireConsent, async (req, res) 
 app.post('/api/advisori/tindak', authenticate, requireConsent, async (req, res) => {
   try {
     const hasil = await catatTindakAdvisori(req.user.id, String(req.body?.advisoriId ?? '').trim());
-    if (!hasil) return res.status(404).json({ error: 'Advisori tidak dikenali.' });
+    if (!hasil) return res.status(404).json({ error: 'Unknown advisory record.' });
     res.json(hasil);
   } catch (err) {
     if (err?.kode === 'id-advisori') {
@@ -1086,8 +1086,8 @@ app.post('/api/advisori/tindak', authenticate, requireConsent, async (req, res) 
  */
 app.get('/api/latihan/:no', authenticate, (req, res) => {
   const no = Number(req.params.no);
-  if (!nomorModulSah(no)) return res.status(404).json({ error: 'Modul tidak ditemukan.' });
-  if (!adaLatihan(no)) return res.status(404).json({ error: 'Latihan belum tersedia untuk modul ini.' });
+  if (!nomorModulSah(no)) return res.status(404).json({ error: 'Module not found.' });
+  if (!adaLatihan(no)) return res.status(404).json({ error: 'No practice quiz is available for this module yet.' });
 
   const entri = req.user.progress?.latihan?.[no] ?? {};
   res.json({
@@ -1104,7 +1104,7 @@ app.get('/api/latihan/:no', authenticate, (req, res) => {
  */
 app.post('/api/latihan/:no', authenticate, requireConsent, async (req, res) => {
   const no = Number(req.params.no);
-  if (!nomorModulSah(no) || !adaLatihan(no)) return res.status(404).json({ error: 'Latihan tidak ditemukan.' });
+  if (!nomorModulSah(no) || !adaLatihan(no)) return res.status(404).json({ error: 'Practice quiz not found.' });
 
   let hasil;
   try {
@@ -1131,14 +1131,14 @@ app.post(
   rateLimit,
   async (req, res) => {
     const no = Number(req.params.no);
-    if (!nomorModulSah(no) || !adaLatihan(no)) return res.status(404).json({ error: 'Latihan tidak ditemukan.' });
+    if (!nomorModulSah(no) || !adaLatihan(no)) return res.status(404).json({ error: 'Practice quiz not found.' });
     // Gerbang belajarnya dulu, baru urusan layanan AI: tanpa kuis dasar yang
     // lulus, status layanan AI tidak relevan untuk peserta.
     if (!req.user.progress?.latihan?.[no]?.lulusPada) {
-      return res.status(400).json({ error: 'Selesaikan kuis dasarnya dulu — tantangan AI terbuka setelahnya.' });
+      return res.status(400).json({ error: 'Finish the basic quiz first — the AI challenge unlocks after that.' });
     }
     if (!isConfigured()) {
-      return res.status(503).json({ error: 'Layanan AI belum diatur di server ini, jadi tantangan AI belum bisa dipakai.' });
+      return res.status(503).json({ error: 'The AI service is not configured on this server, so the AI challenge is unavailable.' });
     }
 
     const existing = await store.bacaLatihanAI(req.user.id, no);
@@ -1184,7 +1184,7 @@ app.post(
 app.post('/api/latihan/:no/ai/jawab', authenticate, requireConsent, async (req, res) => {
   const no = Number(req.params.no);
   const soal = await store.bacaLatihanAI(req.user.id, no);
-  if (!soal) return res.status(404).json({ error: 'Belum ada tantangan AI untuk modul ini.' });
+  if (!soal) return res.status(404).json({ error: 'No AI challenge has been created for this module yet.' });
 
   const benar = String(req.body?.jawaban ?? '').trim().toUpperCase() === soal.kunci;
   const hasil = await store.catatJawabanLatihanAI(req.user.id, no, benar);
@@ -1206,7 +1206,7 @@ app.get('/api/recommendations', authenticate, async (req, res) => {
 
 app.post('/api/recommendations', authenticate, requireConsent, anggaranToken('rekomendasi'), rateLimit, async (req, res) => {
   if (!req.user.profile) {
-    return res.status(400).json({ error: 'Isi profil usaha dulu sebelum membuat rekomendasi.' });
+    return res.status(400).json({ error: 'Fill in your business profile before generating recommendations.' });
   }
   const { metrics, transactions } = await metricsFor(req.user);
   // Seluruh riwayat, bukan 3 bulan terakhir — lihat cashbookContext.
@@ -1297,7 +1297,7 @@ app.post(
   rateLimit,
   async (req, res) => {
   const message = String(req.body?.message ?? '').trim().slice(0, 2000);
-  if (!message) return res.status(400).json({ error: 'Pertanyaan tidak boleh kosong.' });
+  if (!message) return res.status(400).json({ error: 'The question cannot be empty.' });
 
   const history = await store.getChat(req.user.id);
   const { metrics, transactions } = await metricsFor(req.user);
@@ -1401,7 +1401,7 @@ app.post(
  * kegagalan yang paling merugikan intervensi tujuh hari.
  */
 app.get('/api/sesi/:no', authenticate, (req, res) => {
-  if (!nomorModulSah(req.params.no)) return res.status(404).json({ error: 'Modul tidak ditemukan.' });
+  if (!nomorModulSah(req.params.no)) return res.status(404).json({ error: 'Module not found.' });
   const m = KURIKULUM.find((x) => x.no === Number(req.params.no));
 
   if (m.sesi == null) {
@@ -1431,7 +1431,7 @@ app.post('/api/feedback', authenticate, requireConsent, async (req, res) => {
   const body = req.body ?? {};
   const rating = body.rating;
   if (rating !== 'up' && rating !== 'down') {
-    return res.status(400).json({ error: 'Rating harus "up" atau "down".' });
+    return res.status(400).json({ error: 'Rating must be "up" or "down".' });
   }
 
   const meta = { rating };
@@ -1833,7 +1833,7 @@ app.post('/api/cashbook', authenticate, requireConsent, async (req, res) => {
   if (!row) {
     // Pengguna lenyap di antara autentikasi dan penulisan — 201 dengan
     // `transaction: null` pernah terjadi di sini; itu bukan keberhasilan.
-    return res.status(404).json({ error: 'Peserta tidak ditemukan.' });
+    return res.status(404).json({ error: 'User not found.' });
   }
   const transactions = await store.getTransactions(req.user.id);
   const month = tanggal.slice(0, 7);

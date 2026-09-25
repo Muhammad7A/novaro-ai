@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Novaro — Pendamping Keuangan UMKM</title>
-<meta name="description" content="Aplikasi pendamping keuangan UMKM: profil usaha, rekomendasi personal, dan konsultasi dengan asisten AI.">
+<title>Novaro — Finance Companion for Your Business</title>
+<meta name="description" content="Small-business finance companion: business profile, personal recommendations, and AI consulting grounded in your real numbers.">
 <meta name="robots" content="noindex, nofollow">
 <!--
   Tidak ada satu pun berkas dari domain luar di halaman ini.
@@ -18,21 +18,24 @@
 -->
 <style>
 :root{
-  --paper:#FBFBF7; --card:#FFFFFF; --ink:#1A1F2B; --ink-soft:#5A6478;
-  --blue:#2B6CB0; --blue-deep:#1A365D; --blue-tint:#EBF4FF;
-  --gold:#D69E2E; --gold-tint:#FFFFF0; --line:#E2E8F0;
-  --red:#E53E3E; --red-tint:#FFF5F5; --nav-bg:rgba(251,251,247,.92);
-  --green:#2F855A; --green-tint:rgba(72,187,120,.14);
-  --star-off:#CBD5E0; --placeholder:#A0AEC0; --code-bg:#EDF2F7; --stars:0;
-  --radius:14px; --shadow:0 1px 2px rgba(26,31,43,.06),0 6px 20px rgba(26,31,43,.06);
+  /* Financial trust console — light: cool instrument paper, ink navy,
+     teal = trust/accounting, gold reserved for highlights. */
+  --paper:#F6F7F5; --card:#FFFFFF; --ink:#0C1B2A; --ink-soft:#55647A;
+  --blue:#0E7C6B; --blue-deep:#083B34; --blue-tint:#E7F4F1;
+  --gold:#B98A2F; --gold-tint:#FBF6E9; --line:#DCE3E6;
+  --red:#C43D3D; --red-tint:#FBEFEF; --nav-bg:rgba(246,247,245,.92);
+  --green:#177E57; --green-tint:rgba(23,126,87,.12);
+  --star-off:#C4CED4; --placeholder:#8D9AA8; --code-bg:#EDF1F2; --stars:0;
+  --radius:12px; --shadow:0 1px 2px rgba(12,27,42,.05),0 10px 32px rgba(12,27,42,.07);
 }
 :root[data-theme="dark"]{
-  --paper:#0F172A; --card:#1E293B; --ink:#F8FAFC; --ink-soft:#94A3B8;
-  --blue:#3B82F6; --blue-deep:#93C5FD; --blue-tint:#1E3A8A;
-  --gold:#F59E0B; --gold-tint:#451A03; --line:#334155;
-  --red:#EF4444; --red-tint:#450A0A; --nav-bg:rgba(15,23,42,.88);
-  --star-off:#475569; --placeholder:#64748B; --code-bg:#0F172A; --stars:1;
-  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  /* Financial trust console — dark: layered instrument navy, mint-teal accent. */
+  --paper:#0A1320; --card:#121F31; --ink:#EAF1F6; --ink-soft:#8CA0B3;
+  --blue:#2FBFA5; --blue-deep:#7FE0CC; --blue-tint:#10312E;
+  --gold:#D9A93F; --gold-tint:#2C230D; --line:#22334A;
+  --red:#E5654F; --red-tint:#33170F; --nav-bg:rgba(10,19,32,.9);
+  --star-off:#3B4D63; --placeholder:#5D7186; --code-bg:#0A1320; --stars:1;
+  --shadow:0 1px 2px rgba(0,0,0,.45),0 10px 34px rgba(0,0,0,.4);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
@@ -594,7 +597,7 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
 .putar-akhir .stat-list{margin-top:14px}
 @media (prefers-reduced-motion:reduce){.putar-overlay .putar-gambar{transition:none!important}}
 
-/* ---------- Papan Kemajuan ---------- */
+/* ---------- Progress Board ---------- */
 .papan-row{display:flex;align-items:center;gap:12px;padding:11px 2px;border-bottom:1px solid var(--line)}
 .papan-row:last-child{border-bottom:none}
 .papan-row.aku{background:var(--blue-tint);border-radius:10px;padding:11px 10px;margin:0 -8px;border-bottom-color:transparent}
@@ -661,6 +664,47 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
   .report-table tr{page-break-inside:avoid}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ================================================================
+   TRUST CONSOLE LAYER (W2e 2026-09-25) — nuansa instrumen keuangan
+   di atas geometri lama: kelas dan tata letak tidak berubah, hanya
+   karakter visualnya. Angka pakai tabular; kartu bergaris tegas;
+   tombol utama teal pekat dengan lift halus.
+================================================================ */
+body{letter-spacing:-.005em}
+h1,h2,h3,.card h3{letter-spacing:-.022em}
+.money,.code-input,.kartu-skor,.angka{font-variant-numeric:tabular-nums}
+
+nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
+.brand{font-weight:800;letter-spacing:-.02em}
+.nav-links button{font-size:.86rem;font-weight:600;color:var(--ink-soft);border-radius:8px;padding:7px 12px;transition:color .15s,background .15s}
+.nav-links button:hover{color:var(--ink)}
+.nav-links button.active{color:var(--blue-deep);background:var(--blue-tint)}
+
+.card{
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+}
+.card:hover{border-color:color-mix(in srgb,var(--blue) 35%,var(--line))}
+
+.btn{border-radius:9px;font-weight:650;letter-spacing:-.01em;transition:transform .12s ease,box-shadow .12s ease,background .15s ease}
+.btn-primary{background:var(--blue);box-shadow:0 1px 2px rgba(8,59,52,.25),0 4px 14px rgba(14,124,107,.22)}
+.btn-primary:hover{background:color-mix(in srgb,var(--blue) 88%,#000);transform:translateY(-1px)}
+.btn-primary:active{transform:translateY(0)}
+
+.auth{background:
+  radial-gradient(1000px 560px at 82% -10%, var(--blue-tint), transparent 62%),
+  radial-gradient(760px 460px at -8% 108%, var(--gold-tint), transparent 58%);
+}
+.auth-card{border-radius:16px;position:relative;overflow:hidden}
+.auth-card::before{content:'';position:absolute;inset:0 0 auto 0;height:3px;background:linear-gradient(90deg,var(--blue),var(--gold))}
+.auth-mark{border-radius:12px}
+
+.eyebrow{color:var(--gold);letter-spacing:.16em}
+.tabbar{display:flex;gap:6px;background:var(--code-bg);border-radius:10px;padding:4px;margin-bottom:16px}
+.tabbar button{flex:1;font-size:.84rem;font-weight:650;color:var(--ink-soft);padding:8px 10px;border-radius:8px;transition:background .15s,color .15s}
+.tabbar button.active{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(12,27,42,.12)}
 </style>
 </head>
 <body>
@@ -670,7 +714,7 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
 <!-- Rumus simulasi KUR — berkas yang sama dengan yang diuji server (lib/simulasi-kur.js).
      type="module" dieksekusi setelah dokumen siap; pemakaiannya baru saat halaman
      Laporan dibuka, jadi urutannya aman. -->
-<script type="module" src="/simulasi-kur.js"></script>
+<script type="module" src="/simulasi-cicilan.js"></script>
 
 <!-- Susunan film Putar Ulang — berkas yang sama dengan yang diuji server (lib/putar-ulang.js).
      type="module" dieksekusi setelah dokumen siap; dipakai baru saat tombol Putar Ulang
@@ -682,15 +726,25 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
   <div class="auth-card">
     <div class="auth-mark">N</div>
     <h1>Novaro</h1>
-    <p>Pendamping keuangan untuk pemilik UMKM. Masukkan kode akses yang diberikan pengelola program.</p>
-    <form id="loginForm">
-      <input class="code-input" id="codeInput" placeholder="NOVA-XXXX-XXXX" autocomplete="one-time-code" aria-label="Kode akses" required>
-      <div class="form-error" id="loginError" style="display:none"></div>
-      <button class="btn btn-primary" id="loginBtn" style="width:100%;justify-content:center;margin-top:14px" type="submit">Masuk</button>
+    <p>The accountable finance companion for your small business. Sign in with email or your access code.</p>
+    <div class="tabbar" role="tablist">
+      <button type="button" id="tabEmail" class="active" role="tab" aria-selected="true">Email sign-in</button>
+      <button type="button" id="tabKode" role="tab" aria-selected="false">Access code</button>
+    </div>
+    <form id="emailForm" style="display:block">
+      <input class="code-input" id="emailInput" type="email" placeholder="you@business.com" autocomplete="email" aria-label="Email address" required>
+      <div class="form-error" id="emailError" style="display:none"></div>
+      <button class="btn btn-primary" id="emailBtn" style="width:100%;justify-content:center;margin-top:14px" type="submit">Email me a sign-in link</button>
+      <p class="auth-hint" id="emailNote" style="display:none"></p>
     </form>
-    <div class="demo-divider"><span>atau</span></div>
-    <button class="btn btn-ghost" id="demoBtn" style="width:100%;justify-content:center" type="button">▶ Coba tanpa kode — Mode Demo</button>
-    <p class="auth-hint">Punya kode peserta? Masukkan di atas. Kode demo <b>101–120</b> juga bisa dipakai — datanya usaha contoh yang boleh diutak-atik bebas.</p>
+    <form id="loginForm" style="display:none">
+      <input class="code-input" id="codeInput" placeholder="NOVA-XXXX-XXXX" autocomplete="one-time-code" aria-label="Access code" required>
+      <div class="form-error" id="loginError" style="display:none"></div>
+      <button class="btn btn-primary" id="loginBtn" style="width:100%;justify-content:center;margin-top:14px" type="submit">Sign in</button>
+    </form>
+    <div class="demo-divider"><span>or</span></div>
+    <button class="btn btn-ghost" id="demoBtn" style="width:100%;justify-content:center" type="button">▶ Try it without an account — Demo</button>
+    <p class="auth-hint">Have an access code? Use the code tab. Demo codes <b>101–120</b> also work — sample businesses you can freely explore.</p>
   </div>
 </div>
 
@@ -698,16 +752,16 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
 <div class="nota-backdrop" id="kartuBackdrop" style="display:none">
   <div class="nota-modal" role="dialog" aria-modal="true" aria-label="Kartu Kesehatan Usaha">
     <h3 class="no-print" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-      🪪 Kartu Kesehatan Usaha
-      <button class="nota-close" id="kartuClose" aria-label="Tutup" type="button">✕</button>
+      🪪 Business Health Card
+      <button class="nota-close" id="kartuClose" aria-label="Close" type="button">✕</button>
     </h3>
-    <p class="no-print" style="font-size:.8rem;color:var(--ink-soft);margin-bottom:12px">Tautannya hanya membuka ringkasan baca-saja ini — tanpa akses ke akun atau pembukuanmu.</p>
+    <p class="no-print" style="font-size:.8rem;color:var(--ink-soft);margin-bottom:12px">The link only opens this read-only summary — no access to your account or books.</p>
     <div id="kartuPratinjau"></div>
     <div class="form-error no-print" id="kartuError" style="display:none"></div>
     <div class="actions no-print" style="justify-content:flex-end;margin-top:14px">
-      <button class="btn btn-ghost" id="kartuSalin" type="button">🔗 Salin Link</button>
-      <button class="btn btn-ghost" id="kartuCetak" type="button">🖨 Unduh / Cetak Kartu</button>
-      <button class="btn btn-primary" id="kartuBagikan" type="button">Bagikan</button>
+      <button class="btn btn-ghost" id="kartuSalin" type="button">🔗 Copy Link</button>
+      <button class="btn btn-ghost" id="kartuCetak" type="button">🖨 Download / Print Card</button>
+      <button class="btn btn-primary" id="kartuBagikan" type="button">Share</button>
     </div>
     <p class="no-print" id="kartuTautan" style="font-size:.76rem;word-break:break-all;color:var(--ink-soft);margin-top:8px"></p>
   </div>
@@ -723,10 +777,10 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
     <p id="consentOutro" style="font-size:.88rem;color:var(--ink-soft)"></p>
     <div class="form-error" id="consentError" style="display:none"></div>
     <button class="btn btn-primary" id="consentAgree" style="width:100%;justify-content:center;margin-top:14px" type="button">
-      Saya mengerti dan setuju
+      I understand and agree
     </button>
     <button class="btn btn-ghost" id="consentDecline" style="width:100%;justify-content:center;margin-top:8px" type="button">
-      Belum, keluar dulu
+      Not yet — sign out
     </button>
   </div>
 </div>
@@ -737,12 +791,12 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
   <div class="nav-inner">
     <span class="brand"><img src="logo-novaro.jpg" class="brand-logo" alt="N">Novaro</span>
     <div class="nav-links" id="navLinks">
-      <button data-page="dasbor" class="active">Dasbor</button>
-      <button data-page="kas">Buku Kas</button>
-      <button data-page="rekomendasi">Rekomendasi</button>
-      <button data-page="konsultasi">Konsultasi AI</button>
-      <button data-page="modul">Modul</button>
-      <button data-page="profil">Profil</button>
+      <button data-page="dasbor" class="active">Dashboard</button>
+      <button data-page="kas">Cash Book</button>
+      <button data-page="rekomendasi">Advice</button>
+      <button data-page="konsultasi">AI Consult</button>
+      <button data-page="modul">Learn</button>
+      <button data-page="profil">Profile</button>
     </div>
     <button class="icon-btn" id="themeToggle" title="Ganti mode terang/gelap" aria-label="Ganti mode terang/gelap">🌙</button>
     <button class="icon-btn" id="logoutBtn" title="Keluar" aria-label="Keluar">⏻</button>
@@ -755,45 +809,45 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
     <div class="page-head">
       <div class="eyebrow">Dasbor</div>
       <h2 id="greeting">Halo!</h2>
-      <p class="sub" id="dashSub">Ringkasan kondisi keuangan usahamu.</p>
+      <p class="sub" id="dashSub">A summary of your business finances.</p>
       <div class="actions" id="kartuAksi" style="margin-top:12px;display:none">
-        <button class="btn btn-ghost" id="kartuBtn" type="button">🪪 Bagikan Kartu Kesehatan Usaha</button>
+        <button class="btn btn-ghost" id="kartuBtn" type="button">🪪 Share Health Card</button>
       </div>
     </div>
     <div id="dashBody"></div>
 
     <!-- ---------- Garis waktu kesehatan usaha ---------- -->
     <div class="card" id="timelineCard" style="margin-top:16px;display:none">
-      <h3>📈 Kesehatan Usaha</h3>
-      <p style="font-size:.8rem;color:var(--ink-soft);margin-bottom:12px">Skor dari bulan-bulan yang benar-benar tercatat — bulan kosong tidak dikarang.</p>
+      <h3>📈 Business Health</h3>
+      <p style="font-size:.8rem;color:var(--ink-soft);margin-bottom:12px">Scored from months you actually recorded — empty months are never invented.</p>
       <div id="timelineBody"></div>
     </div>
 
     <!-- ---------- Apa yang berubah? ---------- -->
     <div class="card" id="perubahanCard" style="margin-top:16px;display:none">
-      <h3>🔍 Apa yang Berubah?</h3>
+      <h3>🔍 What Changed?</h3>
       <p id="perubahanPeriode" style="font-size:.8rem;color:var(--ink-soft);margin-bottom:10px"></p>
       <div id="perubahanBody"></div>
     </div>
 
     <!-- ---------- Check-up keuangan (AI, dipicu pengguna) ---------- -->
     <div class="card" id="checkupCard" style="margin-top:16px;display:none">
-      <h3>🩺 Periksa Usaha Saya</h3>
-      <p style="font-size:.8rem;color:var(--ink-soft);margin:4px 0 12px">AI menilai kondisi usaha dari angka buku kasmu — analisis edukatif, bukan jaminan atau nasihat keuangan profesional.</p>
-      <button class="btn btn-primary" id="checkupBtn" type="button">🩺 Periksa Sekarang</button>
+      <h3>🩺 Check Up My Business</h3>
+      <p style="font-size:.8rem;color:var(--ink-soft);margin:4px 0 12px">AI reads your cash book numbers — educational analysis, not a guarantee or professional financial advice.</p>
+      <button class="btn btn-primary" id="checkupBtn" type="button">🩺 Run Check-up</button>
       <div class="form-error" id="checkupError" style="display:none"></div>
       <div id="checkupHasil" style="margin-top:14px"></div>
     </div>
   </div>
 </section>
 
-<!-- ---------- Papan Kemajuan ---------- -->
+<!-- ---------- Progress Board ---------- -->
 <section class="page" id="page-papan">
   <div class="wrap">
     <div class="page-head">
-      <div class="eyebrow">Komunitas</div>
-      <h2>Papan Kemajuan</h2>
-      <p class="sub">Skor kesehatan warung-warung contoh Nova, diurutkan bulan ini — lengkap dengan arah perubahannya. Angka tiap baris dihitung dengan rumus yang sama dengan dasbormu.</p>
+      <div class="eyebrow">Community</div>
+      <h2>Progress Board</h2>
+      <p class="sub">Health scores of Novaro sample businesses, ranked this month — with their direction of change. Each row is computed with the exact same formulas as your dashboard.</p>
     </div>
     <div id="papanBody"></div>
   </div>
@@ -803,73 +857,73 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
 <section class="page" id="page-profil">
   <div class="wrap">
     <div class="page-head">
-      <div class="eyebrow">Personalisasi</div>
-      <h2>Profil usaha</h2>
-      <p class="sub">Isi data usahamu sekali. Semua saran, angka, dan jawaban konsultasi AI akan disesuaikan dengan data ini. Data tersimpan di server program, tidak dibagikan ke pihak lain.</p>
+      <div class="eyebrow">Personalize</div>
+      <h2>Business profile</h2>
+      <p class="sub">Fill in your business data once. Every recommendation, number, and AI answer is tailored to it. Data is stored on the program server and never shared with third parties.</p>
     </div>
     <form class="card" id="profileForm">
       <div class="form-grid">
-        <div class="section-title">Tentang usaha</div>
+        <div class="section-title">About the business</div>
         <div class="field">
-          <label for="namaUsaha">Nama usaha *</label>
+          <label for="namaUsaha">Business name *</label>
           <input id="namaUsaha" name="namaUsaha" maxlength="80" placeholder="Warung Bu Sari" required>
         </div>
         <div class="field">
-          <label for="jenisUsaha">Jenis usaha *</label>
+          <label for="jenisUsaha">Business type *</label>
           <select id="jenisUsaha" name="jenisUsaha" required>
-            <option value="">— pilih —</option>
-            <option value="kuliner">Kuliner (warung/kafe/katering)</option>
-            <option value="retail">Retail / toko kelontong</option>
-            <option value="jasa">Jasa (bengkel, salon, laundry)</option>
-            <option value="produksi">Produksi / kerajinan</option>
-            <option value="online">Toko online</option>
-            <option value="lainnya">Lainnya</option>
+            <option value="">— choose —</option>
+            <option value="kuliner">Food service (restaurant/café/catering)</option>
+            <option value="retail">Retail store</option>
+            <option value="jasa">Services (repair, salon, laundry)</option>
+            <option value="produksi">Manufacturing / crafts</option>
+            <option value="online">Online store</option>
+            <option value="lainnya">Other</option>
           </select>
         </div>
         <div class="field">
-          <label for="lokasi">Kota / kabupaten</label>
+          <label for="lokasi">City</label>
           <input id="lokasi" name="lokasi" maxlength="80" placeholder="Sleman, DIY">
         </div>
         <div class="field">
-          <label for="produkUtama">Produk atau layanan utama</label>
+          <label for="produkUtama">Main product or service</label>
           <input id="produkUtama" name="produkUtama" maxlength="120" placeholder="Nasi rames dan es teh">
         </div>
         <div class="field">
-          <label for="lamaUsahaBulan">Usaha sudah berjalan (bulan)</label>
+          <label for="lamaUsahaBulan">Months in business</label>
           <input id="lamaUsahaBulan" name="lamaUsahaBulan" type="number" min="0" max="1200" placeholder="18">
         </div>
         <div class="field">
-          <label for="jumlahKaryawan">Jumlah karyawan</label>
+          <label for="jumlahKaryawan">Employees</label>
           <input id="jumlahKaryawan" name="jumlahKaryawan" type="number" min="0" max="1000" placeholder="2">
         </div>
 
-        <div class="section-title">Angka per bulan</div>
+        <div class="section-title">Monthly numbers</div>
         <div class="field">
-          <label for="omzetBulanan">Omzet / total penjualan (Rp) *</label>
+          <label for="omzetBulanan">Revenue / total sales ($) *</label>
           <input id="omzetBulanan" name="omzetBulanan" type="number" min="0" placeholder="12000000" required>
-          <span class="help">Perkiraan kasar tidak apa-apa — yang penting mendekati.</span>
+          <span class="help">A rough estimate is fine — what matters is being close.</span>
         </div>
         <div class="field">
-          <label for="belanjaBulanan">Belanja bahan / barang dagangan (Rp)</label>
+          <label for="belanjaBulanan">Purchases / cost of goods ($)</label>
           <input id="belanjaBulanan" name="belanjaBulanan" type="number" min="0" placeholder="6500000">
         </div>
         <div class="field">
-          <label for="biayaOperasional">Biaya operasional (Rp)</label>
+          <label for="biayaOperasional">Operating expenses ($)</label>
           <input id="biayaOperasional" name="biayaOperasional" type="number" min="0" placeholder="3000000">
-          <span class="help">Sewa, listrik, gas, gaji, transport, internet.</span>
+          <span class="help">Rent, utilities, payroll, transport, internet.</span>
         </div>
         <div class="field">
-          <label for="cicilanBulanan">Cicilan pinjaman berjalan (Rp)</label>
+          <label for="cicilanBulanan">Current loan payments ($)</label>
           <input id="cicilanBulanan" name="cicilanBulanan" type="number" min="0" placeholder="0">
-          <span class="help">Isi 0 kalau belum punya pinjaman.</span>
+          <span class="help">Enter 0 if you have no loans.</span>
         </div>
 
-        <div class="section-title">Kebiasaan &amp; tujuan</div>
+        <div class="section-title">Habits &amp; goals</div>
         <div class="field">
-          <label for="pencatatan">Cara mencatat keuangan saat ini *</label>
+          <label for="pencatatan">How do you record finances today? *</label>
           <select id="pencatatan" name="pencatatan" required>
-            <option value="">— pilih —</option>
-            <option value="belum">Belum mencatat sama sekali</option>
+            <option value="">— choose —</option>
+            <option value="belum">Not recording at all yet</option>
             <option value="kadang">Kadang-kadang saja</option>
             <option value="buku">Buku tulis</option>
             <option value="excel">Excel / spreadsheet</option>
@@ -879,43 +933,43 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
         <div class="field">
           <label for="tujuan">Tujuan utama 6 bulan ke depan *</label>
           <select id="tujuan" name="tujuan" required>
-            <option value="">— pilih —</option>
-            <option value="rapikan-keuangan">Merapikan pencatatan keuangan</option>
-            <option value="naikkan-laba">Menaikkan laba</option>
-            <option value="ajukan-kur">Mempersiapkan pengajuan KUR</option>
-            <option value="kelola-stok">Mengelola stok lebih baik</option>
-            <option value="kembangkan-usaha">Mengembangkan usaha / buka cabang</option>
+            <option value="">— choose —</option>
+            <option value="rapikan-keuangan">Get the books in order</option>
+            <option value="naikkan-laba">Raise profit</option>
+            <option value="ajukan-kur">Prepare a loan application</option>
+            <option value="kelola-stok">Manage inventory better</option>
+            <option value="kembangkan-usaha">Grow the business / second location</option>
           </select>
         </div>
         <div class="field full">
-          <label class="check"><input type="checkbox" id="rekeningTerpisah" name="rekeningTerpisah"> <span>Uang usaha sudah dipisah dari uang pribadi (rekening, dompet, atau amplop khusus)</span></label>
-          <label class="check"><input type="checkbox" id="punyaNib" name="punyaNib"> <span>Usaha sudah punya NIB (Nomor Induk Berusaha)</span></label>
+          <label class="check"><input type="checkbox" id="rekeningTerpisah" name="rekeningTerpisah"> <span>Business money is separate from personal (dedicated account or wallet)</span></label>
+          <label class="check"><input type="checkbox" id="punyaNib" name="punyaNib"> <span>The business has an EIN</span></label>
         </div>
         <div class="field full">
-          <label for="tantangan">Tantangan terbesar saat ini</label>
+          <label for="tantangan">Biggest challenge right now</label>
           <textarea id="tantangan" name="tantangan" maxlength="500" placeholder="Contoh: sering kehabisan uang belanja di tengah bulan padahal jualan ramai."></textarea>
         </div>
       </div>
       <div class="form-error" id="profileError" style="display:none"></div>
       <div class="actions">
-        <button class="btn btn-primary" id="saveProfileBtn" type="submit">Simpan profil</button>
-        <button class="btn btn-ghost" type="button" onclick="goTo('dasbor')">Batal</button>
+        <button class="btn btn-primary" id="saveProfileBtn" type="submit">Save profile</button>
+        <button class="btn btn-ghost" type="button" onclick="goTo('dasbor')">Cancel</button>
       </div>
     </form>
 
     <!-- Datanya milik peserta. Berhenti dari program tidak boleh berarti
          kehilangan pembukuan yang sudah dia kumpulkan berbulan-bulan. -->
     <div class="card" style="margin-top:18px">
-      <h3 style="margin-bottom:6px">Data &amp; privasi</h3>
+      <h3 style="margin-bottom:6px">Data &amp; privacy</h3>
       <p class="sub" style="font-size:.87rem;margin-bottom:12px">
         Semua catatan di aplikasi ini milikmu. Kamu bisa mengunduhnya kapan saja, atau
         menghapusnya sekaligus berhenti dari program uji coba.
       </p>
       <div class="actions">
-        <button class="btn btn-ghost" type="button" onclick="unduhDataSaya()">⬇ Unduh data saya</button>
-        <button class="btn btn-ghost" type="button" onclick="lihatPersetujuan()">Baca lagi persetujuan</button>
+        <button class="btn btn-ghost" type="button" onclick="unduhDataSaya()">⬇ Download my data</button>
+        <button class="btn btn-ghost" type="button" onclick="lihatPersetujuan()">Read the terms again</button>
         <button class="btn btn-ghost" type="button" onclick="hapusDataSaya()"
-                style="color:var(--red);border-color:var(--red)">Hapus data &amp; berhenti</button>
+                style="color:var(--red);border-color:var(--red)">Delete data &amp; leave</button>
       </div>
     </div>
   </div>
@@ -926,20 +980,20 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
   <div class="wrap">
     <div class="page-head">
       <div class="eyebrow">Buku Kas</div>
-      <h2>Catat transaksi hari ini</h2>
-      <p class="sub">Catat setiap uang masuk dan keluar — cukup 10 detik. Semakin rutin dicatat, semakin akurat angka dan saran di aplikasi ini, dan setelah 3 bulan catatanmu bisa langsung dipakai untuk mengajukan KUR.</p>
+      <h2>Record today’s transactions</h2>
+      <p class="sub">Record every dollar in and out — about 10 seconds each. The steadier your records, the more accurate every number and piece of advice; after 3 months your records are lender-ready.</p>
     </div>
 
     <button class="scan-cta" id="scanNotaBtn" type="button" hidden>
       <span class="sc-ic">📷</span>
-      <span><b>Scan Nota</b><small>Foto struk belanja — diisi otomatis, kamu periksa dulu sebelum disimpan.</small></span>
+      <span><b>Scan Receipt</b><small>Photograph a purchase receipt — auto-filled, you review before saving.</small></span>
     </button>
     <input type="file" id="scanNotaFile" accept="image/jpeg,image/png,image/webp" capture="environment" hidden>
 
     <form class="kas-form" id="kasForm">
       <div class="jenis-toggle">
-        <button type="button" class="jenis-btn" data-jenis="masuk" aria-pressed="true">↓ Uang Masuk<small>penjualan, pemasukan lain</small></button>
-        <button type="button" class="jenis-btn" data-jenis="keluar" aria-pressed="false">↑ Uang Keluar<small>belanja, biaya, prive</small></button>
+        <button type="button" class="jenis-btn" data-jenis="masuk" aria-pressed="true">↓ Money In<small>sales, other income</small></button>
+        <button type="button" class="jenis-btn" data-jenis="keluar" aria-pressed="false">↑ Money Out<small>purchases, expenses, owner draw</small></button>
       </div>
 
       <div class="amount-wrap">
@@ -949,7 +1003,7 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
 
       <div class="kat-chips" id="katChips"></div>
       <div class="prive-hint" id="priveHint">
-        💡 <b>Prive</b> adalah uang usaha yang kamu pakai untuk keperluan pribadi. Ini <b>bukan biaya usaha</b>, jadi tidak mengurangi laba — tapi tetap mengurangi uang kas. Itu sebabnya dicatat terpisah (Modul 2).
+        💡 <b>Owner draw</b> adalah uang usaha yang kamu pakai untuk keperluan pribadi. Ini <b>not a business expense</b>, jadi tidak mengurangi laba — tapi tetap mengurangi uang kas. Itu sebabnya dicatat terpisah (Modul 2).
       </div>
 
       <div class="kas-row">
@@ -958,13 +1012,13 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
       </div>
 
       <div class="form-error" id="kasError" style="display:none"></div>
-      <button class="btn btn-primary kas-save" id="kasSaveBtn" type="submit">Simpan transaksi</button>
+      <button class="btn btn-primary kas-save" id="kasSaveBtn" type="submit">Save transaction</button>
     </form>
 
     <div class="month-bar">
       <select id="kasMonth" aria-label="Pilih bulan"></select>
-      <button class="btn btn-ghost" id="waShareBtn" style="padding:8px 14px;font-size:.84rem" type="button" title="Bagikan rekap 7 hari sebagai pesan WhatsApp">📲 Bagikan 7 hari</button>
-      <button class="btn btn-ghost" style="padding:8px 14px;font-size:.84rem" onclick="goTo('laporan')">📄 Laporan KUR</button>
+      <button class="btn btn-ghost" id="waShareBtn" style="padding:8px 14px;font-size:.84rem" type="button" title="Bagikan rekap 7 hari sebagai pesan WhatsApp">📲 Share 7 days</button>
+      <button class="btn btn-ghost" style="padding:8px 14px;font-size:.84rem" onclick="goTo('laporan')">📄 Reports</button>
     </div>
 
     <div class="kas-summary" id="kasSummary"></div>
@@ -972,16 +1026,16 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
     <div class="chart-card viz" id="kasChartCard">
       <div class="chart-head">
         <div>
-          <h3>Sisa uang per hari</h3>
-          <p id="kasChartNote">Batang ke atas berarti hari itu uang masuk lebih besar dari uang keluar.</p>
+          <h3>Cash left per day</h3>
+          <p id="kasChartNote">An upward bar means more money came in than went out that day.</p>
         </div>
       </div>
       <div class="chart-wrap" id="kasChart"></div>
       <div class="chart-legend">
-        <span><i style="background:var(--surplus)"></i> Hari surplus</span>
-        <span><i style="background:var(--defisit)"></i> Hari defisit (nombok)</span>
+        <span><i style="background:var(--surplus)"></i> Surplus day</span>
+        <span><i style="background:var(--defisit)"></i> Deficit day</span>
       </div>
-      <button class="chart-table-toggle" type="button" id="kasTableToggle">Lihat sebagai tabel angka</button>
+      <button class="chart-table-toggle" type="button" id="kasTableToggle">View as numbers table</button>
       <div id="kasTableWrap"></div>
     </div>
 
@@ -989,11 +1043,11 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
       <input id="kasCari" type="search" placeholder="Cari transaksi — keterangan / kategori…" autocomplete="off" aria-label="Cari transaksi">
       <div class="kf-row">
         <div class="kf-chips" id="kasJenisFilter">
-          <button type="button" data-jf="" aria-pressed="true">Semua</button>
-          <button type="button" data-jf="masuk" aria-pressed="false">Pemasukan</button>
-          <button type="button" data-jf="keluar" aria-pressed="false">Pengeluaran</button>
+          <button type="button" data-jf="" aria-pressed="true">All</button>
+          <button type="button" data-jf="masuk" aria-pressed="false">Income</button>
+          <button type="button" data-jf="keluar" aria-pressed="false">Expenses</button>
         </div>
-        <select id="kasKategoriFilter" aria-label="Filter kategori"><option value="">Semua kategori</option></select>
+        <select id="kasKategoriFilter" aria-label="Filter kategori"><option value="">All categories</option></select>
       </div>
     </div>
 
@@ -1004,19 +1058,19 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
 <!-- ---------- Hasil scan nota (konfirmasi) ---------- -->
 <div class="nota-backdrop" id="notaBackdrop" style="display:none">
   <div class="nota-modal" role="dialog" aria-modal="true" aria-label="Hasil scan nota">
-    <h3>🔎 Hasil Scan Nota <button class="nota-close" id="notaClose" aria-label="Tutup" type="button">✕</button></h3>
+    <h3>🔎 Hasil Scan Receipt <button class="nota-close" id="notaClose" aria-label="Close" type="button">✕</button></h3>
     <p class="nota-merchant" id="notaMerchant"></p>
-    <div class="nota-warn" id="notaWarn" style="display:none">⚠️ Periksa kembali hasil scan sebelum menyimpan.</div>
+    <div class="nota-warn" id="notaWarn" style="display:none">⚠️ Review the scan result before saving.</div>
     <div class="nota-low" id="notaLow" style="display:none">
       Nota sulit dibaca. Silakan periksa atau masukkan transaksi secara manual.
       <div class="actions" style="margin-top:10px">
-        <button class="btn btn-ghost" id="notaIsiManual" type="button">Isi Manual</button>
+        <button class="btn btn-ghost" id="notaIsiManual" type="button">Fill Manually</button>
       </div>
     </div>
     <div id="notaForm">
       <div class="nota-jenis">
-        <button type="button" data-nota-jenis="keluar" aria-pressed="true">↑ Uang Keluar</button>
-        <button type="button" data-nota-jenis="masuk" aria-pressed="false">↓ Uang Masuk</button>
+        <button type="button" data-nota-jenis="keluar" aria-pressed="true">↑ Money Out</button>
+        <button type="button" data-nota-jenis="masuk" aria-pressed="false">↓ Money In</button>
       </div>
       <div class="nota-grid">
         <label>Jumlah (Rp)
@@ -1035,9 +1089,9 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
     </div>
     <div class="form-error" id="notaError" style="display:none"></div>
     <div class="actions" style="justify-content:flex-end;margin-top:14px">
-      <button class="btn btn-ghost" id="notaTolak" type="button" style="display:none">Buang Usulan</button>
-      <button class="btn btn-ghost" id="notaBatal" type="button">Batal</button>
-      <button class="btn btn-primary" id="notaSimpan" type="button">Simpan Transaksi</button>
+      <button class="btn btn-ghost" id="notaTolak" type="button" style="display:none">Discard Proposal</button>
+      <button class="btn btn-ghost" id="notaBatal" type="button">Cancel</button>
+      <button class="btn btn-primary" id="notaSimpan" type="button">Save Transaction</button>
     </div>
   </div>
 </div>
@@ -1047,13 +1101,13 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
   <div class="wrap">
     <div class="page-head no-print">
       <div class="eyebrow">Laporan</div>
-      <h2>Laporan keuangan untuk KUR</h2>
-      <p class="sub">Ringkasan buku kas beberapa bulan terakhir dalam format yang biasa diminta bank. Klik “Cetak / Simpan PDF”, lalu pilih “Save as PDF” di jendela cetak.</p>
+      <h2>Lender-ready financial reports</h2>
+      <p class="sub">A multi-month summary of your cash book in the format lenders usually ask for. Click “Print / Save PDF”, then choose “Save as PDF” in the print dialog.</p>
       <div class="actions">
         <select id="reportMonths" aria-label="Jumlah bulan" style="border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;font:inherit;font-size:.9rem;background:var(--card);color:var(--ink)">
-          <option value="3">3 bulan terakhir</option>
-          <option value="6" selected>6 bulan terakhir</option>
-          <option value="12">12 bulan terakhir</option>
+          <option value="3">Last 3 months</option>
+          <option value="6" selected>Last 6 months</option>
+          <option value="12">Last 12 months</option>
         </select>
         <button class="btn btn-primary" onclick="window.print()">🖨 Cetak / Simpan PDF</button>
         <button class="btn btn-ghost" onclick="goTo('kas')">← Kembali</button>
@@ -1064,21 +1118,21 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
     <!-- ---------- Simulasi KUR (bukan bagian lembar cetak) ---------- -->
     <div class="card no-print" id="simulasiCard" style="margin-top:20px;display:none">
       <h3 style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-        🧮 Simulasi KUR
-        <span class="sim-tag">SIMULASI</span>
+        🧮 Payment Simulator
+        <span class="sim-tag">SIMULATOR</span>
       </h3>
-      <p style="font-size:.82rem;color:var(--ink-soft);margin-top:4px">Simulasi berdasarkan data usaha Anda. Estimasi, bukan keputusan kredit — keputusan KUR sepenuhnya ada di bank.</p>
+      <p style="font-size:.82rem;color:var(--ink-soft);margin-top:4px">A simulation from your business data. An estimate, not a credit decision — the decision belongs entirely to the lender.</p>
 
       <div class="sim-row">
-        <div class="sim-label"><span>Jumlah pinjaman</span><output id="simJumlahOut"></output></div>
-        <input type="range" id="simJumlah" min="500000" max="50000000" step="500000" value="10000000" aria-label="Jumlah pinjaman">
-        <div class="sim-ujung"><span>Rp 500 rb</span><span>Rp 50 jt</span></div>
+        <div class="sim-label"><span>Loan amount</span><output id="simJumlahOut"></output></div>
+        <input type="range" id="simJumlah" min="500000" max="50000000" step="500000" value="10000000" aria-label="Loan amount">
+        <div class="sim-ujung"><span>$1,000</span><span>$500,000</span></div>
       </div>
 
       <div class="sim-row">
-        <div class="sim-label"><span>Tenor</span><output id="simTenorOut"></output></div>
+        <div class="sim-label"><span>Term</span><output id="simTenorOut"></output></div>
         <input type="range" id="simTenor" min="3" max="60" step="1" value="12" aria-label="Tenor pinjaman">
-        <div class="sim-ujung"><span>3 bln</span><span>60 bln</span></div>
+        <div class="sim-ujung"><span>3 mo</span><span>60 mo</span></div>
       </div>
 
       <div id="simHasil" class="sim-hasil"></div>
@@ -1092,14 +1146,14 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
   <div class="wrap">
     <div class="page-head">
       <div class="eyebrow">Personal</div>
-      <h2>Rekomendasi untuk usahamu</h2>
-      <p class="sub">Rencana perbaikan yang disusun AI berdasarkan angka dan kondisi usahamu sendiri — bukan saran umum.</p>
+      <h2>Recommendations for your business</h2>
+      <p class="sub">An improvement plan the AI builds from your own numbers and condition — not generic advice.</p>
     </div>
     <div id="recBody"></div>
     <div class="card" id="riwayatSaran" style="margin-top:14px">
-      <h3 style="margin-top:0">Riwayat Saran</h3>
-      <p class="sub">Nasihat yang pernah diberikan, dan apa yang terjadi setelahnya. Hasil penilaiannya dihitung sistem dari angka buku kas — bukan dari AI.</p>
-      <div id="riwayatBody"><p class="sub" style="margin:0">Memuat…</p></div>
+      <h3 style="margin-top:0">Advice History</h3>
+      <p class="sub">Advice previously given, and what happened afterwards. Outcomes are scored by the system from cash book numbers — never by the AI itself.</p>
+      <div id="riwayatBody"><p class="sub" style="margin:0">Loading…</p></div>
     </div>
   </div>
 </section>
@@ -1109,15 +1163,15 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
   <div class="wrap chat-shell">
     <div class="page-head" style="text-align:center">
       <div class="eyebrow">Konsultasi</div>
-      <h2>Tanya apa saja soal keuangan usahamu</h2>
-      <p class="sub" style="margin:0 auto">Konsultan AI sudah membaca profil usahamu, jadi jawabannya memakai angka usahamu sendiri.</p>
+      <h2>Ask anything about your business finances</h2>
+      <p class="sub" style="margin:0 auto">The AI consultant has read your business profile, so answers use your own numbers.</p>
     </div>
     <div class="chat-box">
       <div class="chat-head">
         <span class="bot-avatar">🤖</span>
         <div class="chat-id">
-          <b>Konsultan Nova</b>
-          <span class="chat-sub" id="chatSub"><span class="dot"></span><span id="chatStatus">Menyiapkan…</span></span>
+          <b>Nova Consultant</b>
+          <span class="chat-sub" id="chatSub"><span class="dot"></span><span id="chatStatus">Preparing…</span></span>
         </div>
         <button class="icon-btn" id="clearChatBtn" title="Hapus percakapan" aria-label="Hapus percakapan">🗑</button>
       </div>
@@ -1126,11 +1180,11 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
       <div id="modulKonteksBar"></div>
       <form class="chat-input" id="chatForm">
         <input id="chatInput" placeholder="Tulis pertanyaan…" autocomplete="off" aria-label="Pertanyaan">
-        <button id="chatSend" type="submit">Kirim</button>
+        <button id="chatSend" type="submit">Send</button>
       </form>
     </div>
     <p class="ai-note" id="anggaranNote"></p>
-    <p class="ai-note">Ditenagai asisten AI. Jawaban AI bisa keliru — untuk pajak, sengketa, atau pinjaman besar, konsultasikan ke ahlinya.</p>
+    <p class="ai-note">Powered by an AI assistant. AI answers can be wrong — for taxes, disputes, or large loans, consult a professional.</p>
   </div>
 </section>
 
@@ -1142,8 +1196,8 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
     <div id="modDaftar">
       <div class="page-head">
         <div class="eyebrow">Belajar</div>
-        <h2 id="modJudul">Modul akuntansi &amp; keuangan UMKM</h2>
-        <p class="sub">Materi singkat, bisa dibaca langsung di sini. Jalur <b>Dasar</b> dijalani satu sesi per hari selama satu minggu — sesi berikutnya terbuka keesokan harinya, dan sesi yang sudah terbuka bisa dibaca ulang kapan saja. Jalur lain dibuka sesuai kebutuhanmu.</p>
+        <h2 id="modJudul">Applied finance &amp; accounting modules</h2>
+        <p class="sub">Materi singkat, bisa dibaca langsung di sini. Jalur <b>Dasar</b> one session a day for a week — the next session opens the following day, and unlocked sessions can be re-read anytime. The other paths open whenever you need them.</p>
       </div>
 
       <!-- Satu sesi untuk hari ini -->
@@ -1171,12 +1225,12 @@ footer{border-top:1px solid var(--line);padding:22px 0;font-size:.78rem;color:va
 
 <!-- Navigasi bawah — hanya tampil di ponsel -->
 <nav class="tabbar" id="tabbar" aria-label="Menu utama">
-  <button data-page="dasbor" class="active"><span class="ic">📊</span>Dasbor</button>
-  <button data-page="kas"><span class="ic">🧾</span>Buku Kas</button>
+  <button data-page="dasbor" class="active"><span class="ic">📊</span>Dashboard</button>
+  <button data-page="kas"><span class="ic">🧾</span>Cash Book</button>
   <button data-page="rekomendasi"><span class="ic">✨</span>Saran</button>
   <button data-page="konsultasi"><span class="ic">💬</span>Tanya AI</button>
-  <button data-page="modul"><span class="ic">📖</span>Modul</button>
-  <button data-page="profil"><span class="ic">👤</span>Profil</button>
+  <button data-page="modul"><span class="ic">📖</span>Learn</button>
+  <button data-page="profil"><span class="ic">👤</span>Profile</button>
 </nav>
 </div>
 
@@ -1226,7 +1280,7 @@ const TOUR_TUTUP_KEY = 'nova-demo-tur-tutup';
 let token = localStorage.getItem(TOKEN_KEY) || '';
 let state = { user: null, metrics: null, aiConfigured: false, model: null, chatBusy: false };
 
-const fmtRp = (n) => 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(Number(n) || 0));
+const fmtRp = (n) => { const v = Math.round(Number(n) || 0); return (v < 0 ? '-$' : '$') + new Intl.NumberFormat('en-US').format(Math.abs(v)); };
 const el = (id) => document.getElementById(id);
 
 /**
@@ -1237,19 +1291,20 @@ const el = (id) => document.getElementById(id);
  * ke bank.
  */
 function ringkasRp(n) {
+  // Compact USD untuk label grafik: "$45k", "$1.2M".
   const v = Number(n) || 0;
   const a = Math.abs(v);
   const tanda = v < 0 ? '−' : '';
-  if (a >= 1e9) return tanda + (a / 1e9).toFixed(a >= 1e10 ? 0 : 1).replace('.', ',') + ' M';
-  if (a >= 1e6) return tanda + (a / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace('.', ',') + ' jt';
-  if (a >= 1e3) return tanda + Math.round(a / 1e3) + ' rb';
-  return tanda + Math.round(a);
+  if (a >= 1e9) return tanda + '$' + (a / 1e9).toFixed(a >= 1e10 ? 0 : 1) + 'B';
+  if (a >= 1e6) return tanda + '$' + (a / 1e6).toFixed(a >= 1e7 ? 0 : 1) + 'M';
+  if (a >= 1e3) return tanda + '$' + Math.round(a / 1e3) + 'k';
+  return tanda + '$' + Math.round(a);
 }
 
 /** Label jenis usaha — laporan untuk bank tidak boleh menampilkan kode mentah. */
 const LABEL_JENIS = {
-  kuliner: 'Kuliner', retail: 'Retail / toko', jasa: 'Jasa',
-  produksi: 'Produksi / kerajinan', online: 'Toko online', lainnya: 'Lainnya',
+  kuliner: 'Food service', retail: 'Retail store', jasa: 'Services',
+  produksi: 'Manufacturing', online: 'Online store', lainnya: 'Other',
 };
 
 function toast(msg) {
@@ -1276,7 +1331,7 @@ function mdLite(s) {
 function applyTheme(t) {
   document.documentElement.dataset.theme = t;
   const b = el('themeToggle');
-  if (b) { b.textContent = t === 'dark' ? '☀️' : '🌙'; b.title = t === 'dark' ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'; }
+  if (b) { b.textContent = t === 'dark' ? '☀️' : '🌙'; b.title = t === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'; }
   try { localStorage.setItem(THEME_KEY, t); } catch {}
 }
 applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
@@ -1292,16 +1347,92 @@ async function api(pathname, options = {}) {
     },
   });
   const data = await res.json().catch(() => ({}));
-  if (res.status === 401) { logout(); throw new Error(data.error || 'Sesi berakhir.'); }
+  if (res.status === 401) { logout(); throw new Error(data.error || 'Session ended.'); }
   /*
    * 451 = server menolak menyimpan karena persetujuan belum/tidak lagi berlaku.
    * Jawabannya membawa teks persetujuannya, jadi peserta dibawa ke layar itu —
    * bukan dibiarkan menatap pesan galat tanpa satu pun jalan untuk menyetujui.
    */
-  if (res.status === 451 && data.consent) { showConsent(data.consent); throw new Error(data.error || 'Persetujuan diperlukan.'); }
-  if (!res.ok) throw new Error(data.error || 'Permintaan gagal.');
+  if (res.status === 451 && data.consent) { showConsent(data.consent); throw new Error(data.error || 'Agreement required.'); }
+  if (!res.ok) throw new Error(data.error || 'Request failed.');
   return data;
 }
+
+/* ============================================================
+   Sign-in — email magic link + access code (W3/W2e)
+============================================================ */
+/* Tab: Email <-> Kode. Dua jalur, satu tujuan. */
+function setTab(mode) {
+  const email = mode === 'email';
+  el('tabEmail').classList.toggle('active', email);
+  el('tabKode').classList.toggle('active', !email);
+  el('tabEmail').setAttribute('aria-selected', String(email));
+  el('tabKode').setAttribute('aria-selected', String(!email));
+  el('emailForm').style.display = email ? 'block' : 'none';
+  el('loginForm').style.display = email ? 'none' : 'block';
+}
+el('tabEmail').addEventListener('click', () => setTab('email'));
+el('tabKode').addEventListener('click', () => setTab('kode'));
+
+el('emailForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = el('emailInput').value.trim();
+  const btn = el('emailBtn');
+  const errBox = el('emailError');
+  const note = el('emailNote');
+  errBox.style.display = 'none';
+  note.style.display = 'none';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Sending…';
+  try {
+    const res = await fetch('/api/auth/magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not send the sign-in link.');
+    note.textContent = data.pesan || 'If that email has an account, a sign-in link has been sent.';
+    note.style.display = 'block';
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Email me a sign-in link';
+  }
+});
+
+/**
+ * Tautan ajaib membawa ?token= — diverifikasi di sini, satu pintu sesi.
+ * Token sesi disimpan di kunci yang sama dengan kode akses: server menerima
+ * keduanya sebagai Bearer, jadi seluruh aplikasi tidak perlu tahu bedanya.
+ */
+async function verifikasiTokenUrl() {
+  const t = new URLSearchParams(location.search).get('token');
+  if (!t) return;
+  history.replaceState(null, '', location.pathname);
+  try {
+    const res = await fetch('/api/auth/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: t }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'This sign-in link is invalid or expired.');
+    token = data.sesi;
+    localStorage.setItem(TOKEN_KEY, data.sesi);
+    try { localStorage.removeItem(DEMO_KEY); } catch {}
+    applySession(data);
+    if (data.consent) showConsent(data.consent);
+    else enterApp();
+  } catch (err) {
+    const errBox = el('emailError');
+    errBox.textContent = err.message;
+    errBox.style.display = 'block';
+  }
+}
+verifikasiTokenUrl();
 
 /* ============================================================
    Login
@@ -1313,7 +1444,7 @@ el('loginForm').addEventListener('submit', async (e) => {
   const errBox = el('loginError');
   errBox.style.display = 'none';
   btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span> Memeriksa…';
+  btn.innerHTML = '<span class="spin"></span> Checking…';
   try {
     const res = await fetch('/api/login', {
       method: 'POST',
@@ -1321,7 +1452,7 @@ el('loginForm').addEventListener('submit', async (e) => {
       body: JSON.stringify({ code }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Kode akses tidak dikenali.');
+    if (!res.ok) throw new Error(data.error || 'Access code not recognized.');
     token = code;
     localStorage.setItem(TOKEN_KEY, code);
     // Masuk dengan kode peserta berarti keluar dari mode demo (bila sempat aktif).
@@ -1335,7 +1466,7 @@ el('loginForm').addEventListener('submit', async (e) => {
     errBox.style.display = 'block';
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Masuk';
+    btn.textContent = 'Sign in';
   }
 });
 
@@ -1351,7 +1482,7 @@ el('demoBtn').addEventListener('click', async () => {
   const errBox = el('loginError');
   errBox.style.display = 'none';
   btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span> Menyiapkan usaha contoh…';
+  btn.innerHTML = '<span class="spin"></span> Preparing a sample business…';
   try {
     const res = await fetch('/api/demo', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
     const data = await res.json();
@@ -1372,6 +1503,10 @@ el('demoBtn').addEventListener('click', async () => {
 });
 
 function logout() {
+  // Sesi (bukan kode akses) dicabut di server; kode adalah milik pemegangnya.
+  if (token && String(token).startsWith('sesi_')) {
+    try { fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: 'Bearer ' + token } }); } catch {}
+  }
   token = '';
   localStorage.removeItem(TOKEN_KEY);
   try { localStorage.removeItem(DEMO_KEY); localStorage.removeItem(TOUR_TUTUP_KEY); } catch {}
@@ -1658,7 +1793,7 @@ const LANGKAH_TUR = [
   { halaman: 'rekomendasi', judul: 'Rekomendasi AI', ringkas: 'Saran perbaikan yang menyebut angka usaha ini, bukan nasihat umum.' },
   { halaman: 'konsultasi', judul: 'Tanya AI', ringkas: 'Konsultan yang membaca buku kasmu. Coba: "labaku sebulan berapa?"' },
   { halaman: 'laporan', judul: 'Laporan KUR', ringkas: 'Rekap 3–12 bulan siap cetak PDF untuk lampiran pengajuan bank.' },
-  { halaman: 'papan', judul: 'Papan Kemajuan 🏆', ringkas: 'Peringkat warung contoh yang hidup — dan posisimu di antara mereka.' },
+  { halaman: 'papan', judul: 'Progress Board 🏆', ringkas: 'Peringkat warung contoh yang hidup — dan posisimu di antara mereka.' },
   { halaman: 'modul', judul: 'Kelas 14 sesi', ringkas: 'Micro-learning 10 menit/hari, satu sesi terbuka tiap hari.' },
 ];
 
@@ -1775,7 +1910,7 @@ ${tglID(awal)} – ${tglID(akhir)}
 ${garis}
 • Bahan/barang: ${fmtRp(perKategori['belanja-bahan'] ?? 0)}
 • Operasional: ${fmtRp(perKategori.operasional ?? 0)}
-• Prive: ${fmtRp(perKategori.prive ?? 0)}${perKategori.cicilan ? `\n• Cicilan: ${fmtRp(perKategori.cicilan)}` : ''}
+• Owner draw: ${fmtRp(perKategori.prive ?? 0)}${perKategori.cicilan ? `\n• Cicilan: ${fmtRp(perKategori.cicilan)}` : ''}
 ${garis}
 *Estimasi laba minggu ini:* ${fmtRp(laba)}
 
@@ -1799,7 +1934,7 @@ function renderDashboard() {
   if (!state.user.profile || !m) {
     box.innerHTML = `<div class="card empty">
       <span class="big">🏪</span>
-      <h3>Profil usaha belum diisi</h3>
+      <h3>Business profile belum diisi</h3>
       <p style="margin:8px auto 0;max-width:420px">Isi data usahamu sekali saja. Setelah itu kamu langsung dapat skor kesehatan keuangan, rekomendasi personal, dan konsultasi AI yang memakai angka usahamu sendiri.</p>
       <div class="actions" style="justify-content:center"><button class="btn btn-primary" onclick="goTo('profil')">Isi profil usaha →</button></div>
     </div>`;
@@ -1838,7 +1973,7 @@ function renderDashboard() {
   // Baris ini hanya muncul kalau angkanya berasal dari buku kas nyata.
   const kasRows = m.sumber === 'catatan'
     ? `<div class="stat-row"><span>Saldo kas${m.disetarakan ? ' (setara sebulan)' : ' bulan ini'}</span><b class="${m.saldoKas >= 0 ? 'pos' : 'neg'}">${m.saldoKas < 0 ? '− ' : ''}${fmtRp(Math.abs(m.saldoKas))}</b></div>` +
-      (m.prive > 0 ? `<div class="stat-row"><span>Prive (dipakai pribadi)</span><b>${fmtRp(m.prive)}</b></div>` : '')
+      (m.prive > 0 ? `<div class="stat-row"><span>Owner draw (dipakai pribadi)</span><b>${fmtRp(m.prive)}</b></div>` : '')
     : '';
 
   const berjalanBlock = m.sumber === 'catatan' && m.disetarakan && b
@@ -1916,15 +2051,15 @@ function renderDashboard() {
     <div class="chart-card viz" id="dashChartCard" style="margin-top:16px;display:none">
       <div class="chart-head">
         <div>
-          <h3>Sisa uang per hari — bulan ini</h3>
+          <h3>Cash left per day — bulan ini</h3>
           <p>Hari mana usahamu nombok, dan hari mana yang paling ramai.</p>
         </div>
         <button class="btn btn-ghost" style="padding:7px 13px;font-size:.82rem" onclick="goTo('kas')">Buka buku kas →</button>
       </div>
       <div class="chart-wrap" id="dashChart"></div>
       <div class="chart-legend">
-        <span><i style="background:var(--surplus)"></i> Hari surplus</span>
-        <span><i style="background:var(--defisit)"></i> Hari defisit (nombok)</span>
+        <span><i style="background:var(--surplus)"></i> Surplus day</span>
+        <span><i style="background:var(--defisit)"></i> Deficit day</span>
       </div>
     </div>
 
@@ -1941,7 +2076,7 @@ function renderDashboard() {
         <button class="btn btn-primary" onclick="goTo('kas')">🧾 Catat transaksi</button>
         <button class="btn btn-ghost" onclick="goTo('rekomendasi')">Lihat rekomendasi →</button>
         <button class="btn btn-ghost" onclick="goTo('konsultasi')">💬 Tanya konsultan AI</button>
-        <button class="btn btn-ghost" onclick="goTo('papan')">🏆 Papan Kemajuan →</button>
+        <button class="btn btn-ghost" onclick="goTo('papan')">🏆 Progress Board →</button>
         <button class="btn btn-ghost" onclick="goTo('profil')">Ubah profil</button>
       </div>
     </div>`;
@@ -1950,7 +2085,7 @@ function renderDashboard() {
 }
 
 /* ============================================================
-   Papan Kemajuan — peringkat komunitas warung contoh
+   Progress Board — peringkat komunitas warung contoh
 ============================================================
  *
  * Datanya dari /api/papan yang hanya pernah MEMBACA akun DEMO — peserta
@@ -2180,7 +2315,7 @@ function tampilkanAkhirFilm(film) {
 }
 
 /* ============================================================
-   Profil usaha
+   Business profile
 ============================================================ */
 function fillProfileForm() {
   const p = state.user.profile;
@@ -2222,7 +2357,7 @@ el('profileForm').addEventListener('submit', async (e) => {
     renderDashboard();
     renderRecommendations();
     loadChat(); // sapaan konsultan ikut menyesuaikan nama usaha yang baru
-    toast('✅ Profil usaha tersimpan');
+    toast('✅ Business profile tersimpan');
     goTo('dasbor');
   } catch (err) {
     errBox.textContent = err.message;
@@ -2257,7 +2392,7 @@ function stempelRekomendasi(rec) {
 }
 
 /* ============================================================
-   Riwayat Saran — memori nasihat + checkpoint hasil
+   Advice History — memori nasihat + checkpoint hasil
 ============================================================ */
 
 /*
@@ -2480,7 +2615,7 @@ function welcomeMessage() {
 async function loadChat() {
   const log = el('chatLog');
   log.innerHTML = '';
-  addMsg(welcomeMessage(), 'ai', 'Konsultan Nova');
+  addMsg(welcomeMessage(), 'ai', 'Nova Consultant');
   try {
     const { messages } = await api('/chat');
     for (const m of messages) {
@@ -2494,7 +2629,7 @@ el('clearChatBtn').addEventListener('click', async () => {
   try {
     await api('/chat', { method: 'DELETE' });
     el('chatLog').innerHTML = '';
-    addMsg(welcomeMessage(), 'ai', 'Konsultan Nova');
+    addMsg(welcomeMessage(), 'ai', 'Nova Consultant');
     toast('🗑 Percakapan dihapus');
   } catch (err) { toast(err.message); }
 });
@@ -2934,7 +3069,7 @@ function renderKasChart(summary) {
         ? ` Hari paling berat: ${new Date(extremes.worst.tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })} (−${fmtRp(Math.abs(extremes.worst.net))}).`
         : '');
   } else {
-    note.textContent = 'Batang ke atas berarti hari itu uang masuk lebih besar dari uang keluar.';
+    note.textContent = 'An upward bar means more money came in than went out that day.';
   }
 
   // Tabel setara — identitas data tidak pernah hanya bergantung pada warna.
@@ -2955,7 +3090,7 @@ el('kasTableToggle').addEventListener('click', () => {
   const t = el('kasTableWrap').querySelector('.chart-table');
   if (!t) return;
   const shown = t.classList.toggle('show');
-  el('kasTableToggle').textContent = shown ? 'Sembunyikan tabel' : 'Lihat sebagai tabel angka';
+  el('kasTableToggle').textContent = shown ? 'Sembunyikan tabel' : 'View as numbers table';
 });
 
 function renderKasSummary(s) {
@@ -3067,7 +3202,7 @@ function perbaruiOpsiKategoriFilter() {
   const defs = kas.kategoriDef ?? {};
   const jenisAktif = kas.filter.jenis;
   const kelompok = jenisAktif ? [jenisAktif] : ['masuk', 'keluar'];
-  el('kasKategoriFilter').innerHTML = '<option value="">Semua kategori</option>' + kelompok.map((j) =>
+  el('kasKategoriFilter').innerHTML = '<option value="">All categories</option>' + kelompok.map((j) =>
     `<optgroup label="${j === 'masuk' ? 'Pemasukan' : 'Pengeluaran'}">` +
     Object.entries(defs[j] ?? {}).map(([k, d]) => `<option value="${escapeHtml(k)}" ${k === kas.filter.kategori ? 'selected' : ''}>${escapeHtml(d.label)}</option>`).join('') +
     '</optgroup>').join('');
@@ -3282,7 +3417,7 @@ el('notaTolak').addEventListener('click', async () => {
     errBox.style.display = 'block';
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Buang Usulan';
+    btn.textContent = 'Discard Proposal';
   }
 });
 
@@ -3507,7 +3642,7 @@ async function loadReport() {
         ${r.bulanLengkap ? '' : '<p style="font-size:.82rem;color:var(--ink-soft);margin-top:6px">Belum ada satu pun bulan penuh yang tercatat cukup rapat, jadi rata-rata belum bisa dihitung. Catat rutin sampai satu bulan berjalan habis, dan angka ini muncul sendiri.</p>'}
         ${catatanBerjalan}
 
-        <p style="font-size:.8rem;color:var(--ink-soft);margin-top:14px">Laporan ini disusun dari catatan buku kas harian pemilik usaha. Rata-rata laba dihitung hanya dari bulan yang sudah berjalan penuh dan tercatat cukup rapat; bulan yang masih berjalan atau yang catatannya bolong tetap ditampilkan, tapi dilaporkan terpisah agar tidak menurunkan rata-rata. Prive (pengambilan pribadi) tidak diperhitungkan sebagai biaya usaha sehingga tidak mengurangi laba.</p>
+        <p style="font-size:.8rem;color:var(--ink-soft);margin-top:14px">Laporan ini disusun dari catatan buku kas harian pemilik usaha. Rata-rata laba dihitung hanya dari bulan yang sudah berjalan penuh dan tercatat cukup rapat; bulan yang masih berjalan atau yang catatannya bolong tetap ditampilkan, tapi dilaporkan terpisah agar tidak menurunkan rata-rata. Owner draw (pengambilan pribadi) tidak diperhitungkan sebagai biaya usaha sehingga tidak mengurangi laba.</p>
 
         <div class="report-sign">
           <div><span>Mengetahui,</span><div class="line">Pendamping UMKM</div></div>
@@ -3698,7 +3833,7 @@ function kartuKonteksUsahaHTML(k) {
     ['Biaya operasional', a.biaya],
   ];
   if (k.sumber === 'catatan') baris.push(['Saldo kas', a.saldoKas]);
-  if ((a.prive ?? 0) > 0) baris.push(['Prive (ambil pribadi)', a.prive]);
+  if ((a.prive ?? 0) > 0) baris.push(['Owner draw (ambil pribadi)', a.prive]);
 
   const dariHari = k.konsistensi?.dari ?? 0;
   const konsistensi = k.sumber === 'catatan' && dariHari > 0
@@ -3998,7 +4133,7 @@ el('checkupBtn').addEventListener('click', async () => {
     errBox.style.display = 'block';
   } finally {
     btn.disabled = false;
-    btn.textContent = '🩺 Periksa Sekarang';
+    btn.textContent = '🩺 Run Check-up';
   }
 });
 
@@ -4032,7 +4167,7 @@ el('kartuBtn').addEventListener('click', async () => {
     errBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
   } finally {
     btn.disabled = false;
-    btn.textContent = '🪪 Bagikan Kartu Kesehatan Usaha';
+    btn.textContent = '🪪 Share Health Card';
   }
 });
 
@@ -4392,7 +4527,7 @@ async function bacaModul(no) {
           <p>${escapeHtml(err.message)}</p>
         </div>
         <div class="baca-bawah">
-          <button class="btn btn-primary" onclick="goTo('kas')">🧾 Catat transaksi hari ini</button>
+          <button class="btn btn-primary" onclick="goTo('kas')">🧾 Record today’s transactions</button>
         </div>`;
       el('modDaftar').hidden = true;
       el('modBaca').hidden = false;
