@@ -21,244 +21,270 @@
  *      kas (KATEGORI di lib/cashbook.js) — latihan yang mengajarkan
  *      kategori yang tidak ada di aplikasi adalah latihan yang salah.
  *
- * Soal hanya untuk tujuh sesi jalur dasar — inilah program intinya;
- * modul pustaka tetap bebas dibaca tanpa gerbang apa pun.
+ * Soal hanya untuk tujuh sesi jalur dasar (modul 101–107) — inilah
+ * program intinya; modul pustaka tetap bebas dibaca tanpa gerbang.
+ * Soal berbahasa Inggris sejak ganti kurikulum enterprise (W2b).
  */
 
 /* ----------------------------------------------------------------- Soal */
 
 const SOAL = {
-  1: [
+  101: [
     {
       tipe: 'hitung',
-      pertanyaan: 'Sehari: penjualan Rp 900.000, belanja bahan Rp 480.000, gas & listrik Rp 110.000. Berapa laba bersih hari itu? (dalam rupiah)',
-      kunci: 310_000,
-      satuan: 'rupiah',
-      penjelasan: 'Laba = penjualan − belanja bahan − biaya operasional = 900.000 − 480.000 − 110.000 = Rp 310.000. Bukan Rp 900.000 — itu baru omzet.',
-      konsep: 'omzet-laba-kas',
+      pertanyaan:
+        'One day: sales $2,400, materials purchased $1,150, utilities and fees $290. What is the day\'s net profit? (in dollars)',
+      kunci: 960,
+      satuan: 'dollar',
+      penjelasan:
+        'Profit = sales − materials − operating costs = 2,400 − 1,150 − 290 = $960. Not $2,400 — that is revenue, the top line.',
+      konsep: 'revenue-vs-profit',
     },
     {
       tipe: 'golong',
-      pertanyaan: 'Pilah kejadian uang ini: mana yang dicatat sebagai keuangan USAHA dan mana PRIBADI?',
-      item: ['Beli gas 3 kg', 'Beli pulsa anak', 'Penjualan nasi pagi', 'Bayar arisan'],
-      golongan: ['Usaha', 'Pribadi'],
+      pertanyaan: 'Sort each cash movement: is it BUSINESS or PERSONAL?',
+      item: ['Supplies for the shop', 'Your kid\'s phone bill', 'Morning customer sales', 'Family dinner groceries'],
+      golongan: ['Business', 'Personal'],
       kunci: [0, 1, 0, 1],
-      penjelasan: 'Gas dan hasil jualan adalah urusan usaha. Pulsa anak dan arisan tetap menghabiskan uang dari laci yang sama — tapi itu pribadi, dan wajib dicatat sebagai prive supaya tidak mencemari laba.',
-      konsep: 'prive',
+      penjelasan:
+        'Supplies and customer sales are business. The phone bill and groceries spend from the same wallet but are personal — record them as an owner draw so they never contaminate profit.',
+      konsep: 'owner-draw',
     },
     {
       tipe: 'pilihan',
-      pertanyaan: 'Kamu mengambil Rp 100.000 dari laci untuk kebutuhan rumah. Apa dampaknya di catatan?',
+      pertanyaan: 'You take $600 from the business account for personal use. What does it do in the books?',
       pilihan: {
-        A: 'Laba berkurang Rp 100.000',
-        B: 'Kas berkurang Rp 100.000, laba tetap',
-        C: 'Tidak berpengaruh di mana pun',
+        A: 'Profit falls by $600',
+        B: 'Cash falls by $600, profit unchanged',
+        C: 'No effect anywhere',
       },
       kunci: 'B',
-      penjelasan: 'Prive mengurangi UANG KAS, tapi bukan biaya usaha — laba tetap. Kalau prive dicatat sebagai biaya, usaha yang sehat bisa terlihat rugi.',
-      konsep: 'prive',
+      penjelasan:
+        'An owner draw moves cash out without being a business cost. Book it as a draw and profit stays honest — a healthy month must not print as a loss just because you paid yourself.',
+      konsep: 'owner-draw',
     },
   ],
-  2: [
-    {
-      tipe: 'pilihan',
-      pertanyaan: 'Ponsel yang kamu pakai mencatat hilang. Apa yang terjadi pada catatan kas di aplikasi?',
-      pilihan: {
-        A: 'Hilang bersama ponselnya',
-        B: 'Tetap aman — tersimpan di server, bisa dibuka dari perangkat mana pun',
-        C: 'Tetap ada tapi tidak bisa ditambah lagi',
-      },
-      kunci: 'B',
-      penjelasan: 'Cloud accounting menyimpan catatan di server, bukan di satu ponsel. Ponsel hanya jendela — ganti jendela, rumahnya tetap.',
-      konsep: 'catatan-awet',
-    },
-    {
-      tipe: 'pilihan',
-      pertanyaan: 'Satu transaksi salah dan kamu hapus. Yang paling menggambarkan cloud accounting yang benar:',
-      pilihan: {
-        A: 'Kesalahan menghilang tanpa jejak — bersih lagi',
-        B: 'Koreksinya meninggalkan jejak yang bisa ditelusuri',
-        C: 'Transaksi yang dihapus tidak boleh dilakukan',
-      },
-      kunci: 'B',
-      penjelasan: 'Catatan yang punya jejak perubahan jauh lebih dipercaya — termasuk oleh bank. Buku tulis mencoret, aplikasi mencatat jejaknya.',
-      konsep: 'jejak-perubahan',
-    },
+  102: [
     {
       tipe: 'golong',
-      pertanyaan: 'Manakah ciri cloud accounting yang BENAR?',
-      item: ['Data sama dari perangkat mana pun', 'Harus install aplikasi berat', 'Penjumlahan dihitung otomatis', 'Hanya untuk perusahaan besar'],
-      golongan: ['Benar', 'Salah'],
-      kunci: [0, 1, 0, 1],
-      penjelasan: 'Cukup peramban di HP, dihitung server dengan rumus tetap, dan justru warung kecil paling terbantu karena tidak punya staf pembukuan.',
-      konsep: 'catatan-awet',
-    },
-  ],
-  3: [
-    {
-      tipe: 'golong',
-      pertanyaan: 'Masukkan tiap kejadian ke kategori buku kas yang benar:',
-      item: ['Penjualan sore Rp 310.000', 'Belanja pasar daging & sayur', 'Beli gas 3 kg', 'Ambil uang untuk keperluan rumah'],
-      golongan: ['Penjualan', 'Belanja bahan', 'Operasional', 'Prive'],
-      kunci: [0, 1, 2, 3],
-      penjelasan: 'Hasil jualan = Penjualan. Bahan yang habis dipakai = Belanja bahan. Gas = Operasional. Uang untuk rumah = Prive — bukan biaya usaha.',
-      konsep: 'kategori',
-    },
-    {
-      tipe: 'hitung',
-      pertanyaan: 'Belanja bahan Rp 200.000 dapat potongan Rp 50.000. Berapa yang dicatat di buku kas? (dalam rupiah)',
-      kunci: 150_000,
-      satuan: 'rupiah',
-      penjelasan: 'Yang dicatat adalah uang yang BENAR-BENAR keluar: Rp 150.000. Menulis Rp 200.000 membuat biaya terlihat lebih besar dan laba terlihat lebih kecil dari kenyataan.',
-      konsep: 'kategori',
+      pertanyaan: 'File each cost into the right cash book category:',
+      item: ['Flour resold as bread', 'Shop rent', 'Loan principal payment', 'Owner contribution deposited'],
+      golongan: ['Affects profit', 'Cash only'],
+      kunci: [0, 0, 1, 1],
+      penjelasan:
+        'Flour (COGS) and rent (operating expense) hit profit. Loan principal and owner contributions move cash only — they are not income and not expense.',
+      konsep: 'chart-of-accounts',
     },
     {
       tipe: 'pilihan',
-      pertanyaan: 'Ibu meminjamkan Rp 2.000.000 untuk modal. Boleh dicatat sebagai penjualan?',
+      pertanyaan: 'A cost that doubles when sales doubles belongs to:',
       pilihan: {
-        A: 'Boleh — uangnya masuk kok',
-        B: 'Tidak — itu modal masuk/pinjaman, bukan hasil jualan',
-        C: 'Boleh, asal diberi keterangan "pinjaman"',
-      },
-      kunci: 'B',
-      penjelasan: 'Penjualan adalah uang dari hasil jualan. Pinjaman dicatat sebagai pemasukan lain — kalau dihitung omzet, labamu karangan dan laporan KUR-mu menyesatkan.',
-      konsep: 'kategori',
-    },
-  ],
-  4: [
-    {
-      tipe: 'hitung',
-      pertanyaan: 'Penjualan Rp 150.000, belanja bahan Rp 60.000. Berapa laba KOTOR-nya? (dalam rupiah)',
-      kunci: 90_000,
-      satuan: 'rupiah',
-      penjelasan: 'Laba kotor = penjualan − belanja bahan = 150.000 − 60.000 = Rp 90.000. Angka ini menjawab: apakah harga jual sudah di atas modal bahan?',
-      konsep: 'laba-kotor',
-    },
-    {
-      tipe: 'hitung',
-      pertanyaan: 'Dari laba kotor Rp 90.000 tadi, biaya operasional (gas, sewa harian) Rp 30.000. Berapa laba BERSIH? (dalam rupiah)',
-      kunci: 60_000,
-      satuan: 'rupiah',
-      penjelasan: 'Laba bersih = laba kotor − biaya operasional = 90.000 − 30.000 = Rp 60.000. Kalau kotor besar tapi bersih tipis, masalahnya di biaya operasional — bukan di harga.',
-      konsep: 'laba-bersih',
-    },
-    {
-      tipe: 'pilihan',
-      pertanyaan: 'Prive dicatat sebagai biaya usaha. Akibatnya pada laporan?',
-      pilihan: {
-        A: 'Usaha terlihat rugi padahal sebenarnya sehat',
-        B: 'Laporan tetap benar, hanya lebih rinci',
-        C: 'Kas terlihat lebih besar dari kenyataan',
+        A: 'Cost of goods sold (purchases)',
+        B: 'Operating expenses',
+        C: 'Owner draw',
       },
       kunci: 'A',
-      penjelasan: 'Prive bukan biaya — ia mengurangi kas, bukan laba. Dicatat sebagai biaya, usaha yang sehat terlihat rugi dan bisa sampai ditutup karena salah baca.',
-      konsep: 'prive',
-    },
-  ],
-  5: [
-    {
-      tipe: 'hitung',
-      pertanyaan: 'Teh: 1 kotak Rp 8.000 bisa untuk 40 gelas. Berapa HPP teh per gelas? (dalam rupiah)',
-      kunci: 200,
-      satuan: 'rupiah',
-      penjelasan: 'HPP per gelas = 8.000 ÷ 40 = Rp 200. HPP hanya hitung BAHANNYA — sewa, listrik, dan tenagamu tidak masuk sini.',
-      konsep: 'hpp',
-    },
-    {
-      tipe: 'pilihan',
-      pertanyaan: 'Margin per porsi dihitung dengan membagi laba per porsi dengan…',
-      pilihan: {
-        A: 'HPP per porsi',
-        B: 'Harga jual per porsi',
-        C: 'Omzet sebulan',
-      },
-      kunci: 'B',
-      penjelasan: 'Margin = (harga jual − HPP) ÷ HARGA JUAL. Membagi dengan HPP menghasilkan markup — angkanya selalu terlihat lebih besar dan bikin merasa untung lebih banyak dari kenyataan.',
-      konsep: 'margin',
+      penjelasan:
+        'The test is "does the cost move with volume?" If it scales with sales it is COGS. Rent — the same whether you sell one unit or a hundred — is operating expense.',
+      konsep: 'cogs-vs-opex',
     },
     {
       tipe: 'hitung',
-      pertanyaan: 'Ayam geprek dijual Rp 28.000 dengan HPP Rp 11.100. Berapa margin rupiah per porsi? (dalam rupiah)',
-      kunci: 16_900,
-      satuan: 'rupiah',
-      penjelasan: 'Margin rupiah = 28.000 − 11.100 = Rp 16.900 per porsi. Dibanding harga jual, marginnya 60% — sehat. HPP 11.100 × 2,5 = Rp 27.750, jadi harga Rp 28.000 memang di atas ambang aman.',
-      konsep: 'margin',
+      pertanyaan:
+        'Monthly sales $18,000, purchases $7,200, operating expenses $6,100. What is GROSS profit? (in dollars)',
+      kunci: 10_800,
+      satuan: 'dollar',
+      penjelasan: 'Gross profit = sales − COGS = 18,000 − 7,200 = $10,800. Operating expenses are subtracted AFTER this line.',
+      konsep: 'gross-margin',
     },
   ],
-  6: [
+  103: [
     {
       tipe: 'pilihan',
-      pertanyaan: 'Penjualan Rp 80.000 tidak sengaja tercatat dua kali. Laporannya menjadi…',
+      pertanyaan: 'Under CASH-basis accounting, income counts when:',
       pilihan: {
-        A: 'Laba terlihat lebih RENDAH dari sebenarnya',
-        B: 'Laba terlihat lebih TINGGI dari sebenarnya — yang paling berbahaya',
-        C: 'Tidak berpengaruh, saldo tetap benar',
+        A: 'The invoice is sent',
+        B: 'The payment actually lands',
+        C: 'The work is half done',
       },
       kunci: 'B',
-      penjelasan: 'Duplikasi pemasukan menyenangkan — makanya jarang diperiksa. Ciri khasnya: dua baris dengan tanggal, jumlah, dan keterangan yang persis sama.',
-      konsep: 'duplikasi',
+      penjelasan:
+        'Cash-basis books income when payment arrives and expenses when paid — it mirrors the bank account. Accrual books when earned/incurred instead.',
+      konsep: 'cash-basis',
     },
     {
       tipe: 'pilihan',
-      pertanyaan: 'Kemarin kamu lupa mencatat penjualan. Tanggal yang benar untuk mencatatnya hari ini:',
+      pertanyaan: 'A profitable accrual-basis month can still end with zero cash because:',
       pilihan: {
-        A: 'Hari ini — biar berurutan',
-        B: 'Tanggal kejadian yang sebenarnya (kemarin)',
-        C: 'Akhir bulan saja, sekalian',
+        A: 'Accrual ignores money entirely',
+        B: 'Earned income on invoices not yet paid still counts as income',
+        C: 'Accrual adds a hidden tax reserve',
       },
       kunci: 'B',
-      penjelasan: 'Catat pada hari kejadiannya. Tanggal yang digeser membuat laporan bulanan meleset di DUA bulan sekaligus.',
-      konsep: 'tanggal-kejadian',
+      penjelasan:
+        'Accrual counts invoiced-but-unpaid sales as income. The P&L looks great while receivables sit uncollected — exactly why cash flow is tracked separately.',
+      konsep: 'accrual',
     },
     {
       tipe: 'pilihan',
-      pertanyaan: 'Tutup buku: saldo di aplikasi tidak cocok dengan uang di laci. Kapan sebaiknya dicari?',
+      pertanyaan: 'You want to change your official tax accounting method. The honest answer is:',
       pilihan: {
-        A: 'Besok, sambil santai',
-        B: 'Akhir bulan, saat rekap',
-        C: 'Sekarang, selagi masih ingat kejadiannya',
+        A: 'Flip the toggle in your app and move on',
+        B: 'It generally needs IRS consent (Form 3115) — an accountant conversation',
+        C: 'Methods can switch every quarter freely',
       },
-      kunci: 'C',
-      penjelasan: 'Besok sudah tidak mungkin ingat. Selisih kecil yang berulang biasanya menunjuk satu jenis transaksi yang selalu lupa dicatat.',
-      konsep: 'tutup-buku',
+      kunci: 'B',
+      penjelasan:
+        'A formal method change affects when income is taxed; done carelessly one year can be taxed twice or not at all. Form 3115 exists precisely because this is not a settings toggle.',
+      konsep: 'method-switch',
     },
   ],
-  7: [
+  104: [
     {
-      tipe: 'pilihan',
-      pertanyaan: 'Laporan menunjukkan laba besar tapi kas menipis. Penjelasan yang paling mungkin:',
-      pilihan: {
-        A: 'Usaha sedang rugi besar',
-        B: 'Uangnya tertahan di piutang, stok, atau sudah terpakai prive/cicilan',
-        C: 'Aplikasi salah menghitung',
-      },
-      kunci: 'B',
-      penjelasan: 'Laba dan kas menjawab pertanyaan berbeda. Satu laporan sendirian selalu menyesatkan — bacalah kas, laba rugi, dan harta-utang berurutan.',
-      konsep: 'baca-laporan',
+      tipe: 'hitung',
+      pertanyaan:
+        'Sales $32,000, COGS $19,200. What is gross MARGIN as a percentage of sales? (number only, e.g. 40)',
+      kunci: 40,
+      satuan: 'percent',
+      toleransi: 0.5,
+      penjelasan: 'Gross profit = 32,000 − 19,200 = $12,800. Margin = 12,800 ÷ 32,000 = 40%.',
+      konsep: 'gross-margin',
     },
     {
       tipe: 'pilihan',
-      pertanyaan: 'Ada satu bulan yang catatannya bolong. Angkanya di laporan…',
+      pertanyaan: 'A gross margin that shrinks slowly over months is usually the earliest sign of:',
       pilihan: {
-        A: 'Terlihat lebih kecil dari kenyataan — jangan dijadikan kesimpulan',
-        B: 'Tetap akurat, hanya lebih sedikit barisnya',
-        C: 'Otomatis dikoreksi dari bulan lain',
+        A: 'Rising supplier costs or quiet discounting',
+        B: 'Too many bank accounts',
+        C: 'Paying taxes too early',
       },
       kunci: 'A',
-      penjelasan: 'Bulan bolong menghasilkan angka yang terlihat persis seperti usaha menurun. Aplikasi menandainya — jangan ambil keputusan dari bulan bertanda itu.',
-      konsep: 'bulan-bolong',
+      penjelasan:
+        'Gross margin isolates the product itself from overhead. A slow slide there shows up long before net profit notices — the whole reason to read lines separately.',
+      konsep: 'gross-margin',
+    },
+    {
+      tipe: 'hitung',
+      pertanyaan:
+        'Gross profit $12,000, operating expenses $6,100. What is operating profit? (in dollars)',
+      kunci: 5_900,
+      satuan: 'dollar',
+      penjelasan: 'Operating profit = gross profit − operating expenses = 12,000 − 6,100 = $5,900.',
+      konsep: 'pnl-structure',
+    },
+  ],
+  105: [
+    {
+      tipe: 'pilihan',
+      pertanyaan: 'Reconciliation means:',
+      pilihan: {
+        A: 'The totals of your books and the bank are roughly close',
+        B: 'Line by line, every transaction matches a statement line — each one ticked',
+        C: 'The bank statement is imported and never read',
+      },
+      kunci: 'B',
+      penjelasan:
+        'Plausible totals hide a $420 sale recorded as $240. Reconciliation is per-line confirmation — the only proof that the books describe real money.',
+      konsep: 'reconciliation',
     },
     {
       tipe: 'pilihan',
-      pertanyaan: 'Yang paling meyakinkan bank saat mengajukan KUR adalah…',
+      pertanyaan: 'A check written Thursday that clears the following Tuesday is:',
       pilihan: {
-        A: 'Foto warung yang ramai dan cerita lisan',
-        B: 'Omzet besar yang disebut dari ingatan',
-        C: 'Catatan transaksi harian yang rutin 3–6 bulan, bisa dicetak sebagai laporan',
+        A: 'An error to correct immediately',
+        B: 'A normal timing difference — expect it to clear',
+        C: 'Evidence of fraud',
       },
-      kunci: 'C',
-      penjelasan: 'Bank setiap hari mendengar omzet dari ingatan. Yang mengubah percakapan adalah lembar catatan yang konsisten — dan itu sudah kamu hasilkan dari sesi 3.',
-      konsep: 'berkas-kur',
+      kunci: 'B',
+      penjelasan:
+        'Timing differences are normal. Mark them, expect them on the next statement — and investigate anything still unmatched two statements later.',
+      konsep: 'timing-difference',
+    },
+    {
+      tipe: 'golong',
+      pertanyaan: 'Which risks does monthly reconciliation actually catch?',
+      item: ['A fat-fingered sale amount', 'A duplicate supplier charge', 'Next year\'s marketing plan', 'A charge you never made'],
+      golongan: ['Caught by reconciliation', 'Not a reconciliation matter'],
+      kunci: [0, 0, 1, 0],
+      penjelasan:
+        'Wrong amounts, duplicate charges, and unfamiliar transactions are exactly what per-line matching surfaces. Marketing plans are strategy, not books.',
+      konsep: 'reconciliation',
+    },
+  ],
+  106: [
+    {
+      tipe: 'pilihan',
+      pertanyaan: 'The US tax test for a deductible business expense is that it is:',
+      pilihan: {
+        A: 'Ordinary and necessary',
+        B: 'Large and documented',
+        C: 'Cash and recent',
+      },
+      kunci: 'A',
+      penjelasan:
+        'Ordinary (common in your industry) and necessary (helpful and appropriate). Short enough to apply at the register, not just at filing time.',
+      konsep: 'ordinary-necessary',
+    },
+    {
+      tipe: 'golong',
+      pertanyaan: 'Sort these mixed-use costs by how they are handled:',
+      item: ['Home office used 15% for business', 'A ream of paper for the shop', 'Personal car with a business mileage log'],
+      golongan: ['Split by a consistent method', 'Fully business'],
+      kunci: [0, 1, 0],
+      penjelasan:
+        'Home office and vehicle are split (square footage, mileage log) using a boring consistent method. Paper bought for the shop is fully business.',
+      konsep: 'mixed-use',
+    },
+    {
+      tipe: 'pilihan',
+      pertanyaan: 'You recorded an expense wrong last month. The trustworthy fix is:',
+      pilihan: {
+        A: 'Silently overwrite the old entry so it looks right',
+        B: 'A visible correction that leaves a footprint',
+        C: 'Delete the month and start over',
+      },
+      kunci: 'B',
+      penjelasan:
+        'A book where corrections are visible is more trustworthy than one pretending it was never wrong — to a lender, an auditor, and your future self alike.',
+      konsep: 'audit-trail',
+    },
+  ],
+  107: [
+    {
+      tipe: 'pilihan',
+      pertanyaan: 'Closing the month means:',
+      pilihan: {
+        A: 'Deleting drafts and hoping numbers settle',
+        B: 'Everything recorded, reconciled, category-scanned — then locked',
+        C: 'Resetting the cash book to zero',
+      },
+      kunci: 'B',
+      penjelasan:
+        'A close is a deliberate pass ending with the month locked, so later changes cannot silently rewrite history. After a close, the P&L is a statement — not a draft.',
+      konsep: 'month-end-close',
+    },
+    {
+      tipe: 'pilihan',
+      pertanyaan: 'The "category scan" step of the close is powerful because:',
+      pilihan: {
+        A: 'Formulas catch every error automatically',
+        B: 'Human eyes on a sorted list catch what no formula does',
+        C: 'It replaces reconciliation',
+      },
+      kunci: 'B',
+      penjelasan:
+        'Sorting each category by amount and reading the top and the odd ones surfaces the $340 "office supply" that was personal — a pattern, not a formula problem.',
+      konsep: 'category-scan',
+    },
+    {
+      tipe: 'golong',
+      pertanyaan: 'Put each close task in its half of the checklist:',
+      item: ['Reconcile to statements', 'Enter all transactions', 'Lock the month', 'Scan categories'],
+      golongan: ['First half', 'Second half'],
+      kunci: [1, 0, 1, 1],
+      penjelasan:
+        'Enter everything first, reconcile second (nothing to reconcile otherwise), then scan categories for oddities, then lock. Order is the checklist\'s value.',
+      konsep: 'month-end-close',
     },
   ],
 };
@@ -318,9 +344,9 @@ export function periksa(no, index, jawaban) {
   if (s.tipe === 'pilihan') {
     benar = String(jawaban ?? '').trim().toUpperCase() === s.kunci;
   } else if (s.tipe === 'hitung') {
-    // Semua soal hitung berjawaba rupiah bulat: buang pemisah ribuan dan
-    // teks apa pun ("Rp 310.000" → 310000) sebelum membandingkan.
-    const n = Number(String(jawaban ?? '').replace(/[^\d-]/g, ''));
+    // Semua soal hitung berjawaban angka bulat: buang pemisah ribuan dan
+    // teks apa pun ("$12,800" → 12800) sebelum membandingkan.
+    const n = Number(String(jawaban ?? '').replace(/[^\d.-]/g, ''));
     const toleransi = Number(s.toleransi) || 0;
     benar = Number.isFinite(n) && String(jawaban ?? '').trim() !== '' && Math.abs(n - s.kunci) <= toleransi;
   } else if (s.tipe === 'golong') {

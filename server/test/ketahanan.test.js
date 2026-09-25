@@ -403,18 +403,18 @@ test('materi modul benar-benar sampai ke panggilan AI, dan hanya saat diminta', 
      * Yang diperiksa adalah ISI modulnya, bukan nama bloknya. PERAN sendiri
      * menyebut "MATERI MODUL YANG SEDANG DIBUKA PESERTA" di dalam instruksinya,
      * jadi mencari kalimat itu akan selalu ketemu — termasuk saat materinya
-     * justru tidak dikirim. Kalimat penanda diambil dari isi modul 7.
+     * justru tidak dikirim. Kalimat penanda diambil dari isi modul 107.
      */
     const { cariModul } = await import('../lib/kurikulum.js');
-    const penanda = cariModul(7).isi.find((s) => s.li)?.li[0];
+    const penanda = cariModul(107).isi.find((s) => s.li)?.li[0];
     assert.ok(penanda, 'modul 7 harus punya butir daftar untuk dijadikan penanda');
 
-    // Dengan konteks modul 7 (HPP per porsi).
-    await streamChat({ ...dasar, belajar: { kemajuan: ringkasKemajuan({ 1: true }), materi: materiModul(7) } });
+    // Dengan konteks modul 107 (month-end close).
+    await streamChat({ ...dasar, belajar: { kemajuan: ringkasKemajuan({ 101: true }), materi: materiModul(107) } });
     let sistem = diminta.system.map((b) => b.text).join('\n');
     assert.ok(sistem.includes(penanda), 'isi modul tidak sampai ke API');
-    assert.ok(sistem.includes(cariModul(7).praktik), 'praktik modul tidak ikut terkirim');
-    assert.match(sistem, /Sesi harian: 1 dari 7/, 'kemajuan belajar tidak sampai ke API');
+    assert.ok(sistem.includes(cariModul(107).praktik), 'praktik modul tidak ikut terkirim');
+    assert.match(sistem, /Daily sessions: 1 of 7/, 'kemajuan belajar tidak sampai ke API');
 
     // Tanpa konteks modul: materi TIDAK boleh ikut. Kalau ia selalu terkirim,
     // anggaran token harian peserta habis dalam dua pertanyaan.
@@ -422,7 +422,7 @@ test('materi modul benar-benar sampai ke panggilan AI, dan hanya saat diminta', 
     await streamChat({ ...dasar, belajar: { kemajuan: ringkasKemajuan({}) } });
     sistem = diminta.system.map((b) => b.text).join('\n');
     assert.ok(!sistem.includes(penanda), 'isi modul ikut terkirim padahal tidak diminta');
-    assert.match(sistem, /Sesi harian: 0 dari 7/, 'kemajuan tetap harus ikut pada tiap pertanyaan');
+    assert.match(sistem, /Daily sessions: 0 of 7/, 'kemajuan tetap harus ikut pada tiap pertanyaan');
   } finally {
     server.close();
     delete process.env.TEST_IGNORE_NOVA_AI_BACKEND;

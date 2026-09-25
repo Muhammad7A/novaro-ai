@@ -44,12 +44,12 @@ const CONSENT_VERSION = (await import('../lib/consent.js')).CONSENT_VERSION;
 /* ================================================ Soal & pemeriksa murni */
 
 test('latihan hanya untuk tujuh sesi jalur dasar, tiga soal per sesi', () => {
-  assert.deepEqual(modulLatihan(), [1, 2, 3, 4, 5, 6, 7]);
+  assert.deepEqual(modulLatihan(), [101, 102, 103, 104, 105, 106, 107]);
   for (const no of modulLatihan()) {
     assert.equal(totalSoal(no), 3);
     assert.ok(adaLatihan(no));
   }
-  assert.equal(adaLatihan(8), false, 'pustaka belum punya latihan');
+  assert.equal(adaLatihan(108), false, 'pustaka belum punya latihan');
   assert.equal(adaLatihan(99), false);
 });
 
@@ -65,26 +65,26 @@ test('soal publik bersih: tanpa kunci dan tanpa penjelasan', () => {
 });
 
 test('tipe pilihan: dinilai dari huruf, tidak peduli kapital/spasi', () => {
-  const { benar } = periksa(1, 2, ' b ');
+  const { benar } = periksa(101, 2, ' b ');
   assert.equal(benar, true);
-  assert.equal(periksa(1, 2, 'A').benar, false);
+  assert.equal(periksa(101, 2, 'A').benar, false);
 });
 
 test('tipe hitung: angka persis; di luar rentang tetap salah', () => {
-  assert.equal(periksa(1, 0, '310000').benar, true);
-  assert.equal(periksa(1, 0, 'Rp 310.000').benar, true, 'pemisah ribuan ditoleransi');
-  assert.equal(periksa(1, 0, 900_000).benar, false, 'omzet bukan laba');
+  assert.equal(periksa(101, 0, '960').benar, true);
+  assert.equal(periksa(101, 0, '$960').benar, true, 'awalan mata uang ditoleransi');
+  assert.equal(periksa(101, 0, 2400).benar, false, 'revenue bukan profit');
 });
 
 test('tipe golong: urutan golongan harus persis', () => {
-  assert.equal(periksa(1, 1, [0, 1, 0, 1]).benar, true);
-  assert.equal(periksa(1, 1, [1, 0, 1, 0]).benar, false);
-  assert.equal(periksa(1, 1, [0, 1, 0]).benar, false, 'kurang baris = salah, bukan error');
+  assert.equal(periksa(101, 1, [0, 1, 0, 1]).benar, true);
+  assert.equal(periksa(101, 1, [1, 0, 1, 0]).benar, false);
+  assert.equal(periksa(101, 1, [0, 1, 0]).benar, false, 'kurang baris = salah, bukan error');
 });
 
 test('soal/indeks tidak sah ditolak dengan status 400', () => {
-  assert.throws(() => periksa(1, 9, 'A'), (e) => e.status === 400);
-  assert.throws(() => periksa(8, 0, 'A'), (e) => e.status === 400);
+  assert.throws(() => periksa(101, 9, 'A'), (e) => e.status === 400);
+  assert.throws(() => periksa(108, 0, 'A'), (e) => e.status === 400);
 });
 
 test('sanitasi soal AI: sah diterima, rusak 502, kunci di luar A-C ditolak', () => {
@@ -127,13 +127,13 @@ const minta = (jalur, { kode, method = 'GET', body } = {}) =>
   });
 
 test('tanpa kode akses: 401', async () => {
-  assert.equal((await fetch(BASE + '/api/latihan/1')).status, 401);
-  assert.equal((await fetch(BASE + '/api/latihan/1', { method: 'POST' })).status, 401);
+  assert.equal((await fetch(BASE + '/api/latihan/101')).status, 401);
+  assert.equal((await fetch(BASE + '/api/latihan/101', { method: 'POST' })).status, 401);
 });
 
 test('modul pustaka tanpa latihan: 404 yang jujur', async () => {
   const { accessCode } = await buatPeserta('Bu Pustaka');
-  const res = await minta('/api/latihan/8', { kode: accessCode });
+  const res = await minta('/api/latihan/108', { kode: accessCode });
   assert.equal(res.status, 404);
   assert.match((await res.json()).error, /Latihan belum tersedia/);
 });
@@ -141,36 +141,36 @@ test('modul pustaka tanpa latihan: 404 yang jujur', async () => {
 test('alur lulus: salah boleh diulang, benar tersimpan, lulus setelah semua benar', async () => {
   const { accessCode } = await buatPeserta('Bu Lulus');
 
-  const awal = await (await minta('/api/latihan/1', { kode: accessCode })).json();
+  const awal = await (await minta('/api/latihan/101', { kode: accessCode })).json();
   assert.equal(awal.soal.length, 3);
   assert.equal(awal.lulus, false);
   assert.equal(JSON.stringify(awal.soal).includes('"kunci"'), false, 'GET tidak boleh membocorkan kunci');
 
   // Soal 1: salah dulu — tidak menjatuhkan, tersedia untuk dicoba lagi.
-  const salah = await (await minta('/api/latihan/1', {
-    kode: accessCode, method: 'POST', body: { index: 0, jawaban: 900_000 },
+  const salah = await (await minta('/api/latihan/101', {
+    kode: accessCode, method: 'POST', body: { index: 0, jawaban: 2400 },
   })).json();
   assert.equal(salah.benar, false);
-  assert.match(salah.penjelasan, /310\.000/);
+  assert.match(salah.penjelasan, /960/);
   assert.equal(salah.status.lulus, false);
 
-  const benar = await (await minta('/api/latihan/1', {
-    kode: accessCode, method: 'POST', body: { index: 0, jawaban: 310_000 },
+  const benar = await (await minta('/api/latihan/101', {
+    kode: accessCode, method: 'POST', body: { index: 0, jawaban: 960 },
   })).json();
   assert.equal(benar.benar, true);
   assert.equal(benar.status.lulus, false, '1 dari 3 belum lulus');
 
   // Soal 2 (golong) dan 3 (pilihan) — setelah ini lulus.
-  await minta('/api/latihan/1', { kode: accessCode, method: 'POST', body: { index: 1, jawaban: [0, 1, 0, 1] } });
-  const akhir = await (await minta('/api/latihan/1', {
+  await minta('/api/latihan/101', { kode: accessCode, method: 'POST', body: { index: 1, jawaban: [0, 1, 0, 1] } });
+  const akhir = await (await minta('/api/latihan/101', {
     kode: accessCode, method: 'POST', body: { index: 2, jawaban: 'b' },
   })).json();
   assert.equal(akhir.status.lulus, true, 'semua soal benar → lulus');
   assert.equal(akhir.status.baruLulus, true);
 
   const progress = (await (await minta('/api/me', { kode: accessCode })).json()).user.progress;
-  assert.equal(progress.latihan[1].lulusPada ? true : false, true);
-  assert.equal(progress.done?.[1], undefined, 'kuis tidak mengubah progress.done');
+  assert.equal(progress.latihan[101].lulusPada ? true : false, true);
+  assert.equal(progress.done?.[101], undefined, 'kuis tidak mengubah progress.done');
 
   // Event riset: tiap percobaan tercatat, benar maupun salah.
   const tersimpan = await store.findUserById((await store.findByAccessCode(accessCode)).id);
@@ -181,17 +181,17 @@ test('alur lulus: salah boleh diulang, benar tersimpan, lulus setelah semua bena
 
 test('backward compatibility: saveProgress berikutnya tidak menghapus latihan', async () => {
   const { accessCode } = await buatPeserta('Bu Kompat');
-  await minta('/api/latihan/1', { kode: accessCode, method: 'POST', body: { index: 0, jawaban: 310_000 } });
-  await minta('/api/progress', { kode: accessCode, method: 'PUT', body: { done: { 1: true } } });
+  await minta('/api/latihan/101', { kode: accessCode, method: 'POST', body: { index: 0, jawaban: 960 } });
+  await minta('/api/progress', { kode: accessCode, method: 'PUT', body: { done: { 101: true } } });
 
   const progress = (await (await minta('/api/me', { kode: accessCode })).json()).user.progress;
-  assert.equal(progress.done[1], true);
-  assert.ok(progress.latihan?.[1]?.jawaban?.[0]?.benar, 'latihan tetap ada setelah simpan progres');
+  assert.equal(progress.done[101], true);
+  assert.ok(progress.latihan?.[101]?.jawaban?.[0]?.benar, 'latihan tetap ada setelah simpan progres');
 });
 
 test('tantangan AI terkunci sampai kuis dasar lulus', async () => {
   const { accessCode } = await buatPeserta('Bu Terkunci');
-  const res = await minta('/api/latihan/2/ai', { kode: accessCode, method: 'POST' });
+  const res = await minta('/api/latihan/102/ai', { kode: accessCode, method: 'POST' });
   assert.equal(res.status, 400);
   assert.match((await res.json()).error, /Selesaikan kuis dasarnya dulu/);
 });
@@ -199,9 +199,9 @@ test('tantangan AI terkunci sampai kuis dasar lulus', async () => {
 test('tantangan AI: dibuat dari materi + angka peserta, kunci tidak ke peramban, dinilai server', async () => {
   const { accessCode } = await buatPeserta('Bu AI');
   // Luluskan kuis dasar sesi 1 (jawaban benar untuk ketiga soal).
-  await minta('/api/latihan/1', { kode: accessCode, method: 'POST', body: { index: 0, jawaban: 310_000 } });
-  await minta('/api/latihan/1', { kode: accessCode, method: 'POST', body: { index: 1, jawaban: [0, 1, 0, 1] } });
-  await minta('/api/latihan/1', { kode: accessCode, method: 'POST', body: { index: 2, jawaban: 'B' } });
+  await minta('/api/latihan/101', { kode: accessCode, method: 'POST', body: { index: 0, jawaban: 960 } });
+  await minta('/api/latihan/101', { kode: accessCode, method: 'POST', body: { index: 1, jawaban: [0, 1, 0, 1] } });
+  await minta('/api/latihan/101', { kode: accessCode, method: 'POST', body: { index: 2, jawaban: 'B' } });
 
   // Layanan Anthropic tiruan (pola checkup): mengembalikan soal sah.
   const { createServer } = await import('node:http');
@@ -235,7 +235,7 @@ test('tantangan AI: dibuat dari materi + angka peserta, kunci tidak ke peramban,
   process.env.ANTHROPIC_API_KEY = 'sk-ant-uji';
 
   try {
-    const res = await minta('/api/latihan/1/ai', { kode: accessCode, method: 'POST' });
+    const res = await minta('/api/latihan/101/ai', { kode: accessCode, method: 'POST' });
     assert.equal(res.status, 200);
     const { soal } = await res.json();
     assert.match(soal.pertanyaan, /prive/i);
@@ -247,13 +247,13 @@ test('tantangan AI: dibuat dari materi + angka peserta, kunci tidak ke peramban,
     assert.match(sistem, /ANGKA USAHA PESERTA/);
 
     // Jawab benar (A) — sekali jawab, hasil terkunci.
-    const jawab = await (await minta('/api/latihan/1/ai/jawab', {
+    const jawab = await (await minta('/api/latihan/101/ai/jawab', {
       kode: accessCode, method: 'POST', body: { jawaban: 'A' },
     })).json();
     assert.equal(jawab.benar, true);
     assert.match(jawab.penjelasan, /prive/i);
 
-    const ulang = await (await minta('/api/latihan/1/ai/jawab', {
+    const ulang = await (await minta('/api/latihan/101/ai/jawab', {
       kode: accessCode, method: 'POST', body: { jawaban: 'C' },
     })).json();
     assert.equal(ulang.benar, true, 'jawaban tidak bisa diubah setelah terkunci');

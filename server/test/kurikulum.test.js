@@ -62,14 +62,14 @@ test('tidak ada modul yang melewati batas micro-learning', () => {
    * pelatihan konvensional gagal akibat information overload. Modul yang tumbuh
    * jadi 20 menit membatalkan premis intervensinya, bukan sekadar bikin panjang.
    *
-   * Batasnya dibedakan sejak pemadatan 14 sesi menjadi 7: sesi harian adalah
-   * hasil penggabungan dua topik, jadi 10-15 menit dan itu memang melewati
-   * angka Ulupui — pertukaran yang disadari dan dicatat di kurikulum.js. Modul
-   * pustaka tidak digabung, jadi tetap dijaga di 5-10 menit. Ambang 15 menit
-   * juga yang disebut BAB 1 proposal, sehingga sesi harian tetap punya rujukan.
+   * Sejak ganti kurikulum enterprise (W2b 2026-09-25) batasan proposal riset
+   * pensiun bersama edisinya: sesi harian 10-15 menit (materi digabung padat),
+   * modul pustaka 5-12 menit. Yang tetap dijaga: satu unit belajar tidak
+   * membengkak — modul yang tumbuh jadi 20 menit membatalkan premis
+   * micro-learning, riset atau bukan.
    */
   for (const m of KURIKULUM) {
-    const [min, maks] = m.sesi != null ? [10, 15] : [5, 10];
+    const [min, maks] = m.sesi != null ? [10, 15] : [5, 12];
     assert.ok(
       m.menit >= min && m.menit <= maks,
       `modul ${m.no} diperkirakan ${m.menit} menit — di luar ${min}-${maks}`,
@@ -101,7 +101,8 @@ test('medan video hanya diisi ID yang berbentuk wajar', () => {
 });
 
 test('nomorModulSah menolak yang bukan nomor modul', () => {
-  assert.ok(nomorModulSah(1));
+  assert.ok(nomorModulSah(101));
+  assert.ok(!nomorModulSah(1), 'nomor modul lama (1-29) pensiun — jangan pernah dipakai ulang');
   assert.ok(nomorModulSah(String(MODUL_MAKS)));
   assert.ok(!nomorModulSah(MODUL_MAKS + 1));
   assert.ok(!nomorModulSah(MODUL_MIN - 1));
@@ -112,8 +113,8 @@ test('nomorModulSah menolak yang bukan nomor modul', () => {
 });
 
 test('cariModul mengembalikan modul yang benar', () => {
-  assert.equal(cariModul(1).sesi, 1);
-  assert.equal(cariModul('1').no, 1);
+  assert.equal(cariModul(101).sesi, 1);
+  assert.equal(cariModul('101').no, 101);
   assert.equal(cariModul(999), null);
 });
 
@@ -159,25 +160,25 @@ test('ringkasKemajuan menyebut sesi yang sedang dijalani', () => {
    * memungkinkan jawabannya dikaitkan dengan materi hari itu — inti dari
    * menggabungkan micro-learning dengan AI.
    */
-  const teks = ringkasKemajuan({ 1: true, 2: true });
-  assert.match(teks, /2 dari 7 selesai/);
-  assert.match(teks, /sesi 3/i, 'harus menyebut sesi berikutnya yang belum dikerjakan');
+  const teks = ringkasKemajuan({ 101: true, 102: true });
+  assert.match(teks, /2 of 7 completed/);
+  assert.match(teks, /session 3/i, 'harus menyebut sesi berikutnya yang belum dikerjakan');
   assert.ok(teks.includes(SESI_HARIAN[2].judul));
 });
 
 test('ringkasKemajuan mengantar kembali ke sesi yang dilewati, bukan maju', () => {
   // Peserta melompat ke sesi 5 tanpa mengerjakan 2-4. Yang "sedang dijalani"
   // tetap sesi 2 — melompat tidak boleh berarti kehilangan tiga sesi.
-  const teks = ringkasKemajuan({ 1: true, 5: true });
-  assert.match(teks, /sesi 2/i);
+  const teks = ringkasKemajuan({ 101: true, 105: true });
+  assert.match(teks, /session 2/i);
 });
 
 test('ringkasKemajuan menangani peserta baru dan peserta yang sudah tamat', () => {
-  assert.match(ringkasKemajuan({}), /0 dari 7/);
-  assert.match(ringkasKemajuan({}), /sesi 1/i);
+  assert.match(ringkasKemajuan({}), /0 of 7/);
+  assert.match(ringkasKemajuan({}), /session 1/i);
 
   const semua = Object.fromEntries(SESI_HARIAN.map((m) => [m.no, true]));
-  assert.match(ringkasKemajuan(semua), /seluruh sesi harian sudah selesai/i);
+  assert.match(ringkasKemajuan(semua), /All daily sessions completed/i);
 
   // Tidak boleh melempar saat progres berbentuk aneh.
   assert.ok(ringkasKemajuan(undefined).length > 0);
@@ -185,11 +186,11 @@ test('ringkasKemajuan menangani peserta baru dan peserta yang sudah tamat', () =
 });
 
 test('materiModul memuat isi lengkap dan praktiknya', () => {
-  const teks = materiModul(7); // Laporan bulanan dan berkas untuk KUR
-  const m = cariModul(7);
-  assert.match(teks, /MATERI MODUL YANG SEDANG DIBUKA PESERTA/);
+  const teks = materiModul(107); // The month-end close
+  const m = cariModul(107);
+  assert.match(teks, /MODULE MATERIAL CURRENTLY OPEN/);
   assert.ok(teks.includes(m.judul));
-  assert.match(teks, /Praktik yang diminta modul ini:/);
+  assert.match(teks, /Practice this module asks for:/);
   for (const bagian of m.isi) assert.ok(teks.includes(bagian.h), `bagian "${bagian.h}" hilang dari materi`);
 });
 
@@ -221,8 +222,8 @@ test('konteks belajar masuk ke blok volatil, bukan blok yang di-cache', () => {
   const metrics = { skor: 0, komponenSkor: [], ringkas: '' };
   const tanpa = chatSystem(null, metrics, '');
   const dengan = chatSystem(null, metrics, '', {
-    kemajuan: ringkasKemajuan({ 1: true }),
-    materi: materiModul(2),
+    kemajuan: ringkasKemajuan({ 101: true }),
+    materi: materiModul(102),
   });
 
   assert.equal(dengan.length, 2);
@@ -235,15 +236,15 @@ test('konteks belajar masuk ke blok volatil, bukan blok yang di-cache', () => {
    */
   assert.equal(dengan[0].text, tanpa[0].text, 'awalan yang di-cache tidak boleh berubah oleh konteks belajar');
 
-  assert.ok(dengan[1].text.includes('KEMAJUAN BELAJAR PESERTA'));
-  assert.ok(dengan[1].text.includes('MATERI MODUL YANG SEDANG DIBUKA PESERTA'));
-  assert.ok(dengan[1].text.includes('Sesi harian: 1 dari 7'), 'datanya, bukan sekadar judul bloknya');
+  assert.ok(dengan[1].text.includes('LEARNING PROGRESS'));
+  assert.ok(dengan[1].text.includes('MODULE MATERIAL CURRENTLY OPEN'));
+  assert.ok(dengan[1].text.includes('Daily sessions: 1 of 7'), 'datanya, bukan sekadar judul bloknya');
 });
 
 test('chat tanpa konteks belajar tetap berjalan seperti sebelumnya', () => {
   const metrics = { skor: 0, komponenSkor: [], ringkas: '' };
   const blok = chatSystem(null, metrics, '');
   assert.equal(blok.length, 2);
-  assert.ok(!blok[1].text.includes('KEMAJUAN BELAJAR'));
-  assert.ok(!blok[1].text.includes('MATERI MODUL'));
+  assert.ok(!blok[1].text.includes('LEARNING PROGRESS'));
+  assert.ok(!blok[1].text.includes('MODULE MATERIAL'));
 });

@@ -47,7 +47,7 @@ const CONSENT_VERSION = (await import('../lib/consent.js')).CONSENT_VERSION;
 
 test('jenis aksi asing tidak pernah menandai apa pun', () => {
   const hasil = modulPraktikTerverifikasi({
-    done: { 1: true, 2: true, 3: true, 7: true },
+    done: { 101: true, 102: true, 103: true, 107: true },
     jenis: 'chat',
   });
   assert.deepEqual(hasil, []);
@@ -55,34 +55,34 @@ test('jenis aksi asing tidak pernah menandai apa pun', () => {
 
 test('transaksi: hanya modul transaksi yang done — yang belum dan bukan sesi berikutnya dilewati', () => {
   const hasil = modulPraktikTerverifikasi({
-    done: { 2: true },
+    done: { 102: true },
     sudah: {},
     jenis: 'transaksi',
-    sesiBerikutNo: 3,
+    sesiBerikutNo: 101,
   });
-  // Modul 1: belum done dan bukan sesi berikutnya → dilewati.
-  // Modul 2: done → ditandai. Modul 3: sesi berikutnya → ditandai.
-  assert.deepEqual(hasil, [2, 3]);
+  // Modul 106: belum done dan bukan sesi berikutnya → dilewati.
+  // Modul 102: done → ditandai. Modul 101: sesi berikutnya → ditandai.
+  assert.deepEqual(hasil, [101, 102]);
 });
 
 test('yang sudah pernah ditandai tidak didobel', () => {
   const hasil = modulPraktikTerverifikasi({
-    done: { 2: true },
-    sudah: { 2: { pada: '2026-08-01T00:00:00.000Z' } },
+    done: { 102: true },
+    sudah: { 102: { pada: '2026-08-01T00:00:00.000Z' } },
     jenis: 'transaksi',
-    sesiBerikutNo: 3,
+    sesiBerikutNo: 101,
   });
-  assert.deepEqual(hasil, [3]);
+  assert.deepEqual(hasil, [101]);
 });
 
 test('laporan: hanya modul dengan aksi terverifikasi laporan', () => {
   const hasil = modulPraktikTerverifikasi({
-    done: { 7: true, 28: true, 30: true, 32: true, 4: true },
+    done: { 107: true, 104: true, 105: true, 111: true, 103: true },
     sudah: {},
     jenis: 'laporan',
   });
-  // Modul 4 punya CTA dasbor tanpa terverifikasi — tidak ikut.
-  assert.deepEqual(hasil, [7, 28, 30, 32]);
+  // Modul 111 punya CTA laporan tanpa terverifikasi; 103 CTA dasbor — tidak ikut.
+  assert.deepEqual(hasil, [104, 105, 107]);
 });
 
 /* ================================================ Rute — tindakan nyata */
@@ -107,9 +107,9 @@ test('tanpa kode akses: 401', async () => {
 
 test('aksi nyata: transaksi tercatat → praktik modul yang relevan terverifikasi', async () => {
   const { user, accessCode } = await buatPeserta('Bu Praktik');
-  // Modul 3 sudah selesai dibaca; sesi berikutnya (satu-satunya yang terbuka
-  // sebagai "sedang dijalani") adalah modul 1.
-  await minta('/api/progress', { kode: accessCode, method: 'PUT', body: { done: { 3: true } } });
+  // Modul 106 sudah selesai dibaca; sesi berikutnya (satu-satunya yang terbuka
+  // sebagai "sedang dijalani") adalah modul 101.
+  await minta('/api/progress', { kode: accessCode, method: 'PUT', body: { done: { 106: true } } });
 
   const res = await minta('/api/cashbook', {
     kode: accessCode,
@@ -118,12 +118,12 @@ test('aksi nyata: transaksi tercatat → praktik modul yang relevan terverifikas
   });
   assert.equal(res.status, 201);
   const data = await res.json();
-  assert.deepEqual(data.praktikTerverifikasi.sort(), [1, 3]);
+  assert.deepEqual(data.praktikTerverifikasi.sort(), [101, 106]);
 
   const sesudah = (await (await minta('/api/me', { kode: accessCode })).json()).user.progress;
-  assert.equal(sesudah.done[3], true, 'progress.done tidak tersentuh');
-  assert.ok(sesudah.praktik[3]?.pada, 'praktik modul 3 tercatat dengan waktunya');
-  assert.ok(sesudah.praktik[1]?.pada, 'sesi berikutnya yang sedang dijalani ikut terverifikasi');
+  assert.equal(sesudah.done[106], true, 'progress.done tidak tersentuh');
+  assert.ok(sesudah.praktik[106]?.pada, 'praktik modul 106 tercatat dengan waktunya');
+  assert.ok(sesudah.praktik[101]?.pada, 'sesi berikutnya yang sedang dijalani ikut terverifikasi');
 
   // Event untuk penelitian turut tercatat.
   const tersimpan = await store.findUserById(user.id);
@@ -133,7 +133,7 @@ test('aksi nyata: transaksi tercatat → praktik modul yang relevan terverifikas
 
 test('tindakan kedua tidak mendobel tanda praktik', async () => {
   const { accessCode } = await buatPeserta('Bu Dobel');
-  await minta('/api/progress', { kode: accessCode, method: 'PUT', body: { done: { 2: true } } });
+  await minta('/api/progress', { kode: accessCode, method: 'PUT', body: { done: { 102: true } } });
 
   for (let i = 0; i < 2; i += 1) {
     const res = await minta('/api/cashbook', {
@@ -142,21 +142,21 @@ test('tindakan kedua tidak mendobel tanda praktik', async () => {
       body: { jenis: 'keluar', kategori: 'operasional', jumlah: 20_000, keterangan: 'Gas' },
     });
     const data = await res.json();
-    if (i === 0) assert.deepEqual(data.praktikTerverifikasi.sort(), [1, 2]);
+    if (i === 0) assert.deepEqual(data.praktikTerverifikasi.sort(), [101, 102]);
     if (i === 1) assert.deepEqual(data.praktikTerverifikasi, [], 'yang sudah ditandai tidak diulang');
   }
 });
 
 test('membuka laporan = tindakan terverifikasi untuk modul laporan yang selesai dibaca', async () => {
   const { accessCode } = await buatPeserta('Bu Laporan');
-  await minta('/api/progress', { kode: accessCode, method: 'PUT', body: { done: { 7: true, 32: true } } });
+  await minta('/api/progress', { kode: accessCode, method: 'PUT', body: { done: { 107: true, 104: true } } });
 
   const res = await minta('/api/report?months=3', { kode: accessCode });
   assert.equal(res.status, 200);
 
   const sesudah = (await (await minta('/api/me', { kode: accessCode })).json()).user.progress;
-  assert.ok(sesudah.praktik[7]?.pada);
-  assert.ok(sesudah.praktik[32]?.pada);
+  assert.ok(sesudah.praktik[107]?.pada);
+  assert.ok(sesudah.praktik[104]?.pada);
 });
 
 test('user tanpa data dan tanpa modul selesai: tidak ada yang diklaim, tanpa crash', async () => {
@@ -173,7 +173,7 @@ test('user tanpa data dan tanpa modul selesai: tidak ada yang diklaim, tanpa cra
 
 test('backward compatibility: saveProgress berikutnya tidak menghapus praktik', async () => {
   const { accessCode } = await buatPeserta('Bu Kompatibel');
-  await minta('/api/progress', { kode: accessCode, method: 'PUT', body: { done: { 2: true } } });
+  await minta('/api/progress', { kode: accessCode, method: 'PUT', body: { done: { 102: true } } });
   await minta('/api/cashbook', {
     kode: accessCode,
     method: 'POST',
@@ -181,12 +181,12 @@ test('backward compatibility: saveProgress berikutnya tidak menghapus praktik', 
   });
 
   // Simpanan progres kedua dari peramban — praktik milik server harus selamat.
-  await minta('/api/progress', { kode: accessCode, method: 'PUT', body: { done: { 2: true, 3: true } } });
+  await minta('/api/progress', { kode: accessCode, method: 'PUT', body: { done: { 102: true, 106: true } } });
   const progress = (await (await minta('/api/me', { kode: accessCode })).json()).user.progress;
 
-  assert.equal(progress.done[2], true);
-  assert.equal(progress.done[3], true);
-  assert.ok(progress.praktik?.[2]?.pada, 'praktik tetap ada setelah simpanan progres berikutnya');
+  assert.equal(progress.done[102], true);
+  assert.equal(progress.done[106], true);
+  assert.ok(progress.praktik?.[102]?.pada, 'praktik tetap ada setelah simpanan progres berikutnya');
 });
 
 test('nomor modul asing tidak pernah lolos ke praktik maupun done', async () => {

@@ -201,7 +201,7 @@ test('peringatan tersimpan dari rekomendasi terakhir dibaca apa adanya', () => {
     metrics: { ...METRIK_SEHAT, prive: 1_000_000 },
     rekomendasi: {
       peringatan: ['Cicilan Rp 450.000 menyerap 8% laba — masih dalam ambang aman.'],
-      rekomendasi: [{ judul: 'Kunci porsi bahan', modulTerkait: 5 }],
+      rekomendasi: [{ judul: 'Kunci porsi bahan', modulTerkait: 104 }],
       generatedAt: segar(0),
     },
   });
@@ -209,7 +209,7 @@ test('peringatan tersimpan dari rekomendasi terakhir dibaca apa adanya', () => {
   assert.match(k.alasan, /Cicilan Rp 450\.000/);
   assert.doesNotMatch(k.alasan, /Disusun/, 'disusun hari ini — tidak perlu keterangan umur');
   assert.equal(k.aksi.halaman, 'rekomendasi');
-  assert.equal(k.modul, 5, 'modulTerkait dari rekomendasi yang sama ikut dihubungkan');
+  assert.equal(k.modul, 104, 'modulTerkait dari rekomendasi yang sama ikut dihubungkan');
 });
 
 test('modulTerkait yang tidak sah tidak bocor menjadi tautan', () => {

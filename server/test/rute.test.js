@@ -178,13 +178,13 @@ test('progres hanya menerima nomor modul yang benar-benar ada', async () => {
     kode: accessCode,
     method: 'PUT',
     body: JSON.stringify({
-      done: { 1: true, 11: true, 999: true, '__proto__': true, 'bukan-angka': true, 0: true },
+      done: { 101: true, 111: true, 999: true, '__proto__': true, 'bukan-angka': true, 0: true, 1: true },
     }),
   });
   assert.equal(res.status, 200);
 
   const { progress } = await res.json();
-  assert.deepEqual(Object.keys(progress.done).sort(), ['1', '11'], 'nomor asing harus dibuang');
+  assert.deepEqual(Object.keys(progress.done).sort(), ['101', '111'], 'nomor asing (termasuk nomor modul lama 1) harus dibuang');
   assert.equal({}.polluted, undefined, 'kunci __proto__ tidak boleh mencemari Object.prototype');
 });
 
