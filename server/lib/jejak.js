@@ -91,6 +91,15 @@ export const SKEMA_JEJAK = {
   /* --- dari rute (store.logEvent) --- */
   login: {},
   demo_login: {},
+  /* Autentikasi identitas baru (W3 2026-09-25) — contentless by design:
+   * TANPA alamat surel di meta (PII langsung; kepemilikan tersirat dari
+   * jenis peristiwanya), tanpa token, tanpa nomor sesi. Jalur masuk sesi:
+   * 'magic-link' hari ini; 'oauth' menyusul bersama implementasinya. */
+  sesi_dibuat: { jalur: 'kata' },
+  sesi_dicabut: {},
+  magic_link_diminta: {},
+  magic_link_dipakai: {},
+  email_dipasang: {},
   anggaran_habis: { jenis: 'kata' },
   konteks_viewed: {},
   fokus_viewed: {},

@@ -47,7 +47,7 @@ import { JENIS_PENYIMPANAN } from './lib/db.js';
 import { analyzeCheckup, analyzeLatihanAi, analyzeNota, backendAI, describeError, generateRecommendations, isConfigured, modelAktif, streamChat } from './lib/ai.js';
 import { CONSENT_TEXT, CONSENT_VERSION, hasConsented } from './lib/consent.js';
 import { asetDariBerkas, asetDariNilai, sajikanAset } from './lib/aset.js';
-import { forceHttps, periksaKodeAkses, punyaPublicHost, securityHeaders } from './lib/guard.js';
+import { forceHttps, catatGagal, hostTujuan, periksaKodeAkses, punyaPublicHost, securityHeaders } from './lib/guard.js';
 import { periksaPenyimpanan, wajibBisaMenyimpan } from './lib/kesehatan.js';
 import { log } from './lib/log.js';
 import { jadwalUntukAI, ringkasJadwal } from './lib/jadwal.js';
@@ -62,6 +62,9 @@ import { buatIdProposal, proposalScanAktif, terbitkanToken } from './lib/proposa
 import { modulPraktikTerverifikasi } from './lib/praktik.js';
 import { adaLatihan, periksa, sanitasiLatihanAI, soalPublik } from './lib/latihan.js';
 import { GalatMutasi, store } from './lib/store.js';
+import { FORMAT_TOKEN_SESI, emailSah, tokenBaru } from './lib/autentikasi.js';
+import { kirimSurel } from './lib/surel.js';
+import { PENYEDIA_OAUTH, penyediaSiap, urlOtorisasi, uriPanggilanBalik } from './lib/oauth.js';
 import { KODE_DEMO, isiDemoPenuh, lanjutkanDemo, personaDemo, PERSONA_DEMO } from './lib/demo-data.js';
 import { kenaliGambar, sanitasiHasilNota } from './lib/nota.js';
 import { sanitasiCheckup } from './lib/checkup.js';
@@ -231,22 +234,31 @@ app.post('/api/proposal/tolak', authenticate, requireConsent, async (req, res) =
 /* ---------------------------------------------------------------- Autentikasi */
 
 /**
- * Membaca kode akses dari header Authorization: Bearer <kode>.
+ * Membaca kredensial dari header Authorization: Bearer <token>.
  *
- * Pemeriksaan ini ikut dibatasi dan ikut dicatat, sama seperti rute login.
- * Sebelumnya hanya `/api/login` yang dijaga — sehingga menebak kode lewat
- * `GET /api/me` bisa dilakukan tanpa batas dan tanpa meninggalkan satu baris pun
- * di log, membuat pembatasnya bisa dilewati hanya dengan memilih rute lain.
+ * Dua bentuk yang sah, dua-duanya dijaga pembatas yang sama:
+ *   kode akses (jalur legacy — bentuk NOVA-XXXX-XXXX) dan token sesi
+ *   (jalur baru, prefiks `sesi_`). Penebakan salah satu bentuk lewat rute
+ *   mana pun tetap dibatasi, ditunda, dan tercatat — memilih jenis token
+ *   tidak boleh menjadi cara memilih pagar.
  */
 async function authenticate(req, res, next) {
   const header = req.get('authorization') ?? '';
-  const code = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
-  const hasil = await periksaKodeAkses(req.ip ?? 'tak-dikenal', code, (c) => store.findByAccessCode(c), req.path);
+  const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+  const lewatSesi = FORMAT_TOKEN_SESI.test(token);
+  const cari = lewatSesi ? (t) => store.cariDenganSesi(t) : (c) => store.findByAccessCode(c);
+  const hasil = await periksaKodeAkses(req.ip ?? 'tak-dikenal', token, cari, req.path);
   if (!hasil.user) {
-    return res
-      .status(hasil.status)
-      .json({ error: hasil.error ?? 'Kode akses tidak dikenali. Minta kode baru ke pengelola.' });
+    return res.status(hasil.status).json({
+      error:
+        hasil.error ??
+        (lewatSesi
+          ? 'Sign-in session not recognized. Please request a new sign-in link.'
+          : 'Kode akses tidak dikenali. Minta kode baru ke pengelola.'),
+    });
   }
+  // Token sesi dicatat di req supaya rute keluar tahu persis mana yang dicabut.
+  if (lewatSesi) req.sesiToken = token;
   req.user = hasil.user;
   next();
 }
@@ -614,6 +626,186 @@ app.post('/api/demo', batasiDemo, async (req, res) => {
   });
 });
 
+
+/* ------------------------------------------------ Masuk dengan surel (W3) */
+
+/*
+ * Pembatas permintaan tautan masuk — menjaga JALUR, bukan tebakan.
+ *
+ * Berbeda dari pembatas kode akses (menghitung KEGAGALAN), ini menghitung
+ * SEMUA permintaan: setiap permintaan yang sah pun berpotensi mengirim surel,
+ * dan mengirim surel ke alamat orang lain adalah gangguan meski pelukangnya
+ * tidak pernah melihat token-nya.
+ */
+const batasMagicLink = (() => {
+  const JENDELA_MS = 15 * 60 * 1000;
+  const MAKS = 10;
+  const hit = new Map(); // ip -> timestamp[]
+  const bersih = setInterval(() => {
+    const batas = Date.now() - JENDELA_MS;
+    for (const [ip, waktu] of hit) {
+      const sisa = waktu.filter((t) => t > batas);
+      if (sisa.length) hit.set(ip, sisa);
+      else hit.delete(ip);
+    }
+  }, JENDELA_MS);
+  bersih.unref?.();
+
+  return (ip) => {
+    const kini = Date.now();
+    const d = (hit.get(ip) ?? []).filter((t) => t > kini - JENDELA_MS);
+    if (d.length >= MAKS) {
+      hit.set(ip, d);
+      log.warn('keamanan', 'permintaan tautan masuk melebihi batas', { ip, percobaan: d.length });
+      return false;
+    }
+    d.push(kini);
+    hit.set(ip, d);
+    return true;
+  };
+})();
+
+/** Alamat dasar untuk tautan di dalam surel — produksi memakai PUBLIC_HOST (https), pengembangan memakai host lokal. */
+function baseUrl(req) {
+  const host = hostTujuan(req) ?? 'localhost';
+  const proto = req.secure || punyaPublicHost() ? 'https' : 'http';
+  return `${proto}://${host}`;
+}
+
+/**
+ * Bentuk jawaban masuk yang sama untuk semua jalur (kode, demo, tautan).
+ * Layar depan memakai SATU bentuk ini — bukan menyalin logikanya per jalur.
+ */
+async function payloadMasuk(user, ekstra = {}) {
+  const { metrics } = await metricsFor(user);
+  return {
+    user: store.publicUser(user),
+    metrics: user.profile ? metrics : null,
+    aiConfigured: isConfigured(),
+    model: modelAktif(),
+    consent: hasConsented(user) ? null : CONSENT_TEXT,
+    anggaran: await anggaranUntuk(user),
+    belajar: ringkasJadwal(user),
+    ...ekstra,
+  };
+}
+
+const PESAN_MAGIC_LINK =
+  'If that email has an account, a sign-in link has been sent. The link works once and expires in 15 minutes.';
+
+app.post('/api/auth/magic-link', async (req, res) => {
+  if (!batasMagicLink(req.ip ?? 'tak-dikenal')) {
+    return res.status(429).json({ error: 'Too many sign-in link requests. Please wait a few minutes.' });
+  }
+  const email = emailSah(req.body?.email);
+  if (!email) return res.status(400).json({ error: 'Enter a valid email address.' });
+
+  const token = tokenBaru('ml');
+  const userId = await store.aturMagicLink(email, token); // null bila surel tak dikenal
+  if (userId) {
+    const tautan = `${baseUrl(req)}/?token=${token}`;
+    await kirimSurel({
+      to: email,
+      subject: 'Your Novaro sign-in link',
+      text: `Sign in to Novaro:\n\n${tautan}\n\nThis link works once and expires in 15 minutes. If you did not request it, you can ignore this email.`,
+    });
+  }
+  // Respons sama rata untuk surel yang dikenal maupun yang tidak — jumlah
+  // akun tidak boleh bisa dihitung dari bedanya jawaban.
+  res.json({ ok: true, pesan: PESAN_MAGIC_LINK });
+});
+
+app.post('/api/auth/verify', async (req, res) => {
+  const token = String(req.body?.token ?? '').trim();
+  const hasil = token ? await store.konsumsiMagicLink(token) : null;
+  if (!hasil) {
+    // Menebak token tautan mesti melewati pagar yang sama dengan menebak kode.
+    await catatGagal(req.ip ?? 'tak-dikenal', '/api/auth/verify');
+    return res
+      .status(401)
+      .json({ error: 'This sign-in link is invalid, already used, or expired. Request a new one.' });
+  }
+  const { user, sesi } = hasil;
+  await store.logEvent(user.id, 'login');
+  res.json(await payloadMasuk(user, { sesi }));
+});
+
+/** Jalur masuk apa saja yang tersedia — dipakai layar depan menyusun pilihan yang jujur. */
+app.get('/api/auth/methods', (req, res) => {
+  res.json({
+    kode: true,
+    magicLink: true,
+    oauth: { google: penyediaSiap('google', punyaPublicHost() ? hostTujuan(req) : null) },
+  });
+});
+
+app.post('/api/auth/logout', authenticate, async (req, res) => {
+  // Sesi dicabut. Kode akses tidak bisa dicabut dari sini — ia kredensial
+  // pemilik, bukan sesi perangkat; keluar dari jalur kode cukup membuang
+  // simpanan klien di peramban.
+  if (req.sesiToken) await store.cabutSesi(req.sesiToken);
+  res.json({ ok: true });
+});
+
+/**
+ * Memasang surel pada akun milik pengguna yang sedang masuk — jalur migrasi
+ * pengguna kode akses ke identitas surel. Tautan verifikasi = tautan masuk
+ * yang sama: memakainya sekaligus membuktikan kepemilikan alamat.
+ */
+app.post('/api/me/email', authenticate, async (req, res) => {
+  const email = emailSah(req.body?.email);
+  if (!email) return res.status(400).json({ error: 'Enter a valid email address.' });
+  try {
+    const pub = await store.pasangEmail(req.user.id, email);
+    if (!pub) return res.status(404).json({ error: 'Account not found.' });
+  } catch (err) {
+    if (err instanceof GalatMutasi) return res.status(err.status).json({ error: err.message, kode: err.kode });
+    throw err;
+  }
+  const token = tokenBaru('ml');
+  await store.aturMagicLink(email, token);
+  await kirimSurel({
+    to: email,
+    subject: 'Verify your Novaro email',
+    text: `Verify your email and sign in to Novaro:\n\n${baseUrl(req)}/?token=${token}\n\nThis link works once and expires in 15 minutes.`,
+  });
+  res.json({
+    ok: true,
+    user: store.publicUser(await store.findUserById(req.user.id)),
+    pesan: 'Verification link sent. Open it to confirm this address and sign in.',
+  });
+});
+
+/* --------------------------------------------------- Slot OAuth (W3) */
+
+app.get('/api/auth/oauth/:penyedia/start', (req, res) => {
+  const nama = req.params.penyedia;
+  if (!PENYEDIA_OAUTH[nama]) return res.status(404).json({ error: 'Unknown sign-in provider.' });
+  const host = punyaPublicHost() ? hostTujuan(req) : null;
+  if (!penyediaSiap(nama, host)) {
+    log.error('oauth', 'jalur OAuth belum dikonfigurasi — gagal-tutup, bukan pura-pura', { penyedia: nama });
+    return res.status(503).json({
+      error:
+        'This sign-in method is not configured yet (GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, PUBLIC_HOST).',
+    });
+  }
+  const state = randomBytes(16).toString('base64url');
+  res.cookie('oauth_state', state, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: Boolean(req.secure),
+    maxAge: 10 * 60 * 1000,
+    path: '/api/auth/oauth',
+  });
+  res.redirect(urlOtorisasi(nama, { state, redirectUri: uriPanggilanBalik(host) }));
+});
+
+app.get('/api/auth/oauth/callback', (req, res) => {
+  // Infra duluan: callback belum menukar kode. Jawaban 503 yang jujur lebih
+  // baik daripada menerima lalu gagal setengah jalan dengan identitas kabur.
+  log.error('oauth', 'callback OAuth diterima sebelum penukaran kode diimplementasikan', {});
+  return res.status(503).json({ error: 'OAuth sign-in is not implemented yet (infra-first phase).' });
+});
 
 /* ------------------------------------------------- Kartu kesehatan usaha */
 

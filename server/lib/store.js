@@ -20,6 +20,15 @@ import { pool, initDb, JENIS_PENYIMPANAN, mongoCollection } from './db.js';
 import { muatAtauSeed, simpanSemua as simpanSemuaMongo } from './mongo-store.js';
 import { denganKunci } from './kunci.js';
 import { direktoriData } from './backup.js';
+import {
+  entriMagicLink,
+  entriSesi,
+  hashToken,
+  magicLinkHidup,
+  MAKS_SESI,
+  sesiKedaluwarsa,
+  tokenBaru,
+} from './autentikasi.js';
 
 let dbInitialized = false;
 async function ensureDb() {
@@ -357,6 +366,22 @@ function pushEvent(user, type, meta) {
 }
 
 /**
+ * Menempelkan satu sesi baru pada obyek pengguna HIDUP di dalam mutator.
+ *
+ * Token diundi di sini (parameter opsional hanya untuk konsumsiMagicLink yang
+ * sudah mengundi) — maksimal MAKS_SESI sesi aktif, yang paling tua terlempar.
+ * Event `sesi_dibuat` mencatat JALUR masuknya (kode/magic-link/oauth), tanpa
+ * token, tanpa nomor: sesi berapa banyak dan lewat apa cukup, isinya tidak.
+ */
+function terbitkanSesiPada(user, jalur, tokenSudahAda) {
+  const token = tokenSudahAda ?? tokenBaru('sesi');
+  (user.sessions ??= []).push(entriSesi(token));
+  if (user.sessions.length > MAKS_SESI) user.sessions = user.sessions.slice(-MAKS_SESI);
+  pushEvent(user, 'sesi_dibuat', { jalur });
+  return token;
+}
+
+/**
  * Salinan lepas dari sebuah daftar di dalam cache.
  *
  * Pembacaan mengembalikan SALINAN, bukan rujukan hidup ke isi cache. Rujukan
@@ -379,6 +404,8 @@ function publicUser(user) {
   return {
     id: user.id,
     name: user.name,
+    email: user.email ?? null,
+    emailTerverifikasi: Boolean(user.emailVerifiedAt),
     business: user.business ?? null,
     profile: user.profile ?? null,
     recommendations: user.recommendations ?? null,
@@ -470,6 +497,145 @@ export const store = {
     const user = db.users.find((u) => u.tokenKartu === token);
     return user ? structuredClone(user) : null;
   },
+
+  /* ------------------------------------------- Identitas email + sesi (W3) */
+
+  /**
+   * Mencari pengguna berdasarkan surel ternormalkan.
+   *
+   * Surel adalah identitas UNIK: satu alamat satu akun. Pencarian di sini
+   * dipakai jalur magic-link dan pemeriksaan bentrok saat memasang surel.
+   */
+  async findByEmail(email) {
+    if (!email) return null;
+    const db = await load();
+    const user = db.users.find((u) => u.email === email);
+    return user ? structuredClone(user) : null;
+  },
+
+  /**
+   * Memasang surel pada akun — jalur migrasi pengguna kode akses.
+   *
+   * Surel belum terverifikasi sampai tautan ajaibnya benar-benar dipakai;
+   * `emailVerifiedAt` diisi oleh konsumsiMagicLink, bukan di sini. Alamat
+   * yang sudah milik akun lain ditolak eksplisit (409), bukan diam-diam
+   * dipindahkan — kepemilikan identitas tidak boleh berpindah tanpa jejak.
+   */
+  async pasangEmail(userId, email) {
+    return update((db) => {
+      const pemilikLama = db.users.find((u) => u.email === email && u.id !== userId);
+      if (pemilikLama) {
+        throw new GalatMutasi('email-terpakai', 409, 'This email address is already linked to another account.');
+      }
+      const user = db.users.find((u) => u.id === userId);
+      if (!user) return null;
+      user.email = email;
+      user.emailVerifiedAt = null;
+      pushEvent(user, 'email_dipasang');
+      return publicUser(user);
+    });
+  },
+
+  /**
+   * Menaruh satu tautan ajaib pada akun pemilik surel ini.
+   *
+   * Satu tautan aktif per akun — yang baru menimpa yang lama, jadi tabelnya
+   * tidak pernah menumpuk tautan berumur panjang. Mengembalikan id pengguna
+   * (untuk diteruskan ke surel) atau null bila surelnya tidak dikenal;
+   * PEMANGGIL wajib merespons sama rata (anti-enumerasi).
+   */
+  async aturMagicLink(email, token) {
+    return update((db) => {
+      const user = db.users.find((u) => u.email === email);
+      if (!user) return null;
+      user.magicLink = entriMagicLink(token);
+      pushEvent(user, 'magic_link_diminta');
+      return user.id;
+    });
+  },
+
+  /**
+   * Mengambil tautan ajaib yang HIDUP (belum dipakai, belum kedaluwarsa)
+   * untuk surel ini — dipakai rute /api/me/email yang mengirim ulang tautan
+   * verifikasi tanpa menimpa yang lama, dan oleh uji untuk mengintip token.
+   */
+  async magicLinkAktif(email) {
+    const user = await this.findByEmail(email);
+    const m = user?.magicLink;
+    return m && magicLinkHidup(m) ? m : null;
+  },
+
+  /**
+   * Memeriksa token tautan ajaib: sekali pakai, berumur pendek.
+   *
+   * Diterima → tandai dipakai, surel kini TERVERIFIKASI (kepemilikan alamat
+   * terbukti lewat jalur pengiriman), terbitkan sesi, dan kembalikan pengguna
+   * + token sesi mentah (satu-satunya kali token keluar). Ditolak → null;
+   * penelepon wajib menunda dan menjawab generik supaya token tidak bisa
+   * dijelajahi dari bedanya jawaban.
+   */
+  async konsumsiMagicLink(token) {
+    const hash = hashToken(token);
+    return update((db) => {
+      const user = db.users.find((u) => u.magicLink?.hash === hash);
+      if (!user || !magicLinkHidup(user.magicLink)) return null;
+      user.magicLink.dipakai = new Date().toISOString();
+      user.emailVerifiedAt = user.magicLink.dipakai;
+      pushEvent(user, 'magic_link_dipakai');
+      const sesi = terbitkanSesiPada(user, 'magic-link');
+      return { user: structuredClone(user), sesi };
+    });
+  },
+
+  /**
+   * Mencari pengguna dari token sesi — jalur utama header Authorization
+   * edisi enterprise. Sesi kedaluwarsa dibuang malas saat tersentuh; token
+   * yang tidak cocok apa pun → null (penelepon memakai guard yang sama
+   * dengan kode akses, jadi penebakan tetap dibatasi dan tercatat).
+   */
+  async cariDenganSesi(token) {
+    if (!token) return null;
+    const hash = hashToken(token);
+    const db = await load();
+    const user = db.users.find((u) => u.sessions?.some((s) => s.hash === hash));
+    if (!user) return null;
+    const hidup = user.sessions.filter((s) => !sesiKedaluwarsa(s));
+    if (hidup.some((s) => s.hash === hash)) return structuredClone(user);
+    // Sesi ini kedaluwarsa — buang yang basi lalu jawab tidak-dikenal.
+    update((d) => {
+      const u = d.users.find((x) => x.id === user.id);
+      if (u) u.sessions = (u.sessions ?? []).filter((s) => !sesiKedaluwarsa(s));
+    }).catch(() => {});
+    return null;
+  },
+
+  /** Mencabut satu sesi (keluar dari perangkat ini). Token lain milik akun yang sama tetap hidup. */
+  async cabutSesi(token) {
+    const hash = hashToken(token);
+    return update((db) => {
+      const user = db.users.find((u) => u.sessions?.some((s) => s.hash === hash));
+      if (!user) return false;
+      user.sessions = user.sessions.filter((s) => s.hash !== hash);
+      pushEvent(user, 'sesi_dicabut');
+      return true;
+    });
+  },
+
+  /**
+   * Menerbitkan sesi baru dari luar mutator (dipakai jalur OAuth nanti).
+   * Token mentah kembali SATU kali; yang tersimpan hanya hash-nya.
+   */
+  async terbitkanSesi(userId, jalur) {
+    const token = tokenBaru('sesi');
+    const ok = await update((db) => {
+      const user = db.users.find((u) => u.id === userId);
+      if (!user) return false;
+      terbitkanSesiPada(user, jalur, token);
+      return true;
+    });
+    return ok ? token : null;
+  },
+
 
   /**
    * Mengambil pengguna utuh (bukan hanya ringkasan) untuk keperluan demo.
