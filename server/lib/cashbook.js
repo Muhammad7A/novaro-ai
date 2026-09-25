@@ -120,7 +120,7 @@ export function todayISO(now = new Date()) {
  * ini pindah ke mutator penyimpan, konstantanya ikut pindah ke sini — tempat
  * semua logika tanggal buku kas berada.
  *
- * Lima tahun jauh melampaui kebutuhan KUR (3–6 bulan).
+ * Lima tahun jauh melampaui kebutuhan laporan pinjaman (3–6 bulan).
  */
 export const TAHUN_TERLAMA = 5;
 
@@ -419,7 +419,7 @@ export function isMonthReliable(summary) {
 
 /**
  * Bulan yang sudah habis DAN tercatat cukup rapat — satu-satunya jenis bulan
- * yang boleh masuk hitungan rata-rata "laba per bulan" di laporan KUR.
+ * yang boleh masuk hitungan rata-rata "laba per bulan" di laporan pinjaman.
  *
  * Bulan berjalan yang baru terisi seminggu bukan sebuah bulan. Begitu pula bulan
  * yang sudah lewat tapi hanya tercatat 8 harinya. Keduanya sama-sama menyeret
@@ -429,7 +429,7 @@ export function isMonthComplete(summary) {
   return summary.lengkap && summary.jumlahTransaksi > 0 && summary.cakupan >= CAKUPAN_MINIMAL;
 }
 
-/** Ringkasan beberapa bulan terakhir — dipakai untuk laporan KUR dan konteks AI. */
+/** Ringkasan beberapa bulan terakhir — dipakai untuk laporan pinjaman dan konteks AI. */
 export function summarizeRange(transactions = [], months, now = new Date()) {
   return months.map((m) => summarizeMonth(transactions, m, now));
 }

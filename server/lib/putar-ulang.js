@@ -18,7 +18,7 @@
  *                  lewat rute /putar-ulang.js (server.js), yang menempel
  *                  API-nya ke window.NOVA_PUTAR di bawah.
  *
- * Satu rumus, satu tempat — pola yang sama dengan lib/simulasi-kur.js.
+ * Satu rumus, satu tempat — pola yang sama dengan lib/simulasi-cicilan.js.
  *
  * ------------------------------------------------------------------
  * ATURAN YANG DIJAGA (sama dengan halaman lain)

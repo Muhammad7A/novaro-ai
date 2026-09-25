@@ -1878,7 +1878,7 @@ app.delete('/api/cashbook/:id', authenticate, requireConsent, async (req, res) =
   res.json({ ok: true, summary, metrics });
 });
 
-/** Data laporan untuk pengajuan KUR — beberapa bulan sekaligus. */
+/** Data laporan keuangan siap-peminjam — beberapa bulan sekaligus. */
 app.get('/api/report', authenticate, async (req, res) => {
   const count = Math.min(Math.max(Number(req.query.months) || 6, 1), 12);
   // Mengganti pilihan bulan tiga kali tetap satu kali "peserta membuka laporan".
@@ -1923,7 +1923,7 @@ app.get('/api/report', authenticate, async (req, res) => {
    * Rata-rata laba per bulan dihitung HANYA dari bulan yang sudah habis dan
    * terisi. Bulan berjalan yang baru jalan seminggu bukan sebuah bulan: kalau
    * ikut dibagi, satu angka kecil menyeret turun rata-rata — dan justru angka
-   * inilah yang dibaca bank untuk menentukan plafon KUR. Bank pun memang minta
+   * inilah yang dibaca pemberi pinjaman untuk menilai kelayakan. Pemberi memang minta
    * bulan yang sudah selesai (3–6 bulan terakhir), bukan bulan yang sedang jalan.
    */
   const lengkap = summaries.filter(isMonthComplete);
@@ -2086,12 +2086,12 @@ const ASET_LANDING = asetDariBerkas(path.join(HERE, 'public', 'landing.html'), '
 const ASET_KARTU = asetDariBerkas(path.join(HERE, 'public', 'kartu.html'), 'text/html; charset=utf-8');
 /*
  * Rumus simulasi KUR — berkas YANG SAMA dengan yang diimpor uji node
- * (lib/simulasi-kur.js). Satu sumber rumus: peramban menghapusnya sebagai
+ * (lib/simulasi-cicilan.js). Satu sumber rumus: peramban menghapusnya sebagai
  * modul lalu menempelkannya ke window.NOVA_SIMULASI, server mengujinya
  * langsung. Sengaja bukan salinan di public/, supaya tidak ada dua berkas
  * rumus yang bisa menyimpang diam-diam.
  */
-const ASET_SIMULASI = asetDariBerkas(path.join(HERE, 'lib', 'simulasi-kur.js'), 'application/javascript; charset=utf-8');
+const ASET_SIMULASI = asetDariBerkas(path.join(HERE, 'lib', 'simulasi-cicilan.js'), 'application/javascript; charset=utf-8');
 /*
  * Susunan film Putar Ulang — pola yang sama dengan ASET_SIMULASI di atas:
  * lib/putar-ulang.js diimpor uji node dan dimuat peramban sebagai modul,
@@ -2101,7 +2101,7 @@ const ASET_SIMULASI = asetDariBerkas(path.join(HERE, 'lib', 'simulasi-kur.js'), 
 const ASET_PUTAR = asetDariBerkas(path.join(HERE, 'lib', 'putar-ulang.js'), 'application/javascript; charset=utf-8');
 
 app.get('/modul.js', sajikanAset(ASET_MODUL, { cacheControl: 'public, max-age=300' }));
-app.get('/simulasi-kur.js', sajikanAset(ASET_SIMULASI, { cacheControl: 'public, max-age=300' }));
+app.get('/simulasi-cicilan.js', sajikanAset(ASET_SIMULASI, { cacheControl: 'public, max-age=300' }));
 app.get('/putar-ulang.js', sajikanAset(ASET_PUTAR, { cacheControl: 'public, max-age=300' }));
 
 /*

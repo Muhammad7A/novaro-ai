@@ -11,7 +11,7 @@
  *   1. Kunci jawaban TIDAK PERNAH sampai ke peramban. Berkas ini hanya
  *      hidup di server; peramban menerima soal tanpa kunci lewat
  *      /api/latihan/:no dan mengirim jawabannya untuk DINILAI di sini.
- *      (Kebalikan pola simulasi-kur.js yang rumusnya sengaja ikut ke
+ *      (Kebalikan pola simulasi-cicilan.js yang rumusnya sengaja ikut ke
  *      peramban — di sini kuncinya rahasia, jadi arah datanya dibalik.)
  *   2. Penilaian deterministik. Pilihan = pencocokan huruf; hitung =
  *      angka dengan toleransi; golong = pencocokan urutan golongan.

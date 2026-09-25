@@ -65,7 +65,7 @@ export const CONSENT_TEXT = {
     },
     {
       judul: 'Ini alat bantu, bukan nasihat profesional',
-      isi: 'Aplikasi ini alat bantu belajar dan pencatatan. Ia bukan pengganti akuntan, konsultan pajak, atau penasihat hukum. Keputusan pemberian KUR sepenuhnya ada di bank.',
+      isi: 'Aplikasi ini alat bantu belajar dan pencatatan. Ia bukan pengganti akuntan, konsultan pajak, atau penasihat hukum. Keputusan pemberian pinjaman atau kredit sepenuhnya ada pada pemberinya.',
     },
     {
       judul: 'Datamu tetap milikmu',

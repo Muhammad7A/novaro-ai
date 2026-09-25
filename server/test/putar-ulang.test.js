@@ -2,7 +2,7 @@
  * Uji susunan film Putar Ulang (lib/putar-ulang.js).
  *
  * Berkas ini dipakai dua dunia — diimpor uji node dan dimuat peramban
- * sebagai window.NOVA_PUTAR (pola simulasi-kur.js) — jadi yang diuji di
+ * sebagai window.NOVA_PUTAR (pola simulasi-cicilan.js) — jadi yang diuji di
  * sini adalah satu-satunya versi hitungannya:
  *   - pengelompokan transaksi per hari dan urutannya,
  *   - kumulatif saldo vs laba (prive/cicilan hanya menyentuh saldo),

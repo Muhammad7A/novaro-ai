@@ -1,21 +1,21 @@
 /**
- * Simulasi KUR — hitungan murni untuk penggeser di halaman Laporan.
+ * Simulasi cicilan — hitungan murni untuk penggeser di halaman Laporan.
  *
  * ------------------------------------------------------------------
  * KENAPA BERKAS INI ADA
  *
  * Halaman Laporan sudah menghitung rata-rata laba bulanan dari buku kas,
  * dan metrics.js sudah punya aturan sehat cicilan (maks 30% laba). Yang
- * belum ada adalah jembatannya: "kalau saya ambil KUR Rp X selama Y bulan,
- * cicilannya berapa, dan kuat tidak laba saya?". Hitungan itu dibutuhkan
- * DUA dunia sekaligus — di server untuk uji otomatis, di peramban untuk
- * penggeser yang harus terasa instan tanpa panggilan API — karena itu
- * satu berkas ini dipakai dua dunia:
+ * belum ada adalah jembatannya: "kalau saya ambil pinjaman $X selama Y
+ * bulan, cicilannya berapa, dan kuat tidak laba saya menanggungnya?".
+ * Hitungan itu dibutuhkan DUA dunia sekaligus — di server untuk uji
+ * otomatis, di peramban untuk penggeser yang harus terasa instan tanpa
+ * panggilan API — karena itu satu berkas ini dipakai dua dunia:
  *
  *   - node/uji   : import biasa dari berkas ini;
  *   - peramban   : disajikan apa adanya sebagai <script type="module">
- *                  lewat rute /simulasi-kur.js (server.js), yang menempel
- *                  seluruh API ke window.NOVA_SIMULASI di bawah.
+ *                  lewat rute /simulasi-cicilan.js (server.js), yang
+ *                  menempel seluruh API ke window.NOVA_SIMULASI di bawah.
  *
  * Satu rumus, satu tempat. Tidak ada salinan kedua yang bisa menyimpang.
  *
@@ -25,29 +25,29 @@
  *   - Ambang 30% / 50%: SAMA dengan aturan metrics.js (maxCicilanSehat,
  *     bebanCicilan, statusCicilan) — konstantanya ditarik ke sini dan
  *     metrics.js mengimpor dari sini, bukan menjaga angka kembar.
- *   - Bunga 6% per tahun: tarif flat resmi KUR Mikro. Bunga KUR adalah
- *     BUNGA TETAP (flat), bukan anuitas — cicilan tiap bulan sama:
- *     pokok/tenor + pokok × 6%/12. Rumus ini tidak ada sebelumnya di
- *     aplikasi, jadi dibuat baru DI SINI saja.
- *   - Rentang jumlah Rp500 ribu–Rp50 juta: wilayah KUR Mikro, sesuai
- *     skala pemilik warung yang dilayani aplikasi ini. Tenor 3–60 bulan.
+ *   - Bunga 6% per tahun: model bunga flat sederhana yang sengaja dipakai
+ *     untuk edukasi keterjangkauan — BUKAN anuitas/APR amortisasi pinjaman
+ *     AS sesungguhnya. Simulasi ini alat bantu nurani ("kuatkah labaku"),
+ *     bukan penawaran kredit; kalimatnya yang menjaga, di halamannya.
+ *   - Rentang jumlah $1.000–$500.000 dan tenor 3–60 bulan: wilayah usaha
+ *     kecil-menengah yang dilayani aplikasi ini.
  *
  * Batas yang dijaga: fungsi di sini MURNI dan tidak pernah menyentuh
  * penyimpanan, AI, atau jaringan. Hasilnya adalah SIMULASI edukasi —
- * bukan keputusan kredit; kalimatnya yang menjaga, di halamannya.
+ * bukan keputusan kredit.
  */
 
 /** Ambang rasio cicilan terhadap laba (persen) — dipakai juga oleh metrics.js. */
 export const RASIO_AMAN_PORSEN = 30;
 export const RASIO_BERISIKO_PORSEN = 50;
 
-/** Bunga flat KUR Mikro per tahun (6% = 0,5% per bulan). */
-export const BUNGA_KUR_TAHUNAN = 0.06;
+/** Bunga flat ilustratif per tahun (6% = 0,5% per bulan) — edukasi keterjangkauan, bukan penawaran. */
+export const BUNGA_TAHUNAN_DEFAULT = 0.06;
 
-/** Rentang penggeser jumlah pinjaman (KUR Mikro) dan langkahnya. */
-export const JUMLAH_MIN = 500_000;
-export const JUMLAH_MAKS = 50_000_000;
-export const LANGKAH_JUMLAH = 500_000;
+/** Rentang penggeser jumlah pinjaman (USD) dan langkahnya. */
+export const JUMLAH_MIN = 1_000;
+export const JUMLAH_MAKS = 500_000;
+export const LANGKAH_JUMLAH = 1_000;
 
 /** Rentang tenor dalam bulan. */
 export const TENOR_MIN = 3;
@@ -55,11 +55,11 @@ export const TENOR_MAKS = 60;
 
 /**
  * Cicilan bulanan bunga flat: pokok/tenor + bunga pokok satu bulan.
- * Mengembalikan rupiah bulat, atau null bila masukan tidak masuk akal
+ * Mengembalikan dolar bulat, atau null bila masukan tidak masuk akal
  * (jumlah bukan angka positif, tenor bukan bulat ≥ 1) — penelepon yang
- * menampilkan null lebih jujur daripada menampilkan Rp 0.
+ * menampilkan null lebih jujur daripada menampilkan $0.
  */
-export function cicilanBulanan(jumlah, tenorBulan, bungaTahunan = BUNGA_KUR_TAHUNAN) {
+export function cicilanBulanan(jumlah, tenorBulan, bungaTahunan = BUNGA_TAHUNAN_DEFAULT) {
   const n = Number(jumlah);
   const t = Number(tenorBulan);
   const b = Number(bungaTahunan);
@@ -74,10 +74,10 @@ export function cicilanBulanan(jumlah, tenorBulan, bungaTahunan = BUNGA_KUR_TAHU
 /**
  * Status kelayakan dari rasio cicilan terhadap laba (persen).
  * Tangga SAMA dengan statusCicilan di metrics.js: ≤30 aman, 30–50
- * hati-hati, >50 berisiko. Label halamannya (AMAN/KETAT/TERLALU BERAT)
- * diterjemahkan di tampilan supaya istilah internal tidak berubah.
+ * hati-hati, >50 berisiko. Label halamannya diterjemahkan di tampilan
+ * supaya istilah internal tidak berubah.
  */
-export function statusKur(rasioPorsen) {
+export function statusBeban(rasioPorsen) {
   const r = Number(rasioPorsen);
   if (!Number.isFinite(r)) return 'berisiko';
   if (r > RASIO_BERISIKO_PORSEN) return 'berisiko';
@@ -90,15 +90,15 @@ export function statusKur(rasioPorsen) {
  *
  * `labaBulanan` berasal dari rataLabaBulanan /api/report (buku kas nyata);
  * `cicilanBerjalan` dari cicilanBulanan profil — cicilan LAMA tetap dihitung,
- * karena bank menilai seluruh beban cicilan, bukan cuma pinjaman barunya.
- * Sama seperti metrics.js: laba nol/negatif dengan cicilan di atas nol
- * dibaca beban tak terhingga (berisiko), bukan dibaca 0% yang menenangkan
- * secara palsu.
+ * karena pemberi pinjaman menilai seluruh beban cicilan, bukan cuma
+ * pinjaman barunya. Sama seperti metrics.js: laba nol/negatif dengan
+ * cicilan di atas nol dibaca beban tak terhingga (berisiko), bukan dibaca
+ * 0% yang menenangkan secara palsu.
  *
  * @returns {null | {cicilan: number, cicilanLama: number, totalBeban: number,
  *   rasioPorsen: number, status: string, totalBayar: number, totalBunga: number}}
  */
-export function simulasiKur(opts = {}) {
+export function simulasiCicilan(opts = {}) {
   const { jumlah, tenorBulan, labaBulanan, cicilanBerjalan = 0 } = opts ?? {};
   const cicilan = cicilanBulanan(jumlah, tenorBulan);
   if (cicilan === null) return null;
@@ -122,7 +122,7 @@ export function simulasiKur(opts = {}) {
     cicilanLama: Math.max(lama, 0),
     totalBeban: Math.round(totalBeban),
     rasioPorsen: Number(Math.min(rasioPorsen, 999).toFixed(1)),
-    status: statusKur(rasioPorsen),
+    status: statusBeban(rasioPorsen),
     totalBayar,
     totalBunga: Math.round(totalBayar - jumlah),
   };
@@ -133,14 +133,14 @@ if (typeof window !== 'undefined') {
   window.NOVA_SIMULASI = {
     RASIO_AMAN_PORSEN,
     RASIO_BERISIKO_PORSEN,
-    BUNGA_KUR_TAHUNAN,
+    BUNGA_TAHUNAN_DEFAULT,
     JUMLAH_MIN,
     JUMLAH_MAKS,
     LANGKAH_JUMLAH,
     TENOR_MIN,
     TENOR_MAKS,
     cicilanBulanan,
-    statusKur,
-    simulasiKur,
+    statusBeban,
+    simulasiCicilan,
   };
 }

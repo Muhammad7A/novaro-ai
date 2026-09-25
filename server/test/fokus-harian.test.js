@@ -6,7 +6,7 @@
  *     fixture yang memenuhi BEBERAPA aturan sekaligus;
  *   - nol rumus baru: alasan menyebut angka dari metrik apa adanya;
  *   - ambang yang dipakai adalah ambang aplikasi (status cicilan dari
- *     simulasi-kur, margin 10% dari dasbor), bukan ambang baru;
+ *     simulasi-cicilan, margin 10% dari dasbor), bukan ambang baru;
  *   - fallback jujur: tanpa profil, tanpa data, dan pesan positif.
  *
  *   npm test

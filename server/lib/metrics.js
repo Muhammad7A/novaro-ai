@@ -5,7 +5,7 @@
  * AI hanya menjelaskan dan menyusun saran berdasarkan angka yang sudah pasti,
  * sehingga tidak ada risiko angka "karangan".
  */
-import { RASIO_AMAN_PORSEN, RASIO_BERISIKO_PORSEN } from './simulasi-kur.js';
+import { RASIO_AMAN_PORSEN, RASIO_BERISIKO_PORSEN } from './simulasi-cicilan.js';
 
 const num = (v) => {
   const n = Number(v);
@@ -171,9 +171,9 @@ export function computeMetrics(profile = {}, real = null, bulanIni = null) {
   const marginKotor = omzet > 0 ? (labaKotor / omzet) * 100 : 0;
   const marginBersih = omzet > 0 ? (labaBersih / omzet) * 100 : 0;
 
-  // Aturan sehat KUR: cicilan maksimal ~30% laba bersih bulanan.
-  // Ambangnya hidup di lib/simulasi-kur.js — dipakai bersama dengan
-  // simulasi KUR di halaman Laporan, supaya keduanya tidak pernah berbeda.
+  // Aturan sehat beban cicilan: maksimal ~30% laba bersih bulanan.
+  // Ambangnya hidup di lib/simulasi-cicilan.js — dipakai bersama dengan
+  // simulasi cicilan di halaman Laporan, supaya keduanya tidak pernah berbeda.
   const maxCicilanSehat = Math.max(0, labaBersih * (RASIO_AMAN_PORSEN / 100));
   const bebanCicilan = labaBersih > 0 ? (cicilan / labaBersih) * 100 : cicilan > 0 ? 999 : 0;
 

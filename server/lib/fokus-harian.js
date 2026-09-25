@@ -18,7 +18,7 @@
  *     bukan menawarkan menu.
  *   - NOL rumus baru. Semua angka adalah milik computeMetrics/bandingkanBulan;
  *     ambang yang dipakai pun yang sudah ada di aplikasi: status cicilan dari
- *     RASIO_AMAN/BERISIKO (simulasi-kur.js), ambang margin 10% yang sama
+ *     RASIO_AMAN/BERISIKO (simulasi-cicilan.js), ambang margin 10% yang sama
  *     dengan pewarnaan margin di dasbor. Fokus ini MEMILIH, bukan MENGHITUNG.
  *   - NOL AI. Hasil check-up tidak pernah disimpan (ia hanya dikirim ke layar),
  *     jadi input tersimpan yang bisa dibaca di sini adalah peringatan dari
@@ -155,7 +155,7 @@ export function susunFokusHarian({
     };
   }
 
-  /* 5 — cicilan: status dari ambang aman/berisiko yang sama dengan simulasi KUR. */
+  /* 5 — cicilan: status dari ambang aman/berisiko yang sama dengan simulasi cicilan. */
   if (m.statusCicilan && m.statusCicilan !== 'aman') {
     return {
       id: 'cicilan',
@@ -163,7 +163,7 @@ export function susunFokusHarian({
         ? 'Beban cicilan di atas batas berisiko'
         : 'Beban cicilan mendekati batas aman',
       alasan: `Cicilan ${formatRupiah(m.cicilanSaatIni)} = ${m.bebanCicilan}% dari laba bersih — batas cicilan sehatmu ${formatRupiah(m.maxCicilanSehat)}/bulan. Satu bulan sepi saja sudah cukup membuat menunggak.`,
-      aksi: { label: 'Simulasikan cicilan (KUR)', halaman: 'laporan' },
+      aksi: { label: 'Simulasikan cicilan', halaman: 'laporan' },
       modul: 29,
     };
   }

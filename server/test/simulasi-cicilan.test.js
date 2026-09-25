@@ -1,12 +1,12 @@
 /**
- * Uji Simulasi KUR — penggeser jumlah & tenor di halaman Laporan.
+ * Uji Simulasi Cicilan — penggeser jumlah & tenor di halaman Laporan.
  *
- * Rumusnya hidup di lib/simulasi-kur.js: berkas YANG SAMA diimpor uji ini
- * dan disajikan ke peramban lewat /simulasi-kur.js. Karena itu yang diuji
- * di sini persis hitungan yang dilihat pengguna — bukan tiruannya.
+ * Rumusnya hidup di lib/simulasi-cicilan.js: berkas YANG SAMA diimpor uji
+ * ini dan disajikan ke peramban lewat /simulasi-cicilan.js. Karena itu yang
+ * diuji di sini persis hitungan yang dilihat pengguna — bukan tiruannya.
  *
  * Aturan ambang 30%/50% sengaja SATU SUMBER: metrics.js mengimpor
- * konstantanya dari simulasi-kur.js, jadi simulasi di halaman Laporan
+ * konstantanya dari simulasi-cicilan.js, jadi simulasi di halaman Laporan
  * dan skor kesehatan di dasbor tidak mungkin berbeda diam-diam.
  *
  *   npm test
@@ -18,36 +18,36 @@ import test from 'node:test';
 const {
   RASIO_AMAN_PORSEN,
   RASIO_BERISIKO_PORSEN,
-  BUNGA_KUR_TAHUNAN,
+  BUNGA_TAHUNAN_DEFAULT,
   JUMLAH_MIN,
   JUMLAH_MAKS,
   LANGKAH_JUMLAH,
   TENOR_MIN,
   TENOR_MAKS,
   cicilanBulanan,
-  statusKur,
-  simulasiKur,
-} = await import('../lib/simulasi-kur.js');
+  statusBeban,
+  simulasiCicilan,
+} = await import('../lib/simulasi-cicilan.js');
 
 /* ================================================== Rumus cicilan */
 
 test('cicilan bulanan bunga flat: pokok/tenor + bunga 6% per tahun dibagi 12', () => {
-  // Rp 10 jt, 12 bulan: 833.333,33 pokok + 50.000 bunga = 883.333,33 → 883.333
-  assert.equal(cicilanBulanan(10_000_000, 12), 883_333);
-  // Rp 10 jt, 6 bulan: 1.666.666,67 + 50.000 = 1.716.666,67 → 1.716.667
-  assert.equal(cicilanBulanan(10_000_000, 6), 1_716_667);
+  // $10.000, 12 bulan: 833,33 pokok + 50 bunga = 883,33 → 883
+  assert.equal(cicilanBulanan(10_000, 12), 883);
+  // $10.000, 6 bulan: 1.666,67 + 50 = 1.716,67 → 1.717
+  assert.equal(cicilanBulanan(10_000, 6), 1_717);
   // Tenor makin panjang, cicilan makin ringan — selalu, tanpa kecuali.
-  assert.ok(cicilanBulanan(10_000_000, 60) < cicilanBulanan(10_000_000, 36));
-  assert.ok(cicilanBulanan(10_000_000, 36) < cicilanBulanan(10_000_000, 12));
-  assert.ok(cicilanBulanan(10_000_000, 12) < cicilanBulanan(10_000_000, 3));
+  assert.ok(cicilanBulanan(10_000, 60) < cicilanBulanan(10_000, 36));
+  assert.ok(cicilanBulanan(10_000, 36) < cicilanBulanan(10_000, 12));
+  assert.ok(cicilanBulanan(10_000, 12) < cicilanBulanan(10_000, 3));
 });
 
 test('jumlah minimum dan maksimum penggeser menghasilkan cicilan yang masuk akal', () => {
-  const kecil = cicilanBulanan(JUMLAH_MIN, TENOR_MAKS); // Rp500rb, 60 bln
-  const besar = cicilanBulanan(JUMLAH_MAKS, TENOR_MIN); // Rp50jt, 3 bln
-  assert.equal(JUMLAH_MIN, 500_000);
-  assert.equal(JUMLAH_MAKS, 50_000_000);
-  assert.ok(kecil > 0 && kecil < 100_000, `cicilan teringan ${kecil} harus kecil tapi nyata`);
+  const kecil = cicilanBulanan(JUMLAH_MIN, TENOR_MAKS); // $1.000, 60 bln
+  const besar = cicilanBulanan(JUMLAH_MAKS, TENOR_MIN); // $500rb, 3 bln
+  assert.equal(JUMLAH_MIN, 1_000);
+  assert.equal(JUMLAH_MAKS, 500_000);
+  assert.ok(kecil > 0 && kecil < 100, `cicilan teringan ${kecil} harus kecil tapi nyata`);
   assert.ok(besar > JUMLAH_MAKS / TENOR_MIN, `cicilan terberat ${besar} wajib di atas pokok per bulan`);
   // Langkah penggeser harus membagi habis rentangnya — kalau tidak, nilai
   // terakhir penggeser tidak pernah mencapai JUMLAH_MAKS.
@@ -55,62 +55,62 @@ test('jumlah minimum dan maksimum penggeser menghasilkan cicilan yang masuk akal
 });
 
 test('tenor di luar 3–60 dan masukan tidak masuk akal ditolak dengan null', () => {
-  assert.equal(cicilanBulanan(10_000_000, 0), null);
-  assert.equal(cicilanBulanan(10_000_000, -12), null);
-  assert.equal(cicilanBulanan(10_000_000, 4.5), null);
+  assert.equal(cicilanBulanan(10_000, 0), null);
+  assert.equal(cicilanBulanan(10_000, -12), null);
+  assert.equal(cicilanBulanan(10_000, 4.5), null);
   assert.equal(cicilanBulanan(0, 12), null);
   assert.equal(cicilanBulanan(-1, 12), null);
   assert.equal(cicilanBulanan('bukan angka', 12), null);
   assert.equal(cicilanBulanan(NaN, 12), null);
-  assert.equal(cicilanBulanan(10_000_000, NaN), null);
+  assert.equal(cicilanBulanan(10_000, NaN), null);
 });
 
 /* ================================================== Ambang & status */
 
 test('ambang sama dengan aturan metrics.js: 30 aman, 30–50 hati-hati, >50 berisiko', () => {
   assert.deepEqual([RASIO_AMAN_PORSEN, RASIO_BERISIKO_PORSEN], [30, 50]);
-  assert.equal(statusKur(0), 'aman');
-  assert.equal(statusKur(15), 'aman');
-  assert.equal(statusKur(30), 'aman', 'tepat 30% masih aman — sama dengan bebanCicilan metrics');
-  assert.equal(statusKur(30.1), 'hati-hati');
-  assert.equal(statusKur(50), 'hati-hati');
-  assert.equal(statusKur(50.1), 'berisiko');
-  assert.equal(statusKur(999), 'berisiko');
-  assert.equal(statusKur(NaN), 'berisiko');
+  assert.equal(statusBeban(0), 'aman');
+  assert.equal(statusBeban(15), 'aman');
+  assert.equal(statusBeban(30), 'aman', 'tepat 30% masih aman — sama dengan bebanCicilan metrics');
+  assert.equal(statusBeban(30.1), 'hati-hati');
+  assert.equal(statusBeban(50), 'hati-hati');
+  assert.equal(statusBeban(50.1), 'berisiko');
+  assert.equal(statusBeban(999), 'berisiko');
+  assert.equal(statusBeban(NaN), 'berisiko');
 });
 
 /* ================================================== Simulasi utuh */
 
 test('simulasi menghitung rasio terhadap laba, bukan hanya cicilannya', () => {
-  const h = simulasiKur({ jumlah: 10_000_000, tenorBulan: 12, labaBulanan: 4_000_000, cicilanBerjalan: 0 });
-  assert.equal(h.cicilan, 883_333);
-  assert.equal(h.rasioPorsen, 22.1); // 883.333 / 4.000.000
+  const h = simulasiCicilan({ jumlah: 10_000, tenorBulan: 12, labaBulanan: 4_000, cicilanBerjalan: 0 });
+  assert.equal(h.cicilan, 883);
+  assert.equal(h.rasioPorsen, 22.1); // 883 / 4.000
   assert.equal(h.status, 'aman');
-  assert.equal(h.totalBayar, 883_333 * 12);
-  assert.ok(h.totalBunga > 0 && h.totalBunga < 1_000_000, 'total bunga 6% flat satu tahun ≈ Rp600 rb');
+  assert.equal(h.totalBayar, 883 * 12);
+  assert.ok(h.totalBunga > 0 && h.totalBunga < 1_000, 'total bunga 6% flat satu tahun ≈ $600');
 });
 
-test('cicilan berjalan ikut menambah beban — bank menilai seluruh cicilan', () => {
-  const tanpaLama = simulasiKur({ jumlah: 10_000_000, tenorBulan: 12, labaBulanan: 4_000_000, cicilanBerjalan: 0 });
-  const denganLama = simulasiKur({ jumlah: 10_000_000, tenorBulan: 12, labaBulanan: 4_000_000, cicilanBerjalan: 500_000 });
+test('cicilan berjalan ikut menambah beban — pemberi pinjaman menilai seluruh cicilan', () => {
+  const tanpaLama = simulasiCicilan({ jumlah: 10_000, tenorBulan: 12, labaBulanan: 4_000, cicilanBerjalan: 0 });
+  const denganLama = simulasiCicilan({ jumlah: 10_000, tenorBulan: 12, labaBulanan: 4_000, cicilanBerjalan: 500 });
   assert.ok(denganLama.rasioPorsen > tanpaLama.rasioPorsen);
-  assert.equal(denganLama.totalBeban, denganLama.cicilan + 500_000);
+  assert.equal(denganLama.totalBeban, denganLama.cicilan + 500);
   // Cicilan lama bisa mengubah status tanpa mengubah cicilan barunya.
   assert.equal(denganLama.cicilan, tanpaLama.cicilan);
-  assert.equal(statusKur(tanpaLama.rasioPorsen), 'aman');
-  assert.notEqual(statusKur(denganLama.rasioPorsen), 'aman');
+  assert.equal(statusBeban(tanpaLama.rasioPorsen), 'aman');
+  assert.notEqual(statusBeban(denganLama.rasioPorsen), 'aman');
 });
 
 test('laba nol atau negatif: beban apa pun di atas nol terlalu berat, bukan 0%', () => {
-  const labaNol = simulasiKur({ jumlah: 5_000_000, tenorBulan: 12, labaBulanan: 0 });
+  const labaNol = simulasiCicilan({ jumlah: 5_000, tenorBulan: 12, labaBulanan: 0 });
   assert.equal(labaNol.status, 'berisiko');
   assert.ok(labaNol.rasioPorsen >= 999);
-  const rugi = simulasiKur({ jumlah: 5_000_000, tenorBulan: 12, labaBulanan: -2_000_000 });
+  const rugi = simulasiCicilan({ jumlah: 5_000, tenorBulan: 12, labaBulanan: -2_000 });
   assert.equal(rugi.status, 'berisiko');
   // Tanpa cicilan simulasi, tidak ada beban → tidak perlu menakut-nakuti.
-  const kosong = simulasiKur({ jumlah: 5_000_000, tenorBulan: 12, labaBulanan: 0 });
+  const kosong = simulasiCicilan({ jumlah: 5_000, tenorBulan: 12, labaBulanan: 0 });
   assert.ok(kosong.cicilan > 0);
-  const labaNull = simulasiKur({ jumlah: 5_000_000, tenorBulan: 12, labaBulanan: null });
+  const labaNull = simulasiCicilan({ jumlah: 5_000, tenorBulan: 12, labaBulanan: null });
   assert.equal(labaNull.status, 'berisiko');
 });
 
@@ -125,7 +125,7 @@ test('skenario penggeser dari ujung ke ujung selalu menghasilkan hitungan sah', 
   for (const langkahJumlah of [0, 1, 20, 50, 99]) {
     for (const tenor of [TENOR_MIN, 6, 12, 24, 36, 48, TENOR_MAKS]) {
       const jumlah = JUMLAH_MIN + langkahJumlah * LANGKAH_JUMLAH;
-      const h = simulasiKur({ jumlah, tenorBulan: tenor, labaBulanan: 3_000_000, cicilanBerjalan: 0 });
+      const h = simulasiCicilan({ jumlah, tenorBulan: tenor, labaBulanan: 3_000, cicilanBerjalan: 0 });
       assert.ok(h, `${jumlah}/${tenor} bulan harus menghasilkan hitungan`);
       assert.ok(STATUS.includes(h.status), `${jumlah}/${tenor}: status asing ${h.status}`);
       assert.ok(h.cicilan > 0);
@@ -137,17 +137,17 @@ test('skenario penggeser dari ujung ke ujung selalu menghasilkan hitungan sah', 
   assert.equal(JUMLAH_MIN + langkahTerakhir * LANGKAH_JUMLAH, JUMLAH_MAKS);
 });
 
-test('simulasiKur menolak masukan yang tidak bisa dihitung', () => {
-  assert.equal(simulasiKur({ jumlah: 0, tenorBulan: 12, labaBulanan: 1_000_000 }), null);
-  assert.equal(simulasiKur({ jumlah: 10_000_000, tenorBulan: 0, labaBulanan: 1_000_000 }), null);
-  assert.equal(simulasiKur(null), null);
-  assert.equal(simulasiKur(), null);
+test('simulasiCicilan menolak masukan yang tidak bisa dihitung', () => {
+  assert.equal(simulasiCicilan({ jumlah: 0, tenorBulan: 12, labaBulanan: 1_000 }), null);
+  assert.equal(simulasiCicilan({ jumlah: 10_000, tenorBulan: 0, labaBulanan: 1_000 }), null);
+  assert.equal(simulasiCicilan(null), null);
+  assert.equal(simulasiCicilan(), null);
 });
 
 /* ============================================ Kontrak antarberkas & rute */
 
-test('BUNGA memakai tarif flat KUR Mikro 6% per tahun', () => {
-  assert.equal(BUNGA_KUR_TAHUNAN, 0.06);
+test('bunga memakai tarif flat ilustratif 6% per tahun', () => {
+  assert.equal(BUNGA_TAHUNAN_DEFAULT, 0.06);
 });
 
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -163,8 +163,8 @@ const server = await new Promise((resolve) => {
   const s = app.listen(0, () => resolve(s));
 });
 
-test('/simulasi-kur.js disajikan sebagai berkas yang sama dengan yang diuji', async () => {
-  const res = await fetch(`http://127.0.0.1:${server.address().port}/simulasi-kur.js`);
+test('/simulasi-cicilan.js disajikan sebagai berkas yang sama dengan yang diuji', async () => {
+  const res = await fetch(`http://127.0.0.1:${server.address().port}/simulasi-cicilan.js`);
   assert.equal(res.status, 200);
   const teks = await res.text();
   assert.ok(teks.includes('function cicilanBulanan'), 'rumus harus ada di berkas yang disajikan');
