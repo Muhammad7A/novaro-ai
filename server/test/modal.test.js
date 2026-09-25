@@ -75,7 +75,7 @@ test('modal-masuk sah untuk jenis masuk, tidak sah untuk keluar — enum tetap t
   assert.equal(isValidKategori('masuk', 'modal'), false);
   assert.equal(isValidKategori('masuk', 'gaji'), false);
   assert.equal(KATEGORI.masuk['modal-masuk'].laba, false, 'modal tidak boleh ikut laba rugi');
-  assert.equal(KATEGORI.masuk['modal-masuk'].label, 'Modal');
+  assert.equal(KATEGORI.masuk['modal-masuk'].label, 'Owner contribution');
 });
 
 test('mutator menerima modal-masuk — pin gerbang enum yang diperluas', async () => {
@@ -187,7 +187,7 @@ test('rute: modal-masuk tersimpan seperti ketukan biasa, laba di semua laporan t
   assert.equal(dasbor1.summary.saldoKas - dasbor0.summary.saldoKas, 2_000_000);
   assert.equal(dasbor1.summary.modalMasuk, 2_000_000);
   // Sumber chip kategori SPA adalah payload ini — Modal muncul tanpa menyentuh tampilan.
-  assert.equal(dasbor1.kategori.masuk['modal-masuk'].label, 'Modal');
+  assert.equal(dasbor1.kategori.masuk['modal-masuk'].label, 'Owner contribution');
 
   const me1 = await minta('/api/me', { kode: accessCode }).then((r) => r.json());
   assert.equal(me1.metrics.omzet, me0.metrics.omzet, 'omzet di metrik tidak berubah oleh modal');

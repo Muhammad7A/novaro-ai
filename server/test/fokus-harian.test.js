@@ -1,5 +1,5 @@
 /**
- * Uji Fokus Usaha Hari Ini (lib/fokus-harian.js + rute /api/fokus).
+ * Uji Today's Business Focus (lib/fokus-harian.js + rute /api/fokus).
  *
  * Yang paling dijaga:
  *   - FIRST-MATCH-WINS: urutan aturan menentukan hasil — diuji dengan
@@ -42,14 +42,14 @@ const METRIK_SEHAT = {
   omzet: 21_002_000, hpp: 11_000_000, biaya: 4_000_000,
   labaKotor: 10_002_000, labaBersih: 6_002_000, marginKotor: 47.6, marginBersih: 28.6,
   maxCicilanSehat: 1_800_600, cicilanSaatIni: 450_000, bebanCicilan: 7.5,
-  statusCicilan: 'aman', cicilanBelumTercatat: false, cicilanDicatat: 450_000,
-  skorKesehatan: 90, statusKesehatan: 'Sangat sehat',
+  statusCicilan: 'safe', cicilanBelumTercatat: false, cicilanDicatat: 450_000,
+  skorKesehatan: 90, statusKesehatan: 'Very healthy',
   komponenSkor: [
-    { aspek: 'Margin laba bersih', poin: 30, maks: 30, catatan: '28,6% dari penjualan' },
-    { aspek: 'Kebiasaan mencatat', poin: 20, maks: 20, catatan: 'Tercatat 31 hari berturut-turut sejak mulai — pertahankan!' },
-    { aspek: 'Uang usaha terpisah', poin: 20, maks: 20, catatan: 'Sudah punya rekening/dompet khusus' },
-    { aspek: 'Legalitas (NIB)', poin: 15, maks: 15, catatan: 'Sudah punya NIB' },
-    { aspek: 'Lama usaha berjalan', poin: 15, maks: 15, catatan: '3 tahun 0 bulan' },
+    { aspek: 'Net profit margin', poin: 30, maks: 30, catatan: '28.6% of sales' },
+    { aspek: 'Recording habit', poin: 20, maks: 20, catatan: 'Recorded 31 consecutive days since starting — keep it up!' },
+    { aspek: 'Separate business account', poin: 20, maks: 20, catatan: 'Has a dedicated business account' },
+    { aspek: 'Business registration (EIN)', poin: 15, maks: 15, catatan: 'Has an EIN' },
+    { aspek: 'Years in business', poin: 15, maks: 15, catatan: '3 yr 0 mo' },
   ],
   rugi: false,
   prive: 1_200_000, saldoKas: 5_735_000,
@@ -80,15 +80,15 @@ test('tanpa profil: pintu semua angka — menang atas segalanya', () => {
 test('bulan tipis: fokus kembali ke mencatat, bukan optimasi', () => {
   const k = fokus({ metrics: { ...METRIK_SEHAT, sumber: 'perkiraan', catatanBelumCukup: true, hariTercatat: 3, hariBerjalan: 5, prive: 0, saldoKas: null } });
   assert.equal(k.id, 'konsistensi');
-  assert.match(k.alasan, /3 dari 5 hari/);
+  assert.match(k.alasan, /3 of 5 elapsed days/);
   assert.equal(k.aksi.halaman, 'kas');
-  assert.equal(k.modul, 3);
+  assert.equal(k.modul, 101);
 });
 
 test('bulan kosong sama sekali: pesan yang lebih ramah, fokus yang sama', () => {
   const k = fokus({ metrics: { ...METRIK_SEHAT, sumber: 'perkiraan', catatanBelumCukup: false, hariTercatat: 0, prive: 0, saldoKas: null } });
   assert.equal(k.id, 'konsistensi');
-  assert.match(k.alasan, /Belum ada catatan bulan ini/);
+  assert.match(k.alasan, /Nothing recorded this month yet/);
 });
 
 /* =============================================== Aturan 2 — kas defisit */
@@ -98,9 +98,9 @@ test('kas minus: menang sebelum rugi dan prive (arus kas paling mendasar)', () =
     metrics: { ...METRIK_SEHAT, saldoKas: -750_000, rugi: true, labaBersih: -900_000, prive: 2_000_000 },
   });
   assert.equal(k.id, 'kas-defisit');
-  assert.match(k.alasan, /-Rp 750\.000/);
-  assert.match(k.alasan, /-Rp 900\.000/);
-  assert.equal(k.modul, 9);
+  assert.match(k.alasan, /-\$750,000/);
+  assert.match(k.alasan, /-\$900,000/);
+  assert.equal(k.modul, 111);
 });
 
 /* ===================================================== Aturan 3 — rugi */
@@ -110,14 +110,14 @@ test('rugi: fokus harga dan biaya, menang atas prive dan cicilan', () => {
     metrics: {
       ...METRIK_SEHAT,
       rugi: true, labaBersih: -1_800_000, marginBersih: -8.6,
-      prive: 2_000_000, statusCicilan: 'berisiko', bebanCicilan: 999,
+      prive: 2_000_000, statusCicilan: 'risky', bebanCicilan: 999,
     },
   });
   assert.equal(k.id, 'rugi');
-  assert.match(k.alasan, /-Rp 1\.800\.000/);
+  assert.match(k.alasan, /-\$1,800,000/);
   assert.match(k.alasan, /-8\.6%/);
   assert.equal(k.aksi.halaman, 'laporan');
-  assert.equal(k.modul, 5);
+  assert.equal(k.modul, 104);
 });
 
 /* ===================================================== Aturan 4 — prive */
@@ -127,9 +127,9 @@ test('prive lebih besar dari laba: bocor yang paling sering', () => {
     metrics: { ...METRIK_SEHAT, prive: 7_000_000, labaBersih: 6_002_000 },
   });
   assert.equal(k.id, 'prive-lebih-besar-dari-laba');
-  assert.match(k.alasan, /Rp 7\.000\.000/);
-  assert.match(k.alasan, /Rp 6\.002\.000/);
-  assert.equal(k.modul, 23);
+  assert.match(k.alasan, /\$7,000,000/);
+  assert.match(k.alasan, /\$6,002,000/);
+  assert.equal(k.modul, 101);
 });
 
 test('prive di bawah laba BUKAN masalah — jatuh ke aturan berikutnya', () => {
@@ -146,31 +146,31 @@ test('prive di bawah laba BUKAN masalah — jatuh ke aturan berikutnya', () => {
 
 /* ================================================== Aturan 5 — cicilan */
 
-test('cicilan berisiko: ambangnya milik simulasi KUR, bukan baru', () => {
+test('cicilan berisiko: ambangnya milik simulasi cicilan, bukan baru', () => {
   const k = fokus({
     metrics: {
       ...METRIK_SEHAT,
-      statusCicilan: 'berisiko', bebanCicilan: 45.2, cicilanSaatIni: 2_700_000,
+      statusCicilan: 'risky', bebanCicilan: 45.2, cicilanSaatIni: 2_700_000,
       prive: 1_000_000,
     },
   });
   assert.equal(k.id, 'cicilan');
-  assert.match(k.judul, /berisiko/);
+  assert.match(k.judul, /risky threshold/);
   assert.match(k.alasan, /45\.2%/);
-  assert.match(k.alasan, /Rp 1\.800\.600/); // maxCicilanSehat dari rumus existing
-  assert.equal(k.modul, 29);
+  assert.match(k.alasan, /\$1,800,600/); // maxCicilanSehat dari rumus existing
+  assert.equal(k.modul, 111);
 });
 
 test('cicilan hati-hati juga naik jadi fokus', () => {
   const k = fokus({
     metrics: {
       ...METRIK_SEHAT,
-      statusCicilan: 'hati-hati', bebanCicilan: 34, cicilanSaatIni: 2_040_000,
+      statusCicilan: 'caution', bebanCicilan: 34, cicilanSaatIni: 2_040_000,
       prive: 1_000_000,
     },
   });
   assert.equal(k.id, 'cicilan');
-  assert.match(k.judul, /mendekati batas aman/);
+  assert.match(k.judul, /nearing the safe limit/);
 });
 
 /* =============================================== Aturan 6 — margin tipis */
@@ -185,7 +185,7 @@ test('margin 0–10%: ambang yang sama dengan pewarnaan margin dasbor', () => {
   });
   assert.equal(k.id, 'margin-tipis');
   assert.match(k.alasan, /7\.5%/);
-  assert.equal(k.modul, 20);
+  assert.equal(k.modul, 104);
 });
 
 /* ================================= Aturan 7 — peringatan rekomendasi */
@@ -200,14 +200,14 @@ test('peringatan tersimpan dari rekomendasi terakhir dibaca apa adanya', () => {
     kini: KINI_UJI,
     metrics: { ...METRIK_SEHAT, prive: 1_000_000 },
     rekomendasi: {
-      peringatan: ['Cicilan Rp 450.000 menyerap 8% laba — masih dalam ambang aman.'],
-      rekomendasi: [{ judul: 'Kunci porsi bahan', modulTerkait: 104 }],
+      peringatan: ['Loan payment $450,000 absorbs 8% of profit — still within the safe limit.'],
+      rekomendasi: [{ judul: 'Lock input costs', modulTerkait: 104 }],
       generatedAt: segar(0),
     },
   });
   assert.equal(k.id, 'peringatan-rekomendasi');
-  assert.match(k.alasan, /Cicilan Rp 450\.000/);
-  assert.doesNotMatch(k.alasan, /Disusun/, 'disusun hari ini — tidak perlu keterangan umur');
+  assert.match(k.alasan, /Loan payment \$450,000/);
+  assert.doesNotMatch(k.alasan, /Generated/, 'generated today — no age note needed');
   assert.equal(k.aksi.halaman, 'rekomendasi');
   assert.equal(k.modul, 104, 'modulTerkait dari rekomendasi yang sama ikut dihubungkan');
 });
@@ -217,7 +217,7 @@ test('modulTerkait yang tidak sah tidak bocor menjadi tautan', () => {
     kini: KINI_UJI,
     metrics: { ...METRIK_SEHAT, prive: 1_000_000 },
     rekomendasi: {
-      peringatan: ['Periksa stok.'],
+      peringatan: ['Check inventory.'],
       rekomendasi: [{ judul: 'X', modulTerkait: 99 }],
       generatedAt: segar(2),
     },
@@ -231,60 +231,60 @@ test('umur peringatan disebut jujur saat rekomendasinya sudah berhari-hari', () 
     kini: KINI_UJI,
     metrics: { ...METRIK_SEHAT, prive: 1_000_000 },
     rekomendasi: {
-      peringatan: ['Periksa stok bahan kering.'],
+      peringatan: ['Check dry stock levels.'],
       rekomendasi: [{ judul: 'X' }],
       generatedAt: segar(9),
     },
   });
   assert.equal(k.id, 'peringatan-rekomendasi');
-  assert.match(k.alasan, /^Disusun 9 hari lalu\. /, 'peserta menilai sendiri kebaruannya');
+  assert.match(k.alasan, /^Generated 9 days ago\. /, 'pengguna menilai sendiri kebaruannya');
 });
 
 /* ======================================= Aturan 8 — komponen terlemah */
 
 test('komponen skor terlemah: rasio terendah + catatan bawaan skor', () => {
   const komponen = [
-    { aspek: 'Margin laba bersih', poin: 30, maks: 30, catatan: '28,6% dari penjualan' },
-    { aspek: 'Kebiasaan mencatat', poin: 20, maks: 20, catatan: 'Tercatat 31 hari' },
-    { aspek: 'Uang usaha terpisah', poin: 0, maks: 20, catatan: 'Masih tercampur uang pribadi' },
-    { aspek: 'Legalitas (NIB)', poin: 15, maks: 15, catatan: 'Sudah punya NIB' },
-    { aspek: 'Lama usaha berjalan', poin: 7, maks: 15, catatan: '6 bulan' },
+    { aspek: 'Net profit margin', poin: 30, maks: 30, catatan: '28.6% of sales' },
+    { aspek: 'Recording habit', poin: 20, maks: 20, catatan: 'Recorded 31 days' },
+    { aspek: 'Separate business account', poin: 0, maks: 20, catatan: 'Business and personal money still mixed' },
+    { aspek: 'Business registration (EIN)', poin: 15, maks: 15, catatan: 'Has an EIN' },
+    { aspek: 'Years in business', poin: 7, maks: 15, catatan: '6 mo' },
   ];
   const k = fokus({
     metrics: { ...METRIK_SEHAT, komponenSkor: komponen, prive: 1_000_000 },
   });
   assert.equal(k.id, 'komponen-skor');
-  assert.match(k.judul, /Uang usaha terpisah/);
+  assert.match(k.judul, /Separate business account/);
   assert.match(k.alasan, /0\/20/);
-  assert.match(k.alasan, /Masih tercampur uang pribadi/);
-  assert.equal(k.modul, 1, 'aspek pemisahan uang diajarkan sesi 1');
+  assert.match(k.alasan, /Business and personal money still mixed/);
+  assert.equal(k.modul, 101, 'aspek pemisahan uang diajarkan sesi 1 (modul 101)');
 });
 
-test('aspek legalitas menunjuk modul 31; aspek lama usaha tanpa modul', () => {
+test('aspek EIN dan lama usaha: tidak ada modul yang mengajarkan keduanya — null yang jujur', () => {
   const legal = fokus({
     metrics: {
       ...METRIK_SEHAT,
       komponenSkor: [
-        { aspek: 'Margin laba bersih', poin: 30, maks: 30, catatan: '' },
-        { aspek: 'Kebiasaan mencatat', poin: 20, maks: 20, catatan: '' },
-        { aspek: 'Uang usaha terpisah', poin: 20, maks: 20, catatan: '' },
-        { aspek: 'Legalitas (NIB)', poin: 0, maks: 15, catatan: 'Belum punya NIB (gratis di oss.go.id)' },
-        { aspek: 'Lama usaha berjalan', poin: 15, maks: 15, catatan: '3 tahun 0 bulan' },
+        { aspek: 'Net profit margin', poin: 30, maks: 30, catatan: '' },
+        { aspek: 'Recording habit', poin: 20, maks: 20, catatan: '' },
+        { aspek: 'Separate business account', poin: 20, maks: 20, catatan: '' },
+        { aspek: 'Business registration (EIN)', poin: 0, maks: 15, catatan: 'No EIN yet (free at irs.gov)' },
+        { aspek: 'Years in business', poin: 15, maks: 15, catatan: '3 yr 0 mo' },
       ],
       prive: 1_000_000,
     },
   });
-  assert.equal(legal.modul, 31);
+  assert.equal(legal.modul, null);
 
   const lama = fokus({
     metrics: {
       ...METRIK_SEHAT,
       komponenSkor: [
-        { aspek: 'Margin laba bersih', poin: 30, maks: 30, catatan: '' },
-        { aspek: 'Kebiasaan mencatat', poin: 20, maks: 20, catatan: '' },
-        { aspek: 'Uang usaha terpisah', poin: 20, maks: 20, catatan: '' },
-        { aspek: 'Legalitas (NIB)', poin: 15, maks: 15, catatan: '' },
-        { aspek: 'Lama usaha berjalan', poin: 3, maks: 15, catatan: '1 bulan' },
+        { aspek: 'Net profit margin', poin: 30, maks: 30, catatan: '' },
+        { aspek: 'Recording habit', poin: 20, maks: 20, catatan: '' },
+        { aspek: 'Separate business account', poin: 20, maks: 20, catatan: '' },
+        { aspek: 'Business registration (EIN)', poin: 15, maks: 15, catatan: '' },
+        { aspek: 'Years in business', poin: 3, maks: 15, catatan: '1 mo' },
       ],
       prive: 1_000_000,
     },
@@ -297,12 +297,12 @@ test('aspek legalitas menunjuk modul 31; aspek lama usaha tanpa modul', () => {
 test('semua sehat: pesan positif yang tetap membawa langkah belajar', () => {
   const k = fokus({
     metrics: { ...METRIK_SEHAT, prive: 1_000_000 },
-    sesiBerikut: { no: 5, judul: 'HPP dan harga jual yang tidak rugi' },
+    sesiBerikut: { no: 104, judul: 'Read your P&L in five minutes' },
   });
   assert.equal(k.id, 'pertahankan');
-  assert.match(k.alasan, /HPP dan harga jual yang tidak rugi/);
+  assert.match(k.alasan, /Read your P&L in five minutes/);
   assert.equal(k.aksi.halaman, 'modul');
-  assert.equal(k.modul, 5);
+  assert.equal(k.modul, 104);
 });
 
 test('semua selesai: tetap positif tanpa modul yang dikarang', () => {
@@ -331,15 +331,15 @@ test('bulan berjalan diberi tahu sebagai laju setara, bukan anjlok', () => {
     },
   });
   assert.equal(k.id, 'rugi');
-  assert.match(k.alasan, /setara sebulan penuh/);
+  assert.match(k.alasan, /full-month equivalent pace/);
 });
 
 /* =============================================================== Rutenya */
 
 const PROFIL = {
-  namaUsaha: 'Warung Fokus', jenisUsaha: 'kuliner', lokasi: 'Semarang',
-  lamaUsahaBulan: 12, jumlahKaryawan: 0, produkUtama: 'Nasi rames',
-  omzetBulanan: 9_000_000, belanjaBulanan: 4_500_000, biayaOperasional: 1_000_000,
+  namaUsaha: 'Focus Test Shop', jenisUsaha: 'retail', lokasi: 'Austin',
+  lamaUsahaBulan: 12, jumlahKaryawan: 0, produkUtama: 'Specialty coffee beans',
+  omzetBulanan: 9_000, belanjaBulanan: 4_500, biayaOperasional: 1_000,
   cicilanBulanan: 0, pencatatan: 'aplikasi', rekeningTerpisah: true, punyaNib: true,
   tujuan: 'naikkan-laba', tantangan: '',
 };
@@ -356,11 +356,11 @@ test('tanpa kode akses: 401', async () => {
 });
 
 test('rute: bentuk fokus utuh dan hanya memuat nilai yang sah', async () => {
-  const { user, accessCode } = await store.createUser({ name: 'Bu Fokus', business: 'Warung Fokus', batch: 'B1' });
+  const { user, accessCode } = await store.createUser({ name: 'Focus Owner', business: 'Focus Test Shop', batch: '' });
   await store.saveProfile(user.id, PROFIL);
   await store.addTransaction(user.id, {
     tanggal: new Date().toISOString().slice(0, 10),
-    jenis: 'masuk', kategori: 'penjualan', keterangan: 'Penjualan hari ini', jumlah: 450_000,
+    jenis: 'masuk', kategori: 'penjualan', keterangan: 'Today sales', jumlah: 450,
   }, { aktor: 'manusia' });
 
   const res = await fetch(BASE + '/api/fokus', { headers: { Authorization: `Bearer ${accessCode}` } });
@@ -370,5 +370,5 @@ test('rute: bentuk fokus utuh dan hanya memuat nilai yang sah', async () => {
   assert.ok(ID_SAH.has(k.id), `id aturan harus dikenal: ${k.id}`);
   assert.ok(HALAMAN_SAH.has(k.aksi.halaman));
   assert.ok(k.judul.length > 0 && k.alasan.length > 0);
-  assert.ok(k.modul === null || (Number.isInteger(k.modul) && k.modul >= 1 && k.modul <= 32));
+  assert.ok(k.modul === null || (Number.isInteger(k.modul) && k.modul >= 101 && k.modul <= 113));
 });

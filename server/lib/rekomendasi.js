@@ -27,7 +27,7 @@
  */
 import { MODUL_MAKS, MODUL_MIN } from './kurikulum.js';
 
-const PRIORITAS_SAH = new Set(['tinggi', 'sedang', 'rendah']);
+const PRIORITAS_SAH = new Set(['high', 'medium', 'low']);
 const POTONG = (v, maks) => String(v ?? '').trim().slice(0, maks);
 
 /** Satu langkah: teks pendek, dan yang kosong dibuang — bukan disimpan kosong. */
@@ -82,7 +82,7 @@ export function sanitasiRekomendasi(mentah) {
         judul,
         // Prioritas asing jatuh ke tengah: tidak menaikkan kejutan, tidak
         // menurunkan perhatian. Sama dengan penalti paling ringan yang jujur.
-        prioritas: PRIORITAS_SAH.has(r.prioritas) ? r.prioritas : 'sedang',
+        prioritas: PRIORITAS_SAH.has(r.prioritas) ? r.prioritas : 'medium',
         alasan,
         langkah,
         dampak: POTONG(r.dampak, 200),

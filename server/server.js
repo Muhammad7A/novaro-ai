@@ -827,7 +827,7 @@ function susunKartuPublik(user, metrics) {
 
   const rekomendasi = (user.recommendations?.rekomendasi ?? []).slice(0, 2).map((r) => ({
     judul: String(r.judul ?? '').slice(0, 120),
-    prioritas: r.prioritas === 'tinggi' || r.prioritas === 'sedang' ? r.prioritas : 'sedang',
+    prioritas: ['high', 'medium'].includes(r.prioritas) ? r.prioritas : 'medium',
   }));
   /*
    * Peserta yang belum pernah menyusun rekomendasi tetap layak punya kartu —
@@ -837,10 +837,10 @@ function susunKartuPublik(user, metrics) {
   const insight = rekomendasi.length
     ? rekomendasi
     : [{
-        judul: m.statusCicilan === 'aman'
+        judul: m.statusCicilan === 'safe'
           ? 'Beban cicilan usaha dalam batas sehat'
           : 'Tinjau kembali beban cicilan terhadap laba usaha',
-        prioritas: m.statusCicilan === 'aman' ? 'rendah' : 'tinggi',
+        prioritas: m.statusCicilan === 'safe' ? 'low' : 'high',
       }];
 
   /*

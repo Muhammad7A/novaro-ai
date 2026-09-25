@@ -56,7 +56,7 @@ const minta = (jalur, { kode = accessCode, ...opts } = {}) =>
 /** Satu rekomendasi yang sah — dipakai ulang oleh banyak kasus di bawah. */
 const itemSah = () => ({
   judul: 'Rapikan pemisahan uang usaha',
-  prioritas: 'tinggi',
+  prioritas: 'high',
   alasan: 'Prive bulan ini 1.200.000, hampir menyamai laba bersih 1.500.000.',
   langkah: ['Tentukan prive tetap mingguan', 'Catat setiap pengambilan di Buku Kas'],
   dampak: 'Saldo kas bulanan berhenti tergerus diam-diam.',
@@ -96,7 +96,7 @@ test('medan kepanjangan dipotong; daftar kelebihan dibuang sesuai batas skema', 
     ringkasan: 'r'.repeat(700),
     rekomendasi: Array.from({ length: 9 }, () => ({
       judul: 'j'.repeat(120),
-      prioritas: 'tinggi',
+      prioritas: 'high',
       alasan: 'a'.repeat(500),
       langkah: Array.from({ length: 9 }, (_, i) => 'langkah ' + i + ' ' + 'x'.repeat(250)),
       dampak: 'd'.repeat(300),
@@ -120,7 +120,7 @@ test('prioritas asing jatuh ke tengah — tidak naik ke tinggi, tidak turun ke r
     ringkasan: 'ringkasan cukup.',
     rekomendasi: [{ ...itemSah(), prioritas: 'mendadak' }, { ...itemSah(), prioritas: 7 }],
   });
-  assert.ok(hasil.rekomendasi.every((r) => r.prioritas === 'sedang'));
+  assert.ok(hasil.rekomendasi.every((r) => r.prioritas === 'medium'));
 });
 
 test('modulTerkait di luar rentang atau bukan bilangan bulat menjadi null', () => {
@@ -141,7 +141,7 @@ test('item hantu (tanpa judul dan tanpa alasan) dibuang; langkah kosong dibersih
   const hasil = sanitasiRekomendasi({
     ringkasan: 'ringkasan cukup.',
     rekomendasi: [
-      { prioritas: 'tinggi', langkah: [] },
+      { prioritas: 'high', langkah: [] },
       { judul: '   ', alasan: '', langkah: ['', '   '] },
       { ...itemSah(), langkah: [42, null, 'Langkah sah', ''] },
     ],

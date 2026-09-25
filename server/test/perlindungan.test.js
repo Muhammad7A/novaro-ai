@@ -43,13 +43,13 @@ import { CONSENT_TEXT, CONSENT_VERSION, hasConsented } from '../lib/consent.js';
 test('teks persetujuan menyebut hal-hal yang wajib diberitahukan', () => {
   const semua = JSON.stringify(CONSENT_TEXT).toLowerCase();
   // Bukan uji gaya bahasa — ini daftar hal yang tidak boleh hilang dari teksnya.
-  assert.match(semua, /buku kas|catatan/, 'harus menyebut data apa yang disimpan');
+  assert.match(semua, /cash book|records/, 'harus menyebut data apa yang disimpan');
   assert.match(semua, /claude|anthropic/, 'harus menyebut data dikirim ke layanan AI mana');
   assert.match(semua, /gemini|google/, 'dan jalur Gemini (Vertex AI, Google Cloud) ikut disebut — versi 2 dulu menyebut SATU pemroses padahal ada tiga jalur');
-  assert.match(semua, /ketentuan layanan/, 'kerangka komersial: layanan, bukan uji coba (v4)');
-  assert.match(semua, /hapus/, 'harus menyebut hak menghapus data');
-  assert.match(semua, /meningkatkan layanan/, 'pemakaian data kini untuk layanan pengguna, bukan penelitian (v4)');
-  assert.doesNotMatch(semua, /penelitian|uji coba|peserta/, 'sisa framing riset tidak boleh kembali ke teks persetujuan');
+  assert.match(semua, /terms of service/, 'kerangka komersial: layanan, bukan uji coba (v4+)');
+  assert.match(semua, /delete/, 'harus menyebut hak menghapus data');
+  assert.match(semua, /improve the service/, 'pemakaian data kini untuk layanan pengguna, bukan penelitian (v4+)');
+  assert.doesNotMatch(semua, /research|pilot study|participant/, 'sisa framing riset tidak boleh kembali ke teks persetujuan');
   assert.ok(CONSENT_TEXT.poin.length >= 4, 'teks terlalu ringkas untuk disebut informed consent');
 });
 
@@ -61,10 +61,10 @@ test('teks persetujuan tidak boleh mengklaim lebih dari yang benar', () => {
    * praktis adalah nama pemiliknya; bersama lokasi ia menunjuk satu orang.
    */
   const semua = JSON.stringify(CONSENT_TEXT).toLowerCase();
-  assert.match(semua, /keterangan/, 'keterangan transaksi ikut terkirim — harus disebut');
-  assert.match(semua, /tantangan/, 'teks bebas "tantangan" ikut terkirim — harus disebut');
-  assert.match(semua, /nama usaha/, 'harus menyatakan nama usaha TIDAK dikirim');
-  assert.match(semua, /lokasi/, 'harus menyatakan lokasi TIDAK dikirim');
+  assert.match(semua, /notes/, 'keterangan transaksi (notes) ikut terkirim — harus disebut');
+  assert.match(semua, /challenge/, 'teks bebas "challenge" ikut terkirim — harus disebut');
+  assert.match(semua, /business name/, 'harus menyatakan nama usaha TIDAK dikirim');
+  assert.match(semua, /location/, 'harus menyatakan lokasi TIDAK dikirim');
 });
 
 test('data pengenal peserta tidak pernah sampai ke prompt AI', async () => {

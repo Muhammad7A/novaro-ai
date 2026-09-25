@@ -80,7 +80,7 @@ test('tipe asing jatuh ke perhatian; teks kepanjangan dipotong; item kelebihan d
     insight: 'y'.repeat(500),
   });
   assert.equal(hasil.item.length, 6, 'maksimal enam item');
-  assert.ok(hasil.item.every((i) => i.tipe === 'perhatian'));
+  assert.ok(hasil.item.every((i) => i.tipe === 'attention'));
   assert.ok(hasil.item.every((i) => i.teks.length <= 200));
   assert.ok(hasil.insight.length <= 400);
 });

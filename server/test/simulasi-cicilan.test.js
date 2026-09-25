@@ -69,14 +69,14 @@ test('tenor di luar 3–60 dan masukan tidak masuk akal ditolak dengan null', ()
 
 test('ambang sama dengan aturan metrics.js: 30 aman, 30–50 hati-hati, >50 berisiko', () => {
   assert.deepEqual([RASIO_AMAN_PORSEN, RASIO_BERISIKO_PORSEN], [30, 50]);
-  assert.equal(statusBeban(0), 'aman');
-  assert.equal(statusBeban(15), 'aman');
-  assert.equal(statusBeban(30), 'aman', 'tepat 30% masih aman — sama dengan bebanCicilan metrics');
-  assert.equal(statusBeban(30.1), 'hati-hati');
-  assert.equal(statusBeban(50), 'hati-hati');
-  assert.equal(statusBeban(50.1), 'berisiko');
-  assert.equal(statusBeban(999), 'berisiko');
-  assert.equal(statusBeban(NaN), 'berisiko');
+  assert.equal(statusBeban(0), 'safe');
+  assert.equal(statusBeban(15), 'safe');
+  assert.equal(statusBeban(30), 'safe', 'tepat 30% masih safe — sama dengan bebanCicilan metrics');
+  assert.equal(statusBeban(30.1), 'caution');
+  assert.equal(statusBeban(50), 'caution');
+  assert.equal(statusBeban(50.1), 'risky');
+  assert.equal(statusBeban(999), 'risky');
+  assert.equal(statusBeban(NaN), 'risky');
 });
 
 /* ================================================== Simulasi utuh */
@@ -85,7 +85,7 @@ test('simulasi menghitung rasio terhadap laba, bukan hanya cicilannya', () => {
   const h = simulasiCicilan({ jumlah: 10_000, tenorBulan: 12, labaBulanan: 4_000, cicilanBerjalan: 0 });
   assert.equal(h.cicilan, 883);
   assert.equal(h.rasioPorsen, 22.1); // 883 / 4.000
-  assert.equal(h.status, 'aman');
+  assert.equal(h.status, 'safe');
   assert.equal(h.totalBayar, 883 * 12);
   assert.ok(h.totalBunga > 0 && h.totalBunga < 1_000, 'total bunga 6% flat satu tahun ≈ $600');
 });
@@ -97,21 +97,21 @@ test('cicilan berjalan ikut menambah beban — pemberi pinjaman menilai seluruh 
   assert.equal(denganLama.totalBeban, denganLama.cicilan + 500);
   // Cicilan lama bisa mengubah status tanpa mengubah cicilan barunya.
   assert.equal(denganLama.cicilan, tanpaLama.cicilan);
-  assert.equal(statusBeban(tanpaLama.rasioPorsen), 'aman');
-  assert.notEqual(statusBeban(denganLama.rasioPorsen), 'aman');
+  assert.equal(statusBeban(tanpaLama.rasioPorsen), 'safe');
+  assert.notEqual(statusBeban(denganLama.rasioPorsen), 'safe');
 });
 
 test('laba nol atau negatif: beban apa pun di atas nol terlalu berat, bukan 0%', () => {
   const labaNol = simulasiCicilan({ jumlah: 5_000, tenorBulan: 12, labaBulanan: 0 });
-  assert.equal(labaNol.status, 'berisiko');
+  assert.equal(labaNol.status, 'risky');
   assert.ok(labaNol.rasioPorsen >= 999);
   const rugi = simulasiCicilan({ jumlah: 5_000, tenorBulan: 12, labaBulanan: -2_000 });
-  assert.equal(rugi.status, 'berisiko');
+  assert.equal(rugi.status, 'risky');
   // Tanpa cicilan simulasi, tidak ada beban → tidak perlu menakut-nakuti.
   const kosong = simulasiCicilan({ jumlah: 5_000, tenorBulan: 12, labaBulanan: 0 });
   assert.ok(kosong.cicilan > 0);
   const labaNull = simulasiCicilan({ jumlah: 5_000, tenorBulan: 12, labaBulanan: null });
-  assert.equal(labaNull.status, 'berisiko');
+  assert.equal(labaNull.status, 'risky');
 });
 
 test('skenario penggeser dari ujung ke ujung selalu menghasilkan hitungan sah', () => {
@@ -121,7 +121,7 @@ test('skenario penggeser dari ujung ke ujung selalu menghasilkan hitungan sah', 
    * ujung atas, dan beberapa titik tengah. Semuanya wajib menghasilkan
    * objek (bukan null) dengan status yang sah.
    */
-  const STATUS = ['aman', 'hati-hati', 'berisiko'];
+  const STATUS = ['safe', 'caution', 'risky'];
   for (const langkahJumlah of [0, 1, 20, 50, 99]) {
     for (const tenor of [TENOR_MIN, 6, 12, 24, 36, 48, TENOR_MAKS]) {
       const jumlah = JUMLAH_MIN + langkahJumlah * LANGKAH_JUMLAH;

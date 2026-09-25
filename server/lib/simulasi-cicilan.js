@@ -73,16 +73,16 @@ export function cicilanBulanan(jumlah, tenorBulan, bungaTahunan = BUNGA_TAHUNAN_
 
 /**
  * Status kelayakan dari rasio cicilan terhadap laba (persen).
- * Tangga SAMA dengan statusCicilan di metrics.js: ≤30 aman, 30–50
- * hati-hati, >50 berisiko. Label halamannya diterjemahkan di tampilan
+ * Tangga SAMA dengan statusCicilan di metrics.js: ≤30 safe, 30–50
+ * caution, >50 risky. Label halamannya diterjemahkan di tampilan
  * supaya istilah internal tidak berubah.
  */
 export function statusBeban(rasioPorsen) {
   const r = Number(rasioPorsen);
-  if (!Number.isFinite(r)) return 'berisiko';
-  if (r > RASIO_BERISIKO_PORSEN) return 'berisiko';
-  if (r > RASIO_AMAN_PORSEN) return 'hati-hati';
-  return 'aman';
+  if (!Number.isFinite(r)) return 'risky';
+  if (r > RASIO_BERISIKO_PORSEN) return 'risky';
+  if (r > RASIO_AMAN_PORSEN) return 'caution';
+  return 'safe';
 }
 
 /**

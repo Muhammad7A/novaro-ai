@@ -107,9 +107,9 @@ test('berkas data yang rusak tidak diam-diam jadi basis data kosong', async () =
 test('kerugian sampai utuh ke konteks AI', async () => {
   const { formatRupiah, computeMetrics, metricsToText } = await import('../lib/metrics.js');
 
-  assert.equal(formatRupiah(-2_500_000), '-Rp 2.500.000', 'kerugian tidak boleh jadi Rp 0');
-  assert.equal(formatRupiah(0), 'Rp 0');
-  assert.equal(formatRupiah(2_500_000), 'Rp 2.500.000');
+  assert.equal(formatRupiah(-2_500_000), '-$2,500,000', 'kerugian tidak boleh jadi $0');
+  assert.equal(formatRupiah(0), '$0');
+  assert.equal(formatRupiah(2_500_000), '$2,500,000');
 
   /*
    * Ini yang benar-benar terjadi sebelum diperbaiki: model diberi tahu bahwa
@@ -120,8 +120,8 @@ test('kerugian sampai utuh ke konteks AI', async () => {
     omzetBulanan: 8_000_000, belanjaBulanan: 6_000_000, biayaOperasional: 4_500_000, pencatatan: 'buku',
   });
   const teks = metricsToText(m);
-  assert.match(teks, /Laba bersih: -Rp 2\.500\.000/, 'besarnya kerugian harus terbaca model');
-  assert.doesNotMatch(teks, /Laba bersih: Rp 0/);
+  assert.match(teks, /Net profit: -\$2,500,000/, 'besarnya kerugian harus terbaca model');
+  assert.doesNotMatch(teks, /Net profit: \$0/);
 });
 
 test('kerugian bulanan terbaca di riwayat yang dikirim ke AI', async () => {
@@ -132,7 +132,7 @@ test('kerugian bulanan terbaca di riwayat yang dikirim ke AI', async () => {
     { tanggal: '2026-06-03', jenis: 'keluar', kategori: 'operasional', jumlah: 4_000_000, createdAt: '2026-06-03T05:00:00Z' },
   ];
   const { riwayat } = cashbookContext(transaksi, sekarang);
-  assert.match(riwayat, /-Rp 3\.000\.000/, 'bulan yang merugi harus tampil sebagai angka negatif, bukan Rp 0');
+  assert.match(riwayat, /-\$3,000,000/, 'bulan yang merugi harus tampil sebagai angka negatif, bukan $0');
 });
 
 /* ============================================================ Cicilan hilang */

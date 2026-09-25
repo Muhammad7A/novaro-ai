@@ -152,7 +152,7 @@ test('percobaan kode akses dibatasi per alamat IP', async (t) => {
 
   const r = await coba('10.0.0.9', 'SALAH-lagi');
   assert.equal(r.status, 429, 'setelah batas terlampaui, penebakan harus dihentikan');
-  assert.match(r.error, /Terlalu banyak percobaan/);
+  assert.match(r.error, /Too many access code attempts/);
 });
 
 test('kode yang BENAR tetap diterima walau alamatnya sedang terkunci', async (t) => {

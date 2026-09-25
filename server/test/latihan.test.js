@@ -243,8 +243,8 @@ test('tantangan AI: dibuat dari materi + angka peserta, kunci tidak ke peramban,
 
     // Konteks yang dikirim AI: materi modul DAN angka peserta.
     const sistem = String(diminta?.system ?? '');
-    assert.match(sistem, /MATERI MODUL YANG SEDANG DIPELAJARI/);
-    assert.match(sistem, /ANGKA USAHA PESERTA/);
+    assert.match(sistem, /MODULE MATERIAL CURRENTLY BEING STUDIED/);
+    assert.match(sistem, /THE USER'S BUSINESS NUMBERS/);
 
     // Jawab benar (A) — sekali jawab, hasil terkunci.
     const jawab = await (await minta('/api/latihan/101/ai/jawab', {

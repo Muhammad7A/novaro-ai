@@ -29,7 +29,7 @@ const num = (v) => {
 /** Kategori transaksi. `laba: true` artinya ikut diperhitungkan dalam laba rugi. */
 export const KATEGORI = {
   masuk: {
-    penjualan: { label: 'Penjualan', short: 'Penjualan', laba: true },
+    penjualan: { label: 'Sales', short: 'Sales', laba: true },
     /*
      * MODAL BUKAN PENGHASILAN (batas modal — M3, keputusan 2026-09-13).
      *
@@ -43,15 +43,15 @@ export const KATEGORI = {
      * juga mengurangi kas tanpa mengurangi laba; penarikan modal tidak
      * dibuat karena memang sudah ada kategori itu.
      */
-    'modal-masuk': { label: 'Modal', short: 'Modal', laba: false },
-    'lain-masuk': { label: 'Pemasukan lain', short: 'Lain-lain', laba: true },
+    'modal-masuk': { label: 'Owner contribution', short: 'Contribution', laba: false },
+    'lain-masuk': { label: 'Other income', short: 'Other', laba: true },
   },
   keluar: {
-    'belanja-bahan': { label: 'Belanja bahan / barang dagangan', short: 'Belanja barang', laba: true },
-    operasional: { label: 'Biaya operasional', short: 'Operasional', laba: true },
-    'lain-keluar': { label: 'Pengeluaran lain', short: 'Lain-lain', laba: true },
-    cicilan: { label: 'Bayar cicilan pinjaman', short: 'Cicilan', laba: false },
-    prive: { label: 'Ambil untuk pribadi (prive)', short: 'Prive', laba: false },
+    'belanja-bahan': { label: 'Purchases / cost of goods', short: 'Purchases', laba: true },
+    operasional: { label: 'Operating expenses', short: 'Operating', laba: true },
+    'lain-keluar': { label: 'Other expenses', short: 'Other', laba: true },
+    cicilan: { label: 'Loan payment', short: 'Loan payment', laba: false },
+    prive: { label: 'Owner draw (personal use)', short: 'Owner draw', laba: false },
   },
 };
 
@@ -97,7 +97,7 @@ export function tanggalWIB(waktu = new Date()) {
 export function jamWIB(waktu = new Date()) {
   const d = waktu instanceof Date ? waktu : new Date(waktu);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC';
 }
 
 /** Bulan berjalan dalam format YYYY-MM (waktu Indonesia Barat). */

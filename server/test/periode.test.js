@@ -99,9 +99,9 @@ test('angka apa adanya tetap tersedia, terpisah dan berlabel jelas', () => {
 
   // Konteks untuk AI wajib menyebut kedua angka beserta periodenya.
   const teks = metricsToText(m);
-  assert.match(teks, /baru berjalan 8 dari 30 hari/i);
-  assert.match(teks, /SETARA SEBULAN PENUH/);
-  assert.match(teks, /Jangan menyebut angka sebagian bulan itu sebagai penurunan usaha/);
+  assert.match(teks, /the month is only 8 of 30 days in/i);
+  assert.match(teks, /FULL-MONTH EQUIVALENT/);
+  assert.match(teks, /Do not describe those partial-month numbers as a business decline/);
 });
 
 test('bulan yang sudah habis tidak disetarakan sama sekali', () => {
@@ -127,7 +127,7 @@ test('menyusul mencatat struk lama tidak pernah menurunkan nilai konsistensi', (
     `mencatat lebih banyak justru menurunkan konsistensi: ${sebelum.konsistensi} -> ${sesudah.konsistensi}`,
   );
 
-  const poin = (s) => computeMetrics(PROFIL, s).komponenSkor.find((k) => k.aspek === 'Kebiasaan mencatat').poin;
+  const poin = (s) => computeMetrics(PROFIL, s).komponenSkor.find((k) => k.aspek === 'Recording habit').poin;
   assert.ok(poin(sesudah) >= poin(sebelum), 'poin kebiasaan mencatat turun setelah mencatat lebih banyak');
 });
 
@@ -147,15 +147,15 @@ test('tren tidak membandingkan bulan berjalan dengan bulan penuh', () => {
   const { riwayat, berjalan } = cashbookContext(trx, pada(8));
 
   // Penjualan tidak berubah sedikit pun; tidak boleh ada klaim naik/turun.
-  assert.doesNotMatch(riwayat, /penjualan turun/i);
-  assert.match(riwayat, /Tren antar bulan penuh/);
-  assert.match(berjalan, /BARU BERJALAN 8 dari 30 hari/);
+  assert.doesNotMatch(riwayat, /sales down/i);
+  assert.match(riwayat, /Trend across complete months/);
+  assert.match(berjalan, /IN PROGRESS 8 of 30 days/);
 });
 
 test('pengeluaran terbesar digabung, bukan lima baris kembar', () => {
   const trx = bulan('2026-06', 8);
   const { berjalan } = cashbookContext(trx, pada(8));
-  const baris = berjalan.split('\n').find((l) => l.includes('Pengeluaran terbesar'));
+  const baris = berjalan.split('\n').find((l) => l.includes('Largest expenses'));
 
   assert.ok(baris, 'baris pengeluaran terbesar hilang');
   assert.match(baris, /8x/, 'belanja harian yang berulang seharusnya digabung dengan jumlah kalinya');
@@ -184,13 +184,13 @@ test('AI melihat SELURUH bulan yang dicatat, bukan tiga bulan terakhir', () => {
   const { riwayat } = cashbookContext(trx, new Date('2026-07-15T12:00:00Z'));
   const disebut = bulanDiuji.filter((m) => {
     const nama = new Date(Number(m.slice(0, 4)), Number(m.slice(5)) - 1, 1)
-      .toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+      .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     return riwayat.includes(nama);
   });
 
   assert.equal(disebut.length, 24, `hanya ${disebut.length} dari 24 bulan yang sampai ke AI`);
-  assert.match(riwayat, /Cakupan riwayat: 24 bulan yang sudah selesai/);
-  assert.match(riwayat, /tidak ada bulan yang disembunyikan darimu/);
+  assert.match(riwayat, /Coverage: 24 completed months/);
+  assert.match(riwayat, /no month is hidden from you/);
 });
 
 test('riwayat yang stabil ditandai untuk caching, bulan berjalan tidak', () => {
@@ -215,10 +215,10 @@ test('riwayat yang stabil ditandai untuk caching, bulan berjalan tidak', () => {
   assert.equal(blocks[1].cache_control, undefined, 'blok yang berubah-ubah tidak boleh ditandai');
 
   // Yang stabil di depan, yang berubah tiap transaksi di belakang.
-  assert.match(blocks[0].text, /Konsultan Nova/);
-  assert.match(blocks[0].text, /RIWAYAT/);
-  assert.doesNotMatch(blocks[0].text, /BULAN BERJALAN/);
-  assert.match(blocks[1].text, /BULAN BERJALAN/);
+  assert.match(blocks[0].text, /Nova/);
+  assert.match(blocks[0].text, /CASH BOOK — HISTORY/);
+  assert.doesNotMatch(blocks[0].text, /CURRENT MONTH/);
+  assert.match(blocks[1].text, /CURRENT MONTH/);
 
 });
 

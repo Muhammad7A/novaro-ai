@@ -109,7 +109,7 @@ test('halaman publik membuka kartu TANPA login dan datanya konsisten', async () 
   const k = data.kartu;
   assert.equal(k.aplikasi, 'Novaro');
   assert.equal(k.namaUsaha, 'Warung Bu Kartu');
-  assert.equal(k.jenisUsaha, 'Kuliner (warung/kafe/katering)');
+  assert.equal(k.jenisUsaha, 'Food service (restaurant/café/catering)');
   assert.ok(Number.isFinite(k.skorKesehatan) && k.skorKesehatan > 0, 'skor kesehatan harus terisi');
   assert.ok(k.statusKesehatan);
   assert.ok(k.omzet > 0 && k.labaBersih != null, 'omzet & laba harus terisi');

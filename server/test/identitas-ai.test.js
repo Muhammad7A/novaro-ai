@@ -106,7 +106,7 @@ await store.saveConsent(pemilik.id, CONSENT_VERSION);
 
 const REKOMENDASI_SAH = {
   ringkasan: 'Kondisi cukup sehat.',
-  rekomendasi: [{ judul: 'Rapikan pencatatan', prioritas: 'sedang', alasan: 'Catatan belum rapat.', langkah: ['Catat harian'], dampak: 'Laporan lebih akurat.', modulTerkait: 3 }],
+  rekomendasi: [{ judul: 'Rapikan pencatatan', prioritas: 'medium', alasan: 'Catatan belum rapat.', langkah: ['Catat harian'], dampak: 'Laporan lebih akurat.', modulTerkait: 101 }],
   peringatan: ['Kas sering minus akhir pekan.'],
   targetBulanIni: ['Catat setiap hari'],
 };
@@ -179,13 +179,13 @@ const KINI = new Date('2026-09-12T04:00:00.000Z');
 const berumur = (hari) => new Date(KINI.getTime() - hari * 86_400_000).toISOString();
 const METRIK_FOKUS = {
   sumber: 'catatan', saldoKas: 2_000_000, rugi: false, prive: 0,
-  labaBersih: 1_500_000, marginBersih: 25, statusCicilan: 'aman',
-  komponenSkor: [{ aspek: 'Margin laba bersih', poin: 10, maks: 25, catatan: 'Masih bisa naik' }],
+  labaBersih: 1_500_000, marginBersih: 25, statusCicilan: 'safe',
+  komponenSkor: [{ aspek: 'Net profit margin', poin: 10, maks: 25, catatan: 'Can still rise' }],
 };
 const FOKUS_DASAR = { punyaProfil: true, metrics: METRIK_FOKUS, kini: KINI };
 const REK_DENGAN_PERINGATAN = (generatedAt) => ({
   peringatan: ['Kas sering minus tiap akhir pekan.'],
-  rekomendasi: [{ judul: 'X', modulTerkait: 9 }],
+  rekomendasi: [{ judul: 'X', modulTerkait: 108 }],
   generatedAt,
 });
 
@@ -236,7 +236,7 @@ test('kartu publik menyebut asal-usul catatan AI, bukan mengatasnamakan pemilik'
 
 /* ------------------------------------------------- D5/G — persetujuan v4 */
 
-test('persetujuan v4: semua pemroses disebut, kerangka komersial, dan versi lama wajib menyetujui ulang', async () => {
+test('persetujuan v5: semua pemroses disebut, kerangka komersial, dan versi lama wajib menyetujui ulang', async () => {
   const { CONSENT_VERSION, CONSENT_TEXT, hasConsented } = await import('../lib/consent.js');
   /*
    * Dua keputusan pemilik menaikkan versi ke 4: D5 (opsi 2) mewajibkan SEMUA
@@ -245,7 +245,7 @@ test('persetujuan v4: semua pemroses disebut, kerangka komersial, dan versi lama
    * versi di sini berarti membatalkan keduanya; naikkan lagi hanya dengan
    * keputusan baru.
    */
-  assert.equal(CONSENT_VERSION, 4);
+  assert.equal(CONSENT_VERSION, 5);
   const semua = JSON.stringify(CONSENT_TEXT).toLowerCase();
   assert.match(semua, /claude|anthropic/, 'jalur Anthropic tetap disebut');
   assert.match(semua, /gemini|google/, 'jalur Gemini (Vertex AI, Google Cloud) ikut disebut');

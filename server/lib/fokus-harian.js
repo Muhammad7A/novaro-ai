@@ -1,10 +1,10 @@
 /**
- * Fokus Usaha Hari Ini — satu hal terpenting, dipilih secara deterministik.
+ * Today's Business Focus — one most-important thing, chosen deterministically.
  *
  * ------------------------------------------------------------------
  * KENAPA BERKAS INI ADA
  *
- * Aplikasi ini punya banyak angka; yang tidak dipunyai pemilik warung adalah
+ * Aplikasi ini punya banyak angka; yang tidak dipunyai pemilik usaha adalah
  * WAKTU. Berkas ini menjawab satu pertanyaan: "kalau hari ini saya cuma
  * melakukan SATU hal, apa yang paling penting?" — dari angka usahanya
  * sendiri, dengan aturan tetap yang bisa diuji, bukan dengan menimbang AI.
@@ -25,6 +25,7 @@
  *     rekomendasi terakhir — dibaca apa adanya, tanpa dipanggil ulang.
  *   - Setiap fokus punya ALASAN berangka, AKSI yang bisa dieksekusi (halaman
  *     tujuan), dan MODUL terkait bila ada — belajar mengikuti masalah nyata.
+ *     Nomor modul mengikuti kurikulum enterprise (101–113).
  *
  * Urutan aturan (pertama yang cocok menang):
  *   0. belum isi profil          → profil adalah pintu semua angka
@@ -32,20 +33,20 @@
  *   2. kas defisit               → arus kas membunuh usaha yang untung
  *   3. rugi                      → struktur harga/biaya
  *   4. prive > laba              → kebocoran yang paling sering
- *   5. cicilan hati-hati/berisiko→ risiko pinjaman
+ *   5. cicilan caution/risky     → risiko pinjaman
  *   6. margin tipis              → optimasi harga
  *   7. peringatan rekomendasi    → catatan tersimpan dari saran terakhir
  *   8. komponen skor terlemah    → umum, dari skor yang transparan
  *   9. pertahankan               → tidak ada yang mendesak: pesan positif
  */
-import { formatRupiah } from './metrics.js';
+import { formatDolar } from './metrics.js';
 import { nomorModulSah } from './kurikulum.js';
 
 /**
  * Umur maksimum (hari) peringatan rekomendasi yang masih boleh diangkat
  * aturan 7. Konstanta bernama, bukan angka ajaib: 30 hari kalender — cukup
- * lama untuk tetap relevan pada ritme UMKM, cukup pendek agar nasihat bulan
- * lalu tidak berpura-pura segar.
+ * lama untuk tetap relevan, cukup pendek agar nasihat bulan lalu tidak
+ * berpura-pura segar.
  */
 const UMUR_MAKS_PERINGATAN_HARI = 30;
 
@@ -64,13 +65,14 @@ function umurRekomendasiHari(rekomendasi, kini) {
   return hari < 0 ? null : hari;
 }
 
-/** Peta aspek skor ke modul yang mengajarkan perbaikannya. */
+/** Peta aspek skor ke modul yang mengajarkan perbaikannya (label aspek = bahasa Inggris dari metrics.js). */
 function modulDariAspek(aspek = '') {
-  if (aspek.includes('Margin')) return 5;
-  if (aspek.includes('mencatat')) return 3;
-  if (aspek.includes('terpisah')) return 1;
-  if (aspek.includes('Legalitas') || aspek.includes('NIB')) return 31;
-  return null; // 'Lama usaha berjalan' — tidak ada materi yang mempercepat waktu
+  if (aspek.includes('margin')) return 104; // Read your P&L
+  if (aspek.includes('Recording')) return 101; // revenue/profit/cash + recording habit
+  if (aspek.includes('Separate')) return 101; // separation is module 101's core
+  // 'Business registration (EIN)' dan 'Years in business' — tidak ada modul
+  // yang mengajarkan keduanya; null lebih jujur daripada modul yang nyaru.
+  return null;
 }
 
 /**
@@ -97,28 +99,28 @@ export function susunFokusHarian({
   if (!punyaProfil || !metrics) {
     return {
       id: 'isi-profil',
-      judul: 'Isi profil usahamu dulu',
-      alasan: 'Semua angka, skor, dan saran dihitung dari profil usahamu. Isinya sekali saja, kapan saja bisa diubah.',
-      aksi: { label: 'Isi profil usaha', halaman: 'profil' },
+      judul: 'Fill in your business profile first',
+      alasan: 'Every number, score, and piece of advice is computed from your business profile. Fill it once — you can change it anytime.',
+      aksi: { label: 'Fill business profile', halaman: 'profil' },
       modul: null,
     };
   }
 
   const m = metrics;
   const catatan = m.sumber === 'catatan';
-  const setara = m.disetarakan ? ' (laju setara sebulan penuh)' : '';
+  const setara = m.disetarakan ? ' (full-month equivalent pace)' : '';
 
   /* 1 — konsistensi: tanpa catatan yang rapat, semua angka lain cuma perkiraan. */
   if (!catatan) {
     const alasan = m.catatanBelumCukup
-      ? `Bulan ini baru tercatat ${m.hariTercatat} dari ${m.hariBerjalan} hari berjalan — angka di dasbor masih perkiraan profilmu. Semakin rapat catatanmu, semakin nyata semua angkanya.`
-      : 'Belum ada catatan bulan ini — angka di dasbor masih perkiraan profilmu. Satu transaksi hari ini sudah mengubahnya.';
+      ? `This month has ${m.hariTercatat} of ${m.hariBerjalan} elapsed days recorded — the dashboard still runs on your profile estimates. The denser your records, the more real every number gets.`
+      : 'Nothing recorded this month yet — the dashboard still runs on your profile estimates. One transaction today already changes that.';
     return {
       id: 'konsistensi',
-      judul: 'Rapikan ritme mencatat bulan ini',
+      judul: 'Get this month\'s recording rhythm back',
       alasan,
-      aksi: { label: 'Catat transaksi hari ini', halaman: 'kas' },
-      modul: 3,
+      aksi: { label: 'Record today\'s transactions', halaman: 'kas' },
+      modul: 101,
     };
   }
 
@@ -126,10 +128,10 @@ export function susunFokusHarian({
   if ((m.saldoKas ?? 0) < 0) {
     return {
       id: 'kas-defisit',
-      judul: 'Saldo kas minus — periksa arus kas',
-      alasan: `Saldo kas ${formatRupiah(m.saldoKas)}. Laba bersih ${formatRupiah(m.labaBersih)}${setara} — uangnya berpindah ke stok, alat, atau utang, atau prive menarik lebih cepat daripada laba masuk.`,
-      aksi: { label: 'Periksa Buku Kas', halaman: 'kas' },
-      modul: 9,
+      judul: 'Cash balance is negative — check your cash flow',
+      alasan: `Cash balance ${formatDolar(m.saldoKas)}. Net profit ${formatDolar(m.labaBersih)}${setara} — the money moved into inventory, equipment, or debt, or owner draws are outpacing profit.`,
+      aksi: { label: 'Open the Cash Book', halaman: 'kas' },
+      modul: 111,
     };
   }
 
@@ -137,10 +139,10 @@ export function susunFokusHarian({
   if (m.rugi) {
     return {
       id: 'rugi',
-      judul: 'Bulan ini rugi — periksa harga dan biaya',
-      alasan: `Laba bersih ${formatRupiah(m.labaBersih)} (margin ${m.marginBersih}%)${setara}. Kerugian yang berulang hampir selalu dari harga jual, biaya bahan, atau jumlah penjualan — periksa tiga-tiganya di laporan.`,
-      aksi: { label: 'Buka Laporan', halaman: 'laporan' },
-      modul: 5,
+      judul: 'This month is a loss — review prices and costs',
+      alasan: `Net profit ${formatDolar(m.labaBersih)} (margin ${m.marginBersih}%)${setara}. Repeated losses almost always trace to selling prices, input costs, or sales volume — check all three in the report.`,
+      aksi: { label: 'Open the report', halaman: 'laporan' },
+      modul: 104,
     };
   }
 
@@ -148,23 +150,23 @@ export function susunFokusHarian({
   if ((m.prive ?? 0) > 0 && m.labaBersih > 0 && m.prive > m.labaBersih) {
     return {
       id: 'prive-lebih-besar-dari-laba',
-      judul: 'Prive melebihi laba — atur gaji tetap',
-      alasan: `Prive ${formatRupiah(m.prive)} lebih besar dari laba ${formatRupiah(m.labaBersih)}${setara} — uang usaha terkikis lebih cepat daripada menghasilkan. Ambil prive dengan jumlah tetap, sekali seminggu atau sebulan.`,
-      aksi: { label: 'Periksa prive di Buku Kas', halaman: 'kas' },
-      modul: 23,
+      judul: 'Owner draw exceeds profit — set a fixed salary',
+      alasan: `Owner draw ${formatDolar(m.prive)} is larger than profit ${formatDolar(m.labaBersih)}${setara} — business cash is draining faster than it is earned. Take a fixed draw, once a week or once a month.`,
+      aksi: { label: 'Review draws in the Cash Book', halaman: 'kas' },
+      modul: 101,
     };
   }
 
-  /* 5 — cicilan: status dari ambang aman/berisiko yang sama dengan simulasi cicilan. */
-  if (m.statusCicilan && m.statusCicilan !== 'aman') {
+  /* 5 — cicilan: status dari ambang safe/caution/risky yang sama dengan simulasi cicilan. */
+  if (m.statusCicilan && m.statusCicilan !== 'safe') {
     return {
       id: 'cicilan',
-      judul: m.statusCicilan === 'berisiko'
-        ? 'Beban cicilan di atas batas berisiko'
-        : 'Beban cicilan mendekati batas aman',
-      alasan: `Cicilan ${formatRupiah(m.cicilanSaatIni)} = ${m.bebanCicilan}% dari laba bersih — batas cicilan sehatmu ${formatRupiah(m.maxCicilanSehat)}/bulan. Satu bulan sepi saja sudah cukup membuat menunggak.`,
-      aksi: { label: 'Simulasikan cicilan', halaman: 'laporan' },
-      modul: 29,
+      judul: m.statusCicilan === 'risky'
+        ? 'Loan payments are above the risky threshold'
+        : 'Loan payments are nearing the safe limit',
+      alasan: `Loan payments ${formatDolar(m.cicilanSaatIni)} = ${m.bebanCicilan}% of net profit — your safe ceiling is ${formatDolar(m.maxCicilanSehat)}/month. One slow month is enough to miss a payment.`,
+      aksi: { label: 'Simulate a payment', halaman: 'laporan' },
+      modul: 111,
     };
   }
 
@@ -172,10 +174,10 @@ export function susunFokusHarian({
   if (m.marginBersih >= 0 && m.marginBersih < 10) {
     return {
       id: 'margin-tipis',
-      judul: 'Margin bersih tipis — tinjau harga jual',
-      alasan: `Margin bersih ${m.marginBersih}%${setara} — di bawah 10%, biaya memakan hampir seluruh omzet. Cek menu dengan margin terkecil sebelum berpikir menambah penjualan.`,
-      aksi: { label: 'Buka Laporan', halaman: 'laporan' },
-      modul: 20,
+      judul: 'Net margin is thin — review your pricing',
+      alasan: `Net margin ${m.marginBersih}%${setara} — below 10%, costs eat nearly all revenue. Check the lowest-margin items before thinking about selling more.`,
+      aksi: { label: 'Open the report', halaman: 'laporan' },
+      modul: 104,
     };
   }
 
@@ -183,11 +185,9 @@ export function susunFokusHarian({
    *
    * Jendela umur: nasihat AI yang tersimpan membara sesuai angka pada HARI ia
    * disusun. Memangkatnya berminggu-minggu kemudian seolah masih "peringatan
-   * terakhir" adalah dusta kesegaran — fokus harian justru permukaan yang
-   * paling dipercaya peserta. Maka aturan 7 hanya berlaku bila rekomendasinya
-   * cukup muda; di luar jendela (atau tanpa tanggal yang bisa dipercaya) aliran
-   * jatuh ke aturan 8/9 yang murni deterministik. Satu konstanta, satu
-   * pembanding — tanpa mesin pembatalan apa pun.
+   * terakhir" adalah dusta kesegaran. Maka aturan 7 hanya berlaku bila
+   * rekomendasinya cukup muda; di luar jendela (atau tanpa tanggal yang bisa
+   * dipercaya) aliran jatuh ke aturan 8/9 yang murni deterministik.
    */
   const peringatan = rekomendasi?.peringatan?.[0];
   const umurHari = umurRekomendasiHari(rekomendasi, kini);
@@ -196,11 +196,11 @@ export function susunFokusHarian({
     const modulTerkait = rekomendasi?.rekomendasi?.[0]?.modulTerkait;
     return {
       id: 'peringatan-rekomendasi',
-      judul: 'Ada peringatan dari rekomendasi terakhirmu',
-      // Umur disebut saat ia ada — peserta menilai sendiri kebaruannya.
+      judul: 'There is a warning from your latest recommendations',
+      // Umur disebut saat ia ada — pengguna menilai sendiri kebaruannya.
       alasan:
-        (umurHari > 0 ? `Disusun ${umurHari} hari lalu. ` : '') + peringatan.trim().slice(0, 200),
-      aksi: { label: 'Buka Saran', halaman: 'rekomendasi' },
+        (umurHari > 0 ? `Generated ${umurHari} days ago. ` : '') + peringatan.trim().slice(0, 200),
+      aksi: { label: 'Open advice', halaman: 'rekomendasi' },
       modul: nomorModulSah(modulTerkait) ? Number(modulTerkait) : null,
     };
   }
@@ -214,9 +214,9 @@ export function susunFokusHarian({
   if (terlemah) {
     return {
       id: 'komponen-skor',
-      judul: `Perkuat: ${terlemah.aspek}`,
-      alasan: `Skor "${terlemah.aspek}" baru ${terlemah.poin}/${terlemah.maks} — ${terlemah.catatan}.`,
-      aksi: { label: 'Lihat rincian skor', halaman: 'dasbor' },
+      judul: `Strengthen: ${terlemah.aspek}`,
+      alasan: `"${terlemah.aspek}" scored only ${terlemah.poin}/${terlemah.maks} — ${terlemah.catatan}.`,
+      aksi: { label: 'See score breakdown', halaman: 'dasbor' },
       modul: modulDariAspek(terlemah.aspek),
     };
   }
@@ -224,9 +224,9 @@ export function susunFokusHarian({
   /* 9 — tidak ada yang mendesak: pesan positif yang tetap membawa langkah. */
   return {
     id: 'pertahankan',
-    judul: 'Tidak ada hal mendesak — pertahankan ritme',
-    alasan: `Tidak ada masalah mendesak yang terdeteksi dari angkamu hari ini. Pertahankan ritme mencatatnya — belajar berikutnya: ${sesiBerikut?.judul ?? 'pustaka lanjutan'}.`,
-    aksi: { label: 'Lanjutkan belajar', halaman: 'modul' },
+    judul: 'Nothing urgent — keep the rhythm',
+    alasan: `No urgent issue shows in your numbers today. Keep the recording rhythm — next up: ${sesiBerikut?.judul ?? 'the library paths'}.`,
+    aksi: { label: 'Continue learning', halaman: 'modul' },
     modul: sesiBerikut?.no ?? null,
   };
 }

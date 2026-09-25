@@ -8,7 +8,7 @@
  * baru yang diterima dari model — teks observasi dibatasi panjangnya dan
  * angka di kartu tetap datang dari perhitungan server.
  */
-const TIPE_SAH = new Set(['ok', 'perhatian']);
+const TIPE_SAH = new Set(['ok', 'attention']);
 
 const potong = (v, maks) => String(v ?? '').trim().slice(0, maks);
 
@@ -23,7 +23,7 @@ export function sanitasiCheckup(mentah) {
     .filter((i) => i && typeof i === 'object')
     .slice(0, 6)
     .map((i) => ({
-      tipe: TIPE_SAH.has(i.tipe) ? i.tipe : 'perhatian',
+      tipe: TIPE_SAH.has(i.tipe) ? i.tipe : 'attention',
       teks: potong(i.teks, 200),
     }))
     .filter((i) => i.teks.length > 0);

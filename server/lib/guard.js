@@ -54,13 +54,13 @@ export function forceHttps(req, res, next) {
   if (req.method === 'GET' || req.method === 'HEAD') {
     const host = hostTujuan(req);
     if (!host) {
-      return res.status(400).json({ error: 'Alamat tujuan tidak dikenali.' });
+      return res.status(400).json({ error: 'Destination address not recognized.' });
     }
     return res.redirect(308, `https://${host}${req.originalUrl}`);
   }
   // Permintaan yang membawa data tidak dialihkan — pengalihan tetap
   // mengirim kode aksesnya sekali lewat jaringan terbuka.
-  return res.status(403).json({ error: 'Sambungan tidak aman. Aplikasi ini hanya melayani HTTPS.' });
+  return res.status(403).json({ error: 'Insecure connection. This app only serves HTTPS.' });
 }
 
 /** Apakah PUBLIC_HOST sudah diatur? Dipakai peringatan saat start. */
@@ -182,7 +182,7 @@ export function kodeTerkunci(ip) {
   if (recent.length < MAKS_GAGAL) return null;
   const bebas = new Date(recent[0] + JENDELA_MS);
   log.warn('keamanan', 'akses diblokir sementara', { ip, percobaan: recent.length, menit: JENDELA_MS / 60000 });
-  return `Terlalu banyak percobaan kode akses. Coba lagi setelah ${jamWIB(bebas)}.`;
+  return `Too many access code attempts. Try again after ${jamWIB(bebas)}.`;
 }
 
 /**

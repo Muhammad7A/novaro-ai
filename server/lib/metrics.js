@@ -4,6 +4,11 @@
  * Semua angka di sini dihitung di server dengan rumus tetap, BUKAN oleh AI.
  * AI hanya menjelaskan dan menyusun saran berdasarkan angka yang sudah pasti,
  * sehingga tidak ada risiko angka "karangan".
+ *
+ * Sejak edisi enterprise US (W2c 2026-09-25): label dan format angka
+ * berbahasa Inggris dengan dolar AS; kunci data (status cicilan, sumber angka)
+ * ikut berbahasa Inggris dan dikonsumsi konsisten oleh kartu, fokus harian,
+ * dan tampilan.
  */
 import { RASIO_AMAN_PORSEN, RASIO_BERISIKO_PORSEN } from './simulasi-cicilan.js';
 
@@ -19,20 +24,23 @@ export const PROFIL_FIELDS = {
 };
 
 /**
- * Rupiah sebagai teks — TERMASUK yang negatif.
+ * US dollars as text — INCLUDING negatives.
  *
  * Dulu fungsi ini memakai `num()`, yang menjadikan setiap angka negatif nol.
- * Akibatnya usaha yang rugi Rp 2,5 juta dilaporkan ke AI sebagai
- * "Laba bersih: Rp 0 (margin -31,3%)" — model diberi tahu ada kerugian tapi
+ * Akibatnya usaha yang rugi $2.500 dilaporkan ke AI sebagai
+ * "Net profit: $0 (margin -31.3%)" — model diberi tahu ada kerugian tapi
  * tidak pernah diberi tahu sebesar apa, dan ia memang dilarang menghitung
  * sendiri. Kerugian adalah justru angka yang paling perlu terbaca utuh.
  */
-export function formatRupiah(n) {
+export function formatDolar(n) {
   const v = Number(n);
   const bulat = Number.isFinite(v) ? Math.round(v) : 0;
-  const angka = new Intl.NumberFormat('id-ID').format(Math.abs(bulat));
-  return (bulat < 0 ? '-Rp ' : 'Rp ') + angka;
+  const angka = new Intl.NumberFormat('en-US').format(Math.abs(bulat));
+  return (bulat < 0 ? '-$' : '$') + angka;
 }
+
+// Alias nama lama — dipakai berkas lain yang belum selesai ganti nama panggilan.
+export const formatRupiah = formatDolar;
 
 /** Nilai kesehatan keuangan 0–100 dengan komponen yang transparan. */
 function healthScore({ marginBersih, profile, real }) {
@@ -45,10 +53,10 @@ function healthScore({ marginBersih, profile, real }) {
   else if (marginBersih >= 5) marginPoin = 14;
   else if (marginBersih > 0) marginPoin = 7;
   parts.push({
-    aspek: 'Margin laba bersih',
+    aspek: 'Net profit margin',
     poin: marginPoin,
     maks: 30,
-    catatan: `${marginBersih.toFixed(1)}% dari penjualan`,
+    catatan: `${marginBersih.toFixed(1)}% of sales`,
   });
 
   // Kebiasaan mencatat (maks 20).
@@ -56,47 +64,47 @@ function healthScore({ marginBersih, profile, real }) {
   // bukan dari jawaban sendiri di formulir profil.
   if (real && real.hariSejakMulai > 0 && real.jumlahTransaksi > 0) {
     parts.push({
-      aspek: 'Kebiasaan mencatat',
+      aspek: 'Recording habit',
       poin: Math.round(real.konsistensi * 20),
       maks: 20,
       catatan:
         real.hariTercatat >= real.hariSejakMulai
-          ? `Tercatat ${real.hariTercatat} hari berturut-turut sejak mulai — pertahankan!`
-          : `Tercatat ${real.hariTercatat} dari ${real.hariSejakMulai} hari sejak mulai mencatat`,
+          ? `Recorded ${real.hariTercatat} consecutive days since starting — keep it up!`
+          : `Recorded ${real.hariTercatat} of ${real.hariSejakMulai} days since starting to record`,
       terukur: true,
     });
   } else {
     const catatMap = { aplikasi: 20, excel: 18, buku: 12, kadang: 6, belum: 0 };
     parts.push({
-      aspek: 'Kebiasaan mencatat',
+      aspek: 'Recording habit',
       poin: catatMap[profile.pencatatan] ?? 0,
       maks: 20,
       catatan: {
-        aplikasi: 'Sudah pakai aplikasi',
-        excel: 'Sudah pakai Excel/spreadsheet',
-        buku: 'Dicatat di buku tulis',
-        kadang: 'Kadang-kadang saja',
-        belum: 'Belum mencatat',
-      }[profile.pencatatan] ?? 'Belum diisi',
+        aplikasi: 'Already uses an app',
+        excel: 'Already uses Excel/spreadsheet',
+        buku: 'Paper notebook',
+        kadang: 'Only sometimes',
+        belum: 'Not recording yet',
+      }[profile.pencatatan] ?? 'Not filled in',
     });
   }
 
   // Pemisahan uang usaha (maks 20)
   const pisahPoin = profile.rekeningTerpisah ? 20 : 0;
   parts.push({
-    aspek: 'Uang usaha terpisah',
+    aspek: 'Separate business account',
     poin: pisahPoin,
     maks: 20,
-    catatan: profile.rekeningTerpisah ? 'Sudah punya rekening/dompet khusus' : 'Masih tercampur uang pribadi',
+    catatan: profile.rekeningTerpisah ? 'Has a dedicated business account' : 'Business and personal money still mixed',
   });
 
-  // Legalitas usaha (maks 15)
+  // Legalitas usaha (maks 15) — padanan AS bagi NIB adalah EIN.
   const nibPoin = profile.punyaNib ? 15 : 0;
   parts.push({
-    aspek: 'Legalitas (NIB)',
+    aspek: 'Business registration (EIN)',
     poin: nibPoin,
     maks: 15,
-    catatan: profile.punyaNib ? 'Sudah punya NIB' : 'Belum punya NIB (gratis di oss.go.id)',
+    catatan: profile.punyaNib ? 'Has an EIN' : 'No EIN yet (free at irs.gov)',
   });
 
   // Ketahanan usaha (maks 15)
@@ -106,17 +114,17 @@ function healthScore({ marginBersih, profile, real }) {
   else if (bulan >= 12) lamaPoin = 11;
   else if (bulan >= 6) lamaPoin = 7;
   parts.push({
-    aspek: 'Lama usaha berjalan',
+    aspek: 'Years in business',
     poin: lamaPoin,
     maks: 15,
-    catatan: bulan >= 12 ? `${Math.floor(bulan / 12)} tahun ${bulan % 12} bulan` : `${bulan} bulan`,
+    catatan: bulan >= 12 ? `${Math.floor(bulan / 12)} yr ${bulan % 12} mo` : `${bulan} mo`,
   });
 
   const total = parts.reduce((s, p) => s + p.poin, 0);
-  let status = 'Perlu perhatian';
-  if (total >= 80) status = 'Sangat sehat';
-  else if (total >= 60) status = 'Sehat';
-  else if (total >= 40) status = 'Cukup';
+  let status = 'Needs attention';
+  if (total >= 80) status = 'Very healthy';
+  else if (total >= 60) status = 'Healthy';
+  else if (total >= 40) status = 'Fair';
   return { skor: total, status, komponen: parts };
 }
 
@@ -155,7 +163,7 @@ export function computeMetrics(profile = {}, real = null, bulanIni = null) {
    * pemilik usaha tidak pernah mencatatnya di buku kas. Kalau angka ini hanya
    * diambil dari catatan, hari pertama buku kas dipakai adalah hari utang yang
    * sudah diakui sendiri di profil MENGHILANG: beban cicilan jadi 0% dan
-   * statusnya "aman". Pindah ke angka nyata seharusnya membuat gambarannya lebih
+   * statusnya "safe". Pindah ke angka nyata seharusnya membuat gambarannya lebih
    * jujur, bukan menghapus kewajiban yang jelas-jelas ada.
    *
    * Karena itu yang dipakai adalah yang lebih besar, dan selisihnya ditandai
@@ -177,10 +185,10 @@ export function computeMetrics(profile = {}, real = null, bulanIni = null) {
   const maxCicilanSehat = Math.max(0, labaBersih * (RASIO_AMAN_PORSEN / 100));
   const bebanCicilan = labaBersih > 0 ? (cicilan / labaBersih) * 100 : cicilan > 0 ? 999 : 0;
 
-  let statusCicilan = 'aman';
+  let statusCicilan = 'safe';
   if (cicilan > 0) {
-    if (bebanCicilan > RASIO_BERISIKO_PORSEN) statusCicilan = 'berisiko';
-    else if (bebanCicilan > RASIO_AMAN_PORSEN) statusCicilan = 'hati-hati';
+    if (bebanCicilan > RASIO_BERISIKO_PORSEN) statusCicilan = 'risky';
+    else if (bebanCicilan > RASIO_AMAN_PORSEN) statusCicilan = 'caution';
   }
 
   const { skor, status, komponen } = healthScore({ marginBersih, profile, real });
@@ -243,34 +251,34 @@ export function computeMetrics(profile = {}, real = null, bulanIni = null) {
 export function metricsToText(m) {
   const lines = [
     m.sumber === 'catatan'
-      ? `- Sumber angka: BUKU KAS NYATA — terukur, bukan perkiraan. Pengguna sudah mencatat ${m.hariTercatat} hari dari ${m.hariSejakMulai} hari sejak dia mulai mencatat bulan ini. ` +
+      ? `- Number source: REAL CASH BOOK — measured, not estimated. The user has recorded ${m.hariTercatat} of ${m.hariSejakMulai} days since they started recording this month. ` +
         (m.hariTercatat >= m.hariSejakMulai
-          ? 'Dia mencatat setiap hari tanpa bolong — puji konsistensinya bila relevan.'
-          : 'Ada hari yang terlewat; dorong agar lebih rutin, tanpa menyalahkan.')
-      : '- Sumber angka: perkiraan yang diisi sendiri oleh pemilik usaha (belum ada buku kas). Ingatkan bahwa mencatat harian akan membuat angka ini akurat.',
-    `- Omzet per bulan: ${formatRupiah(m.omzet)}`,
-    `- Belanja barang/bahan (HPP): ${formatRupiah(m.hpp)}`,
-    `- Biaya operasional: ${formatRupiah(m.biaya)}`,
-    `- Laba kotor: ${formatRupiah(m.labaKotor)} (margin ${m.marginKotor}%)`,
-    `- Laba bersih: ${formatRupiah(m.labaBersih)} (margin ${m.marginBersih}%)`,
-    `- Batas cicilan sehat (30% laba bersih): ${formatRupiah(m.maxCicilanSehat)} per bulan`,
+          ? 'They record every single day without gaps — praise the consistency when relevant.'
+          : 'Some days are missing; encourage a steadier routine, without blaming.')
+      : '- Number source: owner\'s own estimates (no cash book yet). Remind that daily recording will make these numbers accurate.',
+    `- Monthly revenue: ${formatDolar(m.omzet)}`,
+    `- Purchases / COGS: ${formatDolar(m.hpp)}`,
+    `- Operating expenses: ${formatDolar(m.biaya)}`,
+    `- Gross profit: ${formatDolar(m.labaKotor)} (margin ${m.marginKotor}%)`,
+    `- Net profit: ${formatDolar(m.labaBersih)} (margin ${m.marginBersih}%)`,
+    `- Safe loan payment ceiling (30% of net profit): ${formatDolar(m.maxCicilanSehat)} per month`,
   ];
   if (m.cicilanSaatIni > 0) {
     lines.push(
-      `- Cicilan berjalan saat ini: ${formatRupiah(m.cicilanSaatIni)} = ${m.bebanCicilan}% dari laba bersih (status: ${m.statusCicilan})`,
+      `- Current loan payments: ${formatDolar(m.cicilanSaatIni)} = ${m.bebanCicilan}% of net profit (status: ${m.statusCicilan})`,
     );
     if (m.cicilanBelumTercatat) {
       lines.push(
-        `  Angka cicilan itu berasal dari profil usaha, BUKAN dari buku kas — di buku kas bulan ini baru tercatat ${formatRupiah(m.cicilanDicatat)}. ` +
-          'Kemungkinan besar angsuran dibayar lewat rekening dan belum ikut dicatat. Bila relevan, ingatkan agar cicilan juga dicatat di buku kas (kategori "Bayar cicilan pinjaman") supaya saldo kasnya benar.',
+        `  That payment figure comes from the business profile, NOT from the cash book — this month's book only shows ${formatDolar(m.cicilanDicatat)} recorded. ` +
+          'Most likely the payment leaves from a bank account and never gets recorded. When relevant, remind them to record loan payments too (category "Loan payment") so the cash balance stays true.',
       );
     }
   }
   if (m.sumber === 'catatan') {
-    lines.push(`- Saldo kas per bulan (semua uang masuk − keluar): ${formatRupiah(m.saldoKas)}`);
+    lines.push(`- Monthly cash balance (all money in − out): ${formatDolar(m.saldoKas)}`);
     if (m.prive > 0) {
       lines.push(
-        `- Prive (uang usaha yang diambil untuk keperluan pribadi): ${formatRupiah(m.prive)}. Ini BUKAN biaya usaha, jadi tidak mengurangi laba — tapi mengurangi uang kas.`,
+        `- Owner draw (business money taken for personal use): ${formatDolar(m.prive)}. This is NOT a business expense, so it does not reduce profit — but it does reduce cash.`,
       );
     }
     /*
@@ -279,19 +287,19 @@ export function metricsToText(m) {
      */
     if (m.disetarakan) {
       lines.push(
-        `- PENTING soal periode: bulan ini baru berjalan ${m.hariBerjalan} dari ${m.hariBulan} hari. ` +
-          `Semua angka "per bulan" di atas adalah SETARA SEBULAN PENUH — laju harian bulan berjalan dikali ${m.hariBulan} hari. ` +
-          `Uang yang benar-benar sudah tercatat sejauh ini: omzet ${formatRupiah(m.berjalan.omzet)}, laba bersih ${formatRupiah(m.berjalan.labaBersih)}, saldo kas ${formatRupiah(m.berjalan.saldoKas)}. ` +
-          'Jangan menyebut angka sebagian bulan itu sebagai penurunan usaha — periodenya memang belum habis.',
+        `- IMPORTANT about the period: the month is only ${m.hariBerjalan} of ${m.hariBulan} days in. ` +
+          `Every "per month" number above is a FULL-MONTH EQUIVALENT — this month's daily pace times ${m.hariBulan} days. ` +
+          `What has actually been recorded so far: revenue ${formatDolar(m.berjalan.omzet)}, net profit ${formatDolar(m.berjalan.labaBersih)}, cash balance ${formatDolar(m.berjalan.saldoKas)}. ` +
+          'Do not describe those partial-month numbers as a business decline — the period simply is not over yet.',
       );
     } else {
-      lines.push(`- Periode: bulan ini sudah lengkap ${m.hariBulan} hari, jadi angka di atas adalah angka sebulan penuh yang sesungguhnya.`);
+      lines.push(`- Period: this month is complete at ${m.hariBulan} days, so the numbers above are true full-month figures.`);
     }
   }
-  lines.push(`- Skor kesehatan keuangan: ${m.skorKesehatan}/100 (${m.statusKesehatan})`);
+  lines.push(`- Financial health score: ${m.skorKesehatan}/100 (${m.statusKesehatan})`);
   lines.push(
-    `  Rincian skor: ${m.komponenSkor.map((k) => `${k.aspek} ${k.poin}/${k.maks}`).join('; ')}`,
+    `  Score breakdown: ${m.komponenSkor.map((k) => `${k.aspek} ${k.poin}/${k.maks}`).join('; ')}`,
   );
-  if (m.rugi) lines.push('- PERHATIAN: usaha ini sedang RUGI (laba bersih negatif).');
+  if (m.rugi) lines.push('- ATTENTION: this business is currently LOSING MONEY (net profit is negative).');
   return lines.join('\n');
 }

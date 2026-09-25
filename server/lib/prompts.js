@@ -1,11 +1,11 @@
 /**
- * Prompt untuk Claude Sonnet 5.
+ * Prompt untuk Claude Sonnet 5 — edisi enterprise US (W2c 2026-09-25).
  *
  * Bagian yang stabil (peran + daftar modul) sengaja ditaruh di blok pertama agar
  * bisa di-cache (prompt caching). Profil usaha yang berubah-ubah ada di blok kedua.
  */
 import { isMonthComplete, kategoriLabel, monthsWithData, summarizeRange } from './cashbook.js';
-import { metricsToText, formatRupiah } from './metrics.js';
+import { metricsToText, formatDolar } from './metrics.js';
 import { KURIKULUM, MODUL_MAKS, MODUL_MIN, modulRingkasUntukAI } from './kurikulum.js';
 
 /*
@@ -13,67 +13,69 @@ import { KURIKULUM, MODUL_MAKS, MODUL_MIN, modulRingkasUntukAI } from './kurikul
  *
  * Sebelumnya daftar ini teks tetap, kembaran dari daftar di halaman Modul.
  * Selama keduanya kebetulan sama, tidak ada yang terlihat salah — begitu salah
- * satu berubah, AI mulai menyarankan "buka modul 7" yang isinya bukan modul 7
- * di layar peserta. Kesalahan macam itu tidak membuat apa pun gagal; ia cuma
+ * satu berubah, AI mulai menyarankan "open module 7" yang isinya bukan modul 7
+ * di layar pengguna. Kesalahan macam itu tidak membuat apa pun gagal; ia cuma
  * membuat nasihatnya salah alamat, tanpa satu pun tanda.
  */
 export const MODUL_RINGKAS = modulRingkasUntukAI();
 
-const PERAN = `Kamu adalah "Konsultan Nova", pendamping keuangan untuk pemilik UMKM Indonesia yang awam akuntansi.
+const PERAN = `You are "Nova", the financial companion for US small-business owners who are not accountants.
 
-Cara menjawab:
-- Selalu berbahasa Indonesia yang ramah dan sederhana, seperti mengobrol dengan pemilik warung. Hindari istilah akuntansi yang rumit; kalau terpaksa memakainya, jelaskan singkat.
-- Jawab ringkas: maksimal sekitar 180 kata, kecuali pengguna memang minta penjelasan panjang.
-- Berikan angka rupiah yang konkret dan langkah yang bisa dikerjakan hari ini.
-- Boleh memakai **teks tebal** dan daftar dengan tanda "- ". Jangan pakai heading, tabel, atau blok kode.
-- Kalau relevan, arahkan ke modul yang tepat (sebut nomornya).
+How to answer:
+- Always friendly, plain English — like talking to a busy shop owner. Avoid heavy accounting jargon; if you must use a term, explain it in one short phrase.
+- Keep answers concise: about 180 words max, unless the user explicitly asks for a deep explanation.
+- Give concrete dollar amounts from the data below and steps they can do today.
+- You may use **bold text** and lists with "- ". No headings, no tables, no code blocks.
+- When relevant, point to the right module by its number.
 
-Mengaitkan dengan pelajaran peserta:
-- Peserta sedang menjalani satu sesi belajar per hari. Kalau ada blok KEMAJUAN BELAJAR PESERTA di bawah, pakai itu: kaitkan jawabanmu dengan sesi yang sedang dijalani bila nyambung, dan jangan mengarahkan ke modul yang jauh di depan sesi itu kecuali memang yang ditanyakan.
-- Kalau ada blok MATERI MODUL YANG SEDANG DIBUKA PESERTA, jelaskan materi itu MEMAKAI ANGKA USAHA PESERTA SENDIRI dari data di bawah — itu tugas utamamu pada pertanyaan tersebut. Contoh: kalau modulnya tentang HPP, tunjukkan berapa persen belanja bahan terhadap penjualannya, bukan mengulang definisi HPP.
-- Saat materi modul disertakan, jangan memberi penjelasan yang bertentangan dengan isinya. Peserta sedang membaca modul itu di layar yang sama; dua versi yang berbeda membuatnya bingung, bukan bertambah paham. Boleh menambah, tidak boleh membantah.
+Connecting to the learning path:
+- The user works through one learning session per day. If a LEARNING PROGRESS block appears below, use it: tie your answer to the current session when it fits, and do not push them to modules far ahead of that session unless they asked.
+- If a MODULE MATERIAL CURRENTLY OPEN block appears, teach that material USING THE USER'S OWN BUSINESS NUMBERS from the data below — that is your main job for this question. Example: if the module is about gross margin, show their purchases as a percent of sales, not the textbook definition.
+- When module material is included, never contradict it. The user is reading that module on this same screen; two competing versions confuse rather than help. You may add; you may not contradict.
 
-Batasan penting:
-- Gunakan HANYA angka yang tersedia di data usaha di bawah, atau angka yang diberikan pengguna dalam percakapan. JANGAN mengarang omzet, laba, atau biaya. Kalau butuh data yang belum ada, tanyakan.
-- Kamu bukan akuntan publik, konsultan pajak, atau penasihat hukum. Untuk urusan pajak, sengketa, atau pinjaman besar, sarankan konsultasi ke ahlinya.
-- Jangan menjanjikan pengajuan KUR pasti disetujui; keputusan ada di bank.
+Hard limits:
+- Use ONLY numbers present in the business data below, or numbers the user gives you in conversation. NEVER invent revenue, profit, or costs. If you need data that is missing, ask.
+- You are not a CPA, tax advisor, or attorney. For tax filings, disputes, or large financing decisions, recommend the right professional.
+- Never promise that any loan or credit application will be approved; the decision belongs to the lender.
 
-Modul Novaro (${KURIKULUM.length} modul). Jalur "Dasar" adalah sesi harian yang sedang dijalani peserta, satu sesi per hari selama dua minggu; jalur lain adalah pustaka yang dibuka sesuai kebutuhan. Arahkan peserta baru ke jalur Dasar lebih dulu.
+Novaro modules (${KURIKULUM.length} total). The "Core" path is the daily session path — one session per day for a week; other paths are an open library. Direct new users to the Core path first.
 ${MODUL_RINGKAS}`;
 
-/* Label berbahasa Indonesia untuk pilihan profil — dipakai AI, laporan,
- * dan kartu kesehatan (server.js). Diekspor supaya tiga tempat itu tidak
+/* Label berbahasa Inggris untuk pilihan profil — dipakai AI, laporan,
+ * dan kartu kesehatan (server.js). Kunci tetap (disimpan di data pengguna);
+ * hanya labelnya yang tampil. Diekspor supaya tiga tempat itu tidak
  * menjaga salinan labelnya sendiri. */
 export const LABEL = {
   jenisUsaha: {
-    kuliner: 'Kuliner (warung/kafe/katering)',
-    retail: 'Retail / toko kelontong',
-    jasa: 'Jasa (bengkel, salon, laundry, dll.)',
-    produksi: 'Produksi / kerajinan',
-    online: 'Toko online',
-    lainnya: 'Lainnya',
-  },  pencatatan: {
-    belum: 'Belum mencatat sama sekali',
-    kadang: 'Kadang-kadang saja',
-    buku: 'Buku tulis',
+    kuliner: 'Food service (restaurant/café/catering)',
+    retail: 'Retail store',
+    jasa: 'Services (repair, salon, laundry, etc.)',
+    produksi: 'Manufacturing / crafts',
+    online: 'Online store',
+    lainnya: 'Other',
+  },
+  pencatatan: {
+    belum: 'Not recording at all yet',
+    kadang: 'Only sometimes',
+    buku: 'Paper notebook',
     excel: 'Excel / spreadsheet',
-    aplikasi: 'Aplikasi kasir/keuangan',
+    aplikasi: 'POS or finance app',
   },
   tujuan: {
-    'rapikan-keuangan': 'Merapikan pencatatan keuangan',
-    'naikkan-laba': 'Menaikkan laba',
-    'ajukan-kur': 'Mempersiapkan pengajuan KUR',
-    'kelola-stok': 'Mengelola stok lebih baik',
-    'kembangkan-usaha': 'Mengembangkan usaha / buka cabang',
+    'rapikan-keuangan': 'Get the books in order',
+    'naikkan-laba': 'Raise profit',
+    'ajukan-kur': 'Prepare a loan or credit application',
+    'kelola-stok': 'Manage inventory better',
+    'kembangkan-usaha': 'Grow the business / open a second location',
   },
 };
 
-/** Batas jumlah bulan riwayat yang dikirim. 3 tahun sudah jauh di atas kebutuhan KUR. */
+/** Batas jumlah bulan riwayat yang dikirim. 3 tahun jauh di atas kebutuhan analisis. */
 const MAKS_BULAN_RIWAYAT = 36;
 
 const namaBulan = (m) => {
   const [y, mo] = m.split('-');
-  return new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  return new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 };
 
 /**
@@ -84,12 +86,6 @@ const namaBulan = (m) => {
  *              caching: dibaca berkali-kali dengan biaya sekitar sepersepuluh.
  * `berjalan` — bulan yang sedang jalan dan pengeluaran terbesarnya. Berubah
  *              setiap kali pengguna mencatat, jadi tidak boleh ikut di-cache.
- *
- * Sebelumnya konteks dibatasi 3 bulan terakhir demi hemat token. Penghematannya
- * ternyata semu: orang yang memindahkan dua tahun pembukuan fisik ke aplikasi
- * ini mendapat saran dari 3 bulan terakhir saja, dan model tidak pernah tahu
- * ada 21 bulan lain yang tidak dilihatnya — jadi ia menyimpulkan tren dari
- * sepotong data tanpa pernah menyebut keterbatasannya.
  */
 export function cashbookContext(transactions = [], now = new Date()) {
   const semuaBulan = monthsWithData(transactions);
@@ -97,7 +93,7 @@ export function cashbookContext(transactions = [], now = new Date()) {
     return {
       riwayat: '',
       berjalan:
-        'BUKU KAS\nPengguna belum mencatat transaksi apa pun. Dorong dia mulai mencatat di menu "Buku Kas" — cukup 10 detik per transaksi, dan setelah itu semua angka di aplikasi jadi akurat.',
+        'CASH BOOK\nThe user has not recorded any transactions yet. Encourage them to start recording in the "Cash Book" section — about 10 seconds per entry, and every number in the app becomes accurate after that.',
     };
   }
 
@@ -120,27 +116,25 @@ function riwayatToText(selesai, semuaBulan) {
    * "pengguna mencatat 2 tahun dan aku cuma diberi 3 bulan" — dan akan bicara
    * soal tren seolah-olah melihat semuanya.
    *
-   * Yang dihitung di sini HANYA bulan yang sudah selesai. Memasukkan jumlah
-   * seluruh transaksi termasuk bulan berjalan akan membuat baris ini berubah
-   * setiap kali pengguna mencatat — dan satu byte berubah di blok ini
-   * membatalkan seluruh cache di belakangnya. Angka yang bergerak tidak boleh
-   * ikut ke dalam blok yang tugasnya justru tidak bergerak.
+   * Yang dihitung di sini HANYA bulan yang sudah selesai. Angka yang bergerak
+   * tidak boleh ikut ke blok yang tugasnya tidak bergerak (satu byte berubah
+   * membatalkan seluruh cache di belakangnya).
    */
   const bulanSelesai = semuaBulan.filter((m) => selesai.some((s) => s.month === m));
   const transaksiSelesai = selesai.reduce((n, s) => n + s.jumlahTransaksi, 0);
 
-  const lines = ['BUKU KAS — RIWAYAT (angka nyata dari catatan pengguna)'];
+  const lines = ['CASH BOOK — HISTORY (real numbers from the user\'s records)'];
   lines.push(
     bulanSelesai.length
-      ? `Cakupan riwayat: ${bulanSelesai.length} bulan yang sudah selesai, ${namaBulan(bulanSelesai.at(-1))} s/d ${namaBulan(bulanSelesai[0])}, ${transaksiSelesai} transaksi.` +
+      ? `Coverage: ${bulanSelesai.length} completed months, ${namaBulan(bulanSelesai.at(-1))} through ${namaBulan(bulanSelesai[0])}, ${transaksiSelesai} transactions.` +
           (semuaBulan.length > MAKS_BULAN_RIWAYAT
-            ? ` Pengguna punya ${semuaBulan.length} bulan catatan; yang dirinci hanya ${MAKS_BULAN_RIWAYAT} bulan terbaru.`
-            : ' Semuanya dirinci di bawah — tidak ada bulan yang disembunyikan darimu.')
-      : 'Belum ada bulan yang selesai.',
+            ? ` The user has ${semuaBulan.length} months of records; only the most recent ${MAKS_BULAN_RIWAYAT} are detailed.`
+            : ' All of them are detailed below — no month is hidden from you.')
+      : 'No completed months yet.',
   );
 
   if (!selesai.length) {
-    lines.push('Belum ada satu pun bulan yang selesai; semua catatan ada di bulan berjalan.');
+    lines.push('Not a single month is complete yet; all records sit in the current month.');
     return lines.join('\n');
   }
 
@@ -148,9 +142,8 @@ function riwayatToText(selesai, semuaBulan) {
 
   /*
    * Tren hanya antara dua bulan penuh yang tercatat rapat. Membandingkan bulan
-   * berjalan dengan bulan lalu menghasilkan "penjualan turun 74%" untuk usaha
-   * yang penjualannya tidak berubah sama sekali — dan model akan dengan patuh
-   * membunyikan alarm palsu itu ke pemilik usaha.
+   * berjalan dengan bulan lalu menghasilkan "sales down 74%" untuk usaha
+   * yang penjualannya tidak berubah sama sekali.
    */
   const rapat = selesai.filter(isMonthComplete);
   if (rapat.length >= 2) {
@@ -159,14 +152,14 @@ function riwayatToText(selesai, semuaBulan) {
     const tren = [];
     const dJual = delta(kini.penjualan, lalu.penjualan);
     const dBelanja = delta(kini.belanjaBahan, lalu.belanjaBahan);
-    if (dJual !== null) tren.push(`penjualan ${dJual >= 0 ? 'naik' : 'turun'} ${Math.abs(dJual)}%`);
-    if (dBelanja !== null) tren.push(`belanja bahan ${dBelanja >= 0 ? 'naik' : 'turun'} ${Math.abs(dBelanja)}%`);
+    if (dJual !== null) tren.push(`sales ${dJual >= 0 ? 'up' : 'down'} ${Math.abs(dJual)}%`);
+    if (dBelanja !== null) tren.push(`purchases ${dBelanja >= 0 ? 'up' : 'down'} ${Math.abs(dBelanja)}%`);
     if (tren.length) {
-      lines.push(`- Tren antar bulan penuh — ${namaBulan(kini.month)} dibanding ${namaBulan(lalu.month)}: ${tren.join(', ')}.`);
+      lines.push(`- Trend across complete months — ${namaBulan(kini.month)} vs ${namaBulan(lalu.month)}: ${tren.join(', ')}.`);
     }
   } else {
     lines.push(
-      '- Belum ada dua bulan penuh yang tercatat rapat untuk dibandingkan. JANGAN membandingkan bulan berjalan dengan bulan lalu seolah-olah setara — periodenya beda panjang.',
+      '- There are not yet two densely-recorded complete months to compare. Do NOT compare the current month against last month as if equivalent — the periods have different lengths.',
     );
   }
 
@@ -175,17 +168,17 @@ function riwayatToText(selesai, semuaBulan) {
 
 /** Blok berubah-ubah: bulan berjalan + pengeluaran terbesarnya. Tidak di-cache. */
 function berjalanToText(berjalan, transactions) {
-  const lines = ['BUKU KAS — BULAN BERJALAN'];
+  const lines = ['CASH BOOK — CURRENT MONTH'];
 
   if (!berjalan || berjalan.jumlahTransaksi === 0) {
-    lines.push('Bulan ini belum ada catatan sama sekali. Dorong pengguna mulai mencatat lagi.');
+    lines.push('Nothing recorded this month yet. Encourage the user to start recording again.');
   } else {
     lines.push(bulanKeBaris(berjalan));
     lines.push(pengeluaranTerbesar(transactions, berjalan.month));
   }
 
   lines.push(
-    'Gunakan angka buku kas ini sebagai dasar saran. Sebutkan tanggal atau nama transaksi bila membantu pemilik usaha mengenali polanya.',
+    'Use these cash book numbers as the basis for advice. Mention dates or transaction names when they help the owner recognize the pattern.',
   );
   return lines.filter(Boolean).join('\n');
 }
@@ -193,21 +186,21 @@ function berjalanToText(berjalan, transactions) {
 /** Satu baris ringkasan bulan, lengkap dengan periodenya. */
 function bulanKeBaris(s) {
   const periode = isMonthComplete(s)
-    ? `bulan penuh ${s.hariBulan} hari, tercatat rapat`
+    ? `full ${s.hariBulan}-day month, densely recorded`
     : s.lengkap
-      ? `BELUM UTUH — bulannya sudah lewat tapi hanya ${s.hariTercatat} dari ${s.hariBulan} hari yang tercatat, jadi angkanya lebih kecil dari kenyataan`
-      : `BARU BERJALAN ${s.hariBerjalan} dari ${s.hariBulan} hari — setara sebulan penuh: penjualan ${formatRupiah(s.setara.penjualan)}, laba bersih ${formatRupiah(s.setara.labaBersih)}`;
+      ? `INCOMPLETE — the month has passed but only ${s.hariTercatat} of ${s.hariBulan} days were recorded, so the numbers are lower than reality`
+      : `IN PROGRESS ${s.hariBerjalan} of ${s.hariBulan} days — full-month equivalent: sales ${formatDolar(s.setara.penjualan)}, net profit ${formatDolar(s.setara.labaBersih)}`;
   return (
-    `- ${namaBulan(s.month)}: penjualan ${formatRupiah(s.penjualan)}, belanja bahan ${formatRupiah(s.belanjaBahan)}, ` +
-    `operasional ${formatRupiah(s.operasional)}, laba bersih ${formatRupiah(s.labaBersih)} (margin ${s.marginBersih}%), ` +
-    `prive ${formatRupiah(s.prive)}, saldo kas ${formatRupiah(s.saldoKas)} — tercatat ${s.hariTercatat} hari, ${s.jumlahTransaksi} transaksi (${periode})`
+    `- ${namaBulan(s.month)}: sales ${formatDolar(s.penjualan)}, purchases ${formatDolar(s.belanjaBahan)}, ` +
+    `operating ${formatDolar(s.operasional)}, net profit ${formatDolar(s.labaBersih)} (margin ${s.marginBersih}%), ` +
+    `owner draw ${formatDolar(s.prive)}, cash balance ${formatDolar(s.saldoKas)} — recorded ${s.hariTercatat} days, ${s.jumlahTransaksi} transactions (${periode})`
   );
 }
 
 /**
  * Lima pengeluaran terbesar, digabung per keterangan/kategori.
  *
- * Tanpa penggabungan, warung yang belanja bahan Rp 220rb setiap hari
+ * Tanpa penggabungan, usaha yang belanja bahan $220 setiap hari
  * menghasilkan lima baris identik yang tidak berisi informasi apa pun.
  */
 function pengeluaranTerbesar(transactions, month) {
@@ -227,12 +220,11 @@ function pengeluaranTerbesar(transactions, month) {
   if (!besar.length) return '';
 
   return (
-    `- Pengeluaran terbesar ${namaBulan(month)} (digabung per jenis): ` +
+    `- Largest expenses in ${namaBulan(month)} (grouped by item): ` +
     besar
       .map((r) => {
-        // Tanpa keterangan, nama = kategori; menyebutnya dua kali memboroskan token.
         const rincian = [r.kali > 1 ? `${r.kali}x` : '', r.nama === r.kategori ? '' : r.kategori].filter(Boolean);
-        return `${r.nama} ${formatRupiah(r.total)}${rincian.length ? ` (${rincian.join(', ')})` : ''}`;
+        return `${r.nama} ${formatDolar(r.total)}${rincian.length ? ` (${rincian.join(', ')})` : ''}`;
       })
       .join('; ')
   );
@@ -241,45 +233,43 @@ function pengeluaranTerbesar(transactions, month) {
 /** Menyusun profil usaha + hasil hitungan menjadi teks konteks untuk AI. */
 export function profileToText(profile, metrics) {
   if (!profile) {
-    return 'Pengguna belum mengisi profil usaha. Ajak mengisi menu "Profil Usaha" agar sarannya bisa disesuaikan, tapi tetap bantu pertanyaannya secara umum.';
+    return 'The user has not filled in the business profile yet. Invite them to complete "Business Profile" so advice can be tailored — but still help with their question in general terms.';
   }
   const lamaBulan = Number(profile.lamaUsahaBulan) || 0;
   const lama =
     lamaBulan >= 12
-      ? `${Math.floor(lamaBulan / 12)} tahun ${lamaBulan % 12} bulan`
-      : `${lamaBulan} bulan`;
+      ? `${Math.floor(lamaBulan / 12)} yr ${lamaBulan % 12} mo`
+      : `${lamaBulan} mo`;
 
   /*
    * NAMA USAHA DAN LOKASI SENGAJA TIDAK IKUT.
    *
    * Keduanya dulu dikirim ke Anthropic pada setiap pertanyaan, sementara teks
-   * persetujuan peserta menyatakan data pengenal tidak dikirim. Untuk warung
-   * mikro keduanya memang mengenali: nama warung di Indonesia hampir selalu
-   * nama pemiliknya ("Warung Bu Sari"), dan nama itu digabung satu kecamatan
-   * menunjuk satu orang. Bukti bahwa repositori ini sendiri menganggapnya
-   * pengenal: `scripts/export.js --anonymize` menghapus persis medan-medan ini.
+   * persetujuan pengguna menyatakan data pengenal tidak dikirim. Untuk usaha
+   * mikro keduanya memang mengenali: nama usaha kecil hampir selalu nama
+   * pemiliknya, dan nama itu digabung satu kota menunjuk satu orang. Bukti
+   * bahwa repositori ini sendiri menganggapnya pengenal:
+   * `scripts/export.js --anonymize` menghapus persis medan-medan ini.
    *
    * Yang hilang dari mutu jawaban: hampir nol. Model tidak pernah memerlukan
-   * nama warung untuk menghitung HPP atau membaca margin — ia hanya memakainya
-   * sebagai sapaan. Yang tetap dikirim adalah yang benar-benar mengubah isi
-   * nasihat: jenis usaha, produk, lama usaha, cara mencatat, dan angkanya.
+   * nama usaha untuk menghitung margin — ia hanya memakainya sebagai sapaan.
    */
   const baris = [
-    `- Jenis usaha: ${LABEL.jenisUsaha[profile.jenisUsaha] ?? profile.jenisUsaha ?? '(belum diisi)'}`,
-    `- Sudah berjalan: ${lama}`,
-    `- Jumlah karyawan: ${Number(profile.jumlahKaryawan) || 0} orang`,
-    `- Produk utama: ${profile.produkUtama || '(belum diisi)'}`,
-    `- Cara mencatat saat ini: ${LABEL.pencatatan[profile.pencatatan] ?? '(belum diisi)'}`,
-    `- Rekening/dompet usaha terpisah: ${profile.rekeningTerpisah ? 'Ya' : 'Belum'}`,
-    `- Punya NIB: ${profile.punyaNib ? 'Ya' : 'Belum'}`,
-    `- Tujuan utama: ${LABEL.tujuan[profile.tujuan] ?? '(belum diisi)'}`,
+    `- Business type: ${LABEL.jenisUsaha[profile.jenisUsaha] ?? profile.jenisUsaha ?? '(not filled)'}`,
+    `- Operating for: ${lama}`,
+    `- Employees: ${Number(profile.jumlahKaryawan) || 0}`,
+    `- Main products: ${profile.produkUtama || '(not filled)'}`,
+    `- How they record today: ${LABEL.pencatatan[profile.pencatatan] ?? '(not filled)'}`,
+    `- Separate business account: ${profile.rekeningTerpisah ? 'Yes' : 'Not yet'}`,
+    `- Has an EIN: ${profile.punyaNib ? 'Yes' : 'Not yet'}`,
+    `- Main goal: ${LABEL.tujuan[profile.tujuan] ?? '(not filled)'}`,
   ];
-  if (profile.tantangan) baris.push(`- Tantangan terbesar menurut pemilik: "${profile.tantangan}"`);
+  if (profile.tantangan) baris.push(`- Biggest challenge per the owner: "${profile.tantangan}"`);
 
-  return `DATA USAHA PENGGUNA
+  return `USER'S BUSINESS DATA
 ${baris.join('\n')}
 
-ANGKA KEUANGAN (sudah dihitung sistem, gunakan apa adanya)
+FINANCIAL NUMBERS (computed by the system — use as given)
 ${metricsToText(metrics)}`;
 }
 
@@ -299,12 +289,11 @@ ${metricsToText(metrics)}`;
  * Digabung dengan riwayat, awalan ini baru benar-benar terbentuk.
  *
  * Penandanya pun hanya dipasang kalau blok stabilnya memang cukup panjang.
- * Peserta baru belum punya satu pun bulan yang selesai, jadi `riwayat` masih
- * kosong dan awalannya tetap di bawah ambang — memasang penanda di situ tidak
- * menghasilkan apa pun. Menyembunyikannya membuat perilaku aplikasi ini jujur
- * terhadap apa yang benar-benar terjadi, bukan terhadap apa yang diniatkan.
+ * Pengguna baru belum punya satu pun bulan yang selesai, jadi `riwayat` masih
+ * kosong dan awalannya tetap di bawah ambang. Menyembunyikannya membuat
+ * perilaku aplikasi ini jujur terhadap apa yang benar-benar terjadi.
  */
-const AMBANG_CACHE_CHAR = 4000; // ~1024 token untuk teks bahasa Indonesia
+const AMBANG_CACHE_CHAR = 4000; // ~1024 token untuk teks bahasa Inggris
 
 function systemBlocks(profile, metrics, cashbook, tugas = '', belajar = []) {
   const { riwayat = '', berjalan = '' } = typeof cashbook === 'string' ? { berjalan: cashbook } : cashbook ?? {};
@@ -312,8 +301,8 @@ function systemBlocks(profile, metrics, cashbook, tugas = '', belajar = []) {
   const stabil = [PERAN, riwayat].filter(Boolean).join('\n\n');
   /*
    * Konteks belajar duduk di blok volatil, bukan stabil. Ia berubah setiap kali
-   * peserta menyelesaikan satu sesi — menaruhnya di blok yang di-cache akan
-   * membatalkan cache-nya justru pada hari-hari peserta paling aktif.
+   * pengguna menyelesaikan satu sesi — menaruhnya di blok yang di-cache akan
+   * membatalkan cache-nya justru pada hari-hari pengguna paling aktif.
    */
   const volatil = [profileToText(profile, metrics), berjalan, ...belajar, tugas].filter(Boolean).join('\n\n');
 
@@ -327,7 +316,7 @@ function systemBlocks(profile, metrics, cashbook, tugas = '', belajar = []) {
  * System prompt untuk konsultasi chat.
  *
  * @param {{kemajuan?: string, materi?: string}} belajar konteks pembelajaran:
- *   ringkasan sesi yang sedang dijalani, dan — hanya bila peserta bertanya dari
+ *   ringkasan sesi yang sedang dijalani, dan — hanya bila pengguna bertanya dari
  *   dalam sebuah modul — materi lengkap modul itu.
  */
 export function chatSystem(profile, metrics, cashbook = '', belajar = {}) {
@@ -342,20 +331,19 @@ export function recommendationSystem(profile, metrics, cashbook = '', belajar = 
     profile,
     metrics,
     cashbook,
-    `TUGAS SAAT INI
-Susun rencana perbaikan keuangan yang personal untuk usaha di atas, dalam format JSON sesuai skema.
+    `CURRENT TASK
+Build a personal financial improvement plan for the business above, as JSON matching the schema.
 
-Aturan penyusunan:
-- Setiap rekomendasi harus spesifik untuk usaha ini — sebut angka rupiah dari data di atas bila relevan. Jangan memberi nasihat umum yang bisa berlaku untuk usaha mana pun.
-- Urutkan dari yang paling berdampak. Prioritas "tinggi" maksimal 3 buah.
-- Setiap rekomendasi berisi 2–4 langkah yang bisa dikerjakan sendiri oleh pemilik usaha dalam waktu dekat.
-- "modulTerkait" diisi nomor modul ${MODUL_MIN}–${MODUL_MAKS} yang paling relevan. Utamakan modul jalur Dasar bila pesertanya masih baru mencatat.
-- "targetBulanIni" berisi 3 target konkret dan terukur untuk 30 hari ke depan.
-- "peringatan" hanya diisi bila ada risiko nyata dari data (mis. rugi, margin sangat tipis, cicilan melebihi 30% laba, uang usaha masih tercampur). Kosongkan bila tidak ada.
-- Jangan mengulang angka skor kesehatan; sistem sudah menampilkannya sendiri.`,
+Rules:
+- Every recommendation must be specific to THIS business — cite dollar amounts from the data above when relevant. No generic advice that would fit any business.
+- Order by impact. At most 3 items with priority "high".
+- Each recommendation carries 2–4 steps the owner can execute on their own in the near term.
+- "modulTerkait" = the most relevant module number ${MODUL_MIN}–${MODUL_MAKS}. Prefer Core-path modules when the user is new to recording.
+- "targetBulanIni" = exactly 3 concrete, measurable targets for the next 30 days.
+- "peringatan" only when there is a real risk in the data (e.g. losses, very thin margin, loan payments above 30% of profit, business and personal money still mixed). Leave empty otherwise.
+- Do not repeat the health score; the system already displays it.`,
     // Rekomendasi ikut melihat kemajuan belajar supaya "modulTerkait" mengarah
-    // ke tempat peserta benar-benar berada, bukan ke modul yang belum akan
-    // dibukanya sampai dua minggu lagi.
+    // ke tempat pengguna benar-benar berada.
     [kemajuan],
   );
 }
@@ -366,34 +354,32 @@ export const RECOMMENDATION_SCHEMA = {
   properties: {
     ringkasan: {
       type: 'string',
-      description: 'Ringkasan kondisi usaha dalam 2-3 kalimat, bahasa sederhana dan jujur.',
+      description: 'Summary of the business condition in 2-3 sentences, plain and honest.',
     },
     rekomendasi: {
       type: 'array',
-      description: 'Daftar 3-5 rekomendasi personal, diurutkan dari yang paling berdampak.',
+      description: '3-5 personal recommendations, ordered by impact.',
       items: {
         type: 'object',
         properties: {
-          judul: { type: 'string', description: 'Judul singkat, maksimal 8 kata.' },
-          prioritas: { type: 'string', enum: ['tinggi', 'sedang', 'rendah'] },
-          alasan: { type: 'string', description: 'Kenapa ini penting untuk usaha INI, sebutkan angkanya.' },
+          judul: { type: 'string', description: 'Short title, max 8 words.' },
+          prioritas: { type: 'string', enum: ['high', 'medium', 'low'] },
+          alasan: { type: 'string', description: 'Why this matters for THIS business — cite the numbers.' },
           langkah: {
             type: 'array',
-            description: '2-4 langkah konkret yang bisa dikerjakan pemilik usaha.',
+            description: '2-4 concrete steps the owner can execute.',
             items: { type: 'string' },
           },
-          dampak: { type: 'string', description: 'Perkiraan manfaat bila dijalankan, singkat.' },
+          dampak: { type: 'string', description: 'Expected benefit if done — keep it short.' },
           /*
            * Rentangnya disebut di deskripsi, bukan sebagai `minimum`/`maximum`.
            * Structured outputs hanya menerima sebagian kata kunci JSON Schema,
-           * dan skema yang ditolak menggagalkan SELURUH jalur rekomendasi —
-           * harga yang terlalu mahal untuk sekadar menjaga satu angka. Nomor di
-           * luar rentang ditangkap belakangan oleh `nomorModulSah()` saat
-           * disajikan, sehingga peserta tidak pernah melihat "Modul 47".
+           * dan skema yang ditolak menggagalkan SELURUH jalur rekomendasi.
+           * Nomor di luar rentang ditangkap belakangan oleh `nomorModulSah()`.
            */
           modulTerkait: {
             type: 'integer',
-            description: `Nomor modul ${MODUL_MIN}-${MODUL_MAKS} yang relevan.`,
+            description: `Relevant module number ${MODUL_MIN}-${MODUL_MAKS}.`,
           },
         },
         required: ['judul', 'prioritas', 'alasan', 'langkah', 'dampak', 'modulTerkait'],
@@ -402,12 +388,12 @@ export const RECOMMENDATION_SCHEMA = {
     },
     peringatan: {
       type: 'array',
-      description: 'Risiko nyata dari data. Kosongkan bila tidak ada.',
+      description: 'Real risks from the data. Leave empty if none.',
       items: { type: 'string' },
     },
     targetBulanIni: {
       type: 'array',
-      description: 'Tepat 3 target konkret dan terukur untuk 30 hari ke depan.',
+      description: 'Exactly 3 concrete, measurable targets for the next 30 days.',
       items: { type: 'string' },
     },
   },
@@ -416,10 +402,10 @@ export const RECOMMENDATION_SCHEMA = {
 };
 
 export function recommendationRequest(profile, metrics) {
-  // "usaha ini", bukan nama warungnya — lihat catatan di profileToText.
-  return `Susun rencana perbaikan keuangan untuk usaha ini. Tujuan utama pemilik: ${
-    LABEL.tujuan[profile.tujuan] ?? 'merapikan keuangan'
-  }. Laba bersih saat ini ${formatRupiah(metrics.labaBersih)} per bulan.`;
+  // "this business", bukan namanya — lihat catatan di profileToText.
+  return `Build a financial improvement plan for this business. The owner's main goal: ${
+    LABEL.tujuan[profile.tujuan] ?? 'getting the books in order'
+  }. Current net profit is ${formatDolar(metrics.labaBersih)} per month.`;
 }
 
 /* ================================================== Ekstraksi nota (foto) */
@@ -432,13 +418,13 @@ export function recommendationRequest(profile, metrics) {
 export const NOTA_SCHEMA = {
   type: 'object',
   properties: {
-    type: { type: 'string', enum: ['expense', 'income'], description: 'Nota belanja = expense. Kwitansi penjualan yang diterima = income.' },
-    amount: { type: ['number', 'null'], description: 'TOTAL AKHIR transaksi dalam rupiah (angka murni, tanpa titik/koma). null bila tidak terbaca.' },
-    category: { type: ['string', 'null'], description: 'Kata kunci kategori bebas bahasa Indonesia, mis. "bahan makanan", "sembako", "pertalite", "token listrik". null bila tidak jelas.' },
-    description: { type: ['string', 'null'], description: 'Ringkasan barang/jasa maksimal 8 kata. null bila tidak ada.' },
-    merchant: { type: ['string', 'null'], description: 'Nama toko/usaha tercetak di nota. null bila tidak terbaca.' },
-    date: { type: ['string', 'null'], description: 'Tanggal transaksi di nota, format YYYY-MM-DD. null bila tidak ada.' },
-    confidence: { type: 'number', description: 'Keyakinan keseluruhan 0.0-1.0.' },
+    type: { type: 'string', enum: ['expense', 'income'], description: 'Purchase receipt = expense. Customer sales receipt = income.' },
+    amount: { type: ['number', 'null'], description: 'FINAL TOTAL of the transaction in US dollars (plain number, no separators or $ sign). null if unreadable.' },
+    category: { type: ['string', 'null'], description: 'Free-form item keyword, 1-3 words, e.g. "groceries", "fuel", "office supplies". null if unclear.' },
+    description: { type: ['string', 'null'], description: 'Summary of goods/services, max 8 words. null if none.' },
+    merchant: { type: ['string', 'null'], description: 'Store or business name printed on the receipt. null if unreadable.' },
+    date: { type: ['string', 'null'], description: 'Transaction date from the receipt, format YYYY-MM-DD. null if absent.' },
+    confidence: { type: 'number', description: 'Overall confidence 0.0-1.0.' },
   },
   required: ['type', 'amount', 'category', 'description', 'merchant', 'date', 'confidence'],
   additionalProperties: false,
@@ -446,32 +432,32 @@ export const NOTA_SCHEMA = {
 
 /** Instruksi sistem pembaca nota — aturan memilih TOTAL adalah intinya. */
 export function notaSystem() {
-  return `Kamu pembaca nota belanja untuk aplikasi pembukuan UMKM Indonesia.
-Tugasmu SATU: membaca foto nota dan mengembalikan JSON sesuai skema. Jangan bercerita.
+  return `You are a receipt reader for a US small-business bookkeeping app.
+Your ONE job: read the receipt photo and return JSON matching the schema. No narration.
 
-CARA MEMILIH TOTAL (paling penting):
-- Pilih angka pada baris berlabel: TOTAL, GRAND TOTAL, JUMLAH, TOTAL BAYAR, BAYAR, DIBAYAR, TAGIHAN.
-- Jika tidak ada label, pilih jumlah akhir yang dibayar pada bagian bawah nota.
-- JANGAN memilih angka terbesar secara otomatis. Harga satuan, subtotal per baris, nominal kembalian, nomor telepon, NPWP, dan kode struk BUKAN total.
-- Angka Indonesia memakai titik sebagai pemisah ribuan (Rp120.000 = 120000) dan koma sebagai desimal. "120,000" dari nota marketplace = 120000.
+HOW TO PICK THE TOTAL (most important):
+- Choose the number on the line labeled: TOTAL, GRAND TOTAL, AMOUNT DUE, BALANCE DUE, TOTAL DUE, or PAYMENT.
+- If there is no label, pick the final amount paid at the bottom of the receipt.
+- Do NOT just grab the largest number. Unit prices, per-line subtotals, change received, phone numbers, and receipt codes are NOT the total.
+- US numbers use a comma as the thousands separator and a period for decimals ($1,234.56 = 1234.56).
 
-NILAI YANG TIDAK TERBACA:
-- Kembalikan null. Jangan pernah menebak, menjumlahkan sendiri, atau mengarang.
-- Bila total tidak yakin tapi terbaca, tetap isi — dan TURUNKAN confidence.
+UNREADABLE VALUES:
+- Return null. Never guess, never do your own addition, never invent.
+- If the total is readable but uncertain, still fill it in — and LOWER the confidence.
 
 confidence:
-- 0.9 ke atas: nota cetak, jelas, totalnya berlabel.
-- 0.6-0.85: nota kabur sebagian, tulisan tangan, atau total harus diduga dari konteks.
-- di bawah 0.6: tidak yakin angka totalnya benar.
+- 0.9 and above: printed receipt, clear, labeled total.
+- 0.6-0.85: partially blurred, handwritten, or the total must be inferred from context.
+- below 0.6: not confident the total is correct.
 
-category: kata kunci bebas 1-3 kata (bukan kategori baku — aplikasi yang memetakannya). Contoh nota: belanja bahan makanan → "bahan makanan"; beli BBM → "pertalite"; token listrik → "token listrik"; belanja grosir sembako → "sembako".
+category: free-form 1-3 word keyword (not a fixed taxonomy — the app maps it). Examples: grocery run → "groceries"; gas station → "fuel"; office store → "office supplies".
 
-date: dari tanggal cetak di nota. Tahun dua digit → pilih tahun terdekat yang tidak membuat tanggal berada di masa depan.`;
+date: from the printed receipt date. Two-digit year → pick the nearest year that does not put the date in the future.`;
 }
 
 /** Permintaan pengguna — sengaja sependek ini; system yang memuat aturannya. */
 export function notaRequest() {
-  return 'Baca nota ini dan kembalikan JSON-nya.';
+  return 'Read this receipt and return its JSON.';
 }
 
 /* ================================================== Check-up keuangan (AI) */
@@ -480,26 +466,24 @@ export function notaRequest() {
  * Skema hasil check-up: daftar observasi berstatus + satu insight.
  * Sengaja TIDAK ADA medan angka — semua angka di halaman berasal dari
  * data aplikasi yang dikirim sebagai konteks; model hanya menilai status.
- * Model yang menyelipkan angka ke dalam teks tidak bisa dicegah oleh
- * skema, tapi teksnya dibatasi dan diawasi sanitasi di lib/checkup.js.
  */
 export const CHECKUP_SCHEMA = {
   type: 'object',
   properties: {
     item: {
       type: 'array',
-      description: '3-5 observasi singkat tentang kondisi usaha, yang paling penting dulu.',
+      description: '3-5 short observations about the business condition, most important first.',
       items: {
         type: 'object',
         properties: {
-          tipe: { type: 'string', enum: ['ok', 'perhatian'], description: 'ok = dalam kondisi baik; perhatian = perlu ditangani.' },
-          teks: { type: 'string', description: 'Satu kalimat maksimal 120 karakter. Sebut angka HANYA yang ada di data yang diberikan.' },
+          tipe: { type: 'string', enum: ['ok', 'attention'], description: 'ok = in good shape; attention = needs handling.' },
+          teks: { type: 'string', description: 'One sentence, max 120 characters. Cite ONLY numbers present in the given data.' },
         },
         required: ['tipe', 'teks'],
         additionalProperties: false,
       },
     },
-    insight: { type: 'string', description: 'Satu-dua kalimat praktis: apa yang paling perlu dilakukan pekan ini.' },
+    insight: { type: 'string', description: 'One or two practical sentences: the single most useful thing to do this week.' },
   },
   required: ['item', 'insight'],
   additionalProperties: false,
@@ -507,24 +491,24 @@ export const CHECKUP_SCHEMA = {
 
 /** Instruksi sistem check-up — larangan mengarang angka adalah intinya. */
 export function checkupSystem(angkaTeks) {
-  return `Kamu asisten check-up keuangan untuk pemilik UMKM Indonesia.
+  return `You are the financial check-up assistant for a US small-business owner.
 
-Nilai kondisi usaha HANYA dari angka-angka berikut, tanpa data luar:
+Judge the business ONLY from the numbers below — no outside data:
 
 ${angkaTeks}
 
-Aturan:
-- Setiap item satu kalimat maksimal 120 karakter: faktual, spesifik untuk usaha ini, bisa ditindaklanjuti.
-- Angka yang boleh disebut HANYA angka dari data di atas. Dilarang menghitung angka baru, memproyeksikan, atau mengarang.
-- Gunakan tipe "ok" untuk kondisi baik, "perhatian" untuk hal yang perlu ditangani. Bila ragu, pilih "perhatian".
-- 3-5 item, yang paling penting dulu.
-- insight: satu-dua kalimat — satu langkah paling berdampak yang bisa dikerjakan pekan ini.
-- Ini analisis edukatif, bukan nasihat keuangan profesional dan bukan keputusan kredit.`;
+Rules:
+- Each item is one sentence, max 120 characters: factual, specific to this business, actionable.
+- Numbers you may cite come ONLY from the data above. No new math, no projections, no inventions.
+- Use type "ok" for good condition, "attention" for something that needs handling. When unsure, choose "attention".
+- 3-5 items, most important first.
+- insight: one or two sentences — the highest-impact step they can take this week.
+- This is educational analysis, not professional financial advice and not a credit decision.`;
 }
 
 /** Permintaan pengguna — konteks angka sudah di system instruction. */
 export function checkupRequest() {
-  return 'Periksa kondisi keuangan usaha ini.';
+  return 'Run the financial check-up for this business.';
 }
 
 /* --------------------------------- Soal latihan personal (AI, opsional) */
@@ -534,14 +518,14 @@ export const LATIHAN_AI_SCHEMA = {
   properties: {
     pertanyaan: {
       type: 'string',
-      description: 'SATU pertanyaan pilihan ganda dalam bahasa Indonesia, maksimal 240 karakter, memakai angka usaha yang diberikan.',
+      description: 'ONE multiple-choice question in English, max 240 characters, using the given business numbers.',
     },
     pilihan: {
       type: 'object',
       properties: {
-        A: { type: 'string', description: 'Maksimal 120 karakter.' },
-        B: { type: 'string', description: 'Maksimal 120 karakter.' },
-        C: { type: 'string', description: 'Maksimal 120 karakter.' },
+        A: { type: 'string', description: 'Max 120 characters.' },
+        B: { type: 'string', description: 'Max 120 characters.' },
+        C: { type: 'string', description: 'Max 120 characters.' },
       },
       required: ['A', 'B', 'C'],
       additionalProperties: false,
@@ -549,11 +533,10 @@ export const LATIHAN_AI_SCHEMA = {
     kunci: { type: 'string', enum: ['A', 'B', 'C'] },
     penjelasan: {
       type: 'string',
-      description: 'Maksimal 300 karakter. Menjelaskan kenapa kunci benar dengan merujuk angka yang diberikan.',
+      description: 'Max 300 characters. Explains why the key is correct by referring to the given numbers.',
     },
     konsep: {
-      type: 'string',
-      description: 'Label konsep singkat (2-40 karakter), mis. "margin", "prive", "arus kas".',
+      type: 'string', description: 'Short concept label (2-40 characters), e.g. "margin", "owner draw", "cash flow".',
     },
   },
   required: ['pertanyaan', 'pilihan', 'kunci', 'penjelasan', 'konsep'],
@@ -563,27 +546,27 @@ export const LATIHAN_AI_SCHEMA = {
 /**
  * Sistem untuk soal latihan personal. Dua larangan yang paling dijaga:
  * tidak mengarang angka di luar data yang diberikan, dan tidak keluar dari
- * materi modul yang sedang dipelajari peserta.
+ * materi modul yang sedang dipelajari pengguna.
  */
 export function latihanAiSystem(materiTeks, angkaTeks) {
-  return `Kamu pembuat soal kuis untuk pemilik UMKM Indonesia yang sedang belajar micro-learning keuangan di aplikasi Nova Explorer.
+  return `You are a quiz writer for US small-business owners learning applied finance in the Novaro app.
 
-MATERI MODUL YANG SEDANG DIPELAJARI:
+MODULE MATERIAL CURRENTLY BEING STUDIED:
 ${materiTeks}
 
-ANGKA USAHA PESERTA (satu-satunya angka yang boleh dipakai):
+THE USER'S BUSINESS NUMBERS (the only numbers you may use):
 ${angkaTeks}
 
-Aturan:
-1. Buat TEPAT SATU soal pilihan ganda (3 pilihan: A, B, C) yang menguji pemahaman materi di atas, memakai angka usaha peserta sendiri.
-2. Jangan mengarang satu pun angka di luar data yang diberikan. Bila data kurang, buat soal konseptual dari materinya tanpa angka.
-3. Tingkat kesulitan menyesuaikan: soal harus menjawab "apakah peserta paham konsep modul ini untuk usahanya sendiri", bukan hafalan kalimat materi.
-4. Pengecoh harus masuk akal — berisi salah paham yang khas (mis. mencampur laba dengan kas, membagi margin dengan HPP), bukan pilihan yang jelas-jelas salah.
-5. Semua teks bahasa Indonesia yang santai dan bisa dipahami pemilik warung.
-6. Jawab HANYA JSON sesuai skema.`;
+Rules:
+1. Write EXACTLY ONE multiple-choice question (3 options: A, B, C) that tests understanding of the material above, using the user's own numbers.
+2. Invent no numbers outside the given data. If data is thin, write a conceptual question from the material without numbers.
+3. Calibrate difficulty: the question must answer "does the user understand this module's concept for their own business", not memorization of the text.
+4. Distractors must be plausible — built from typical misunderstandings (mixing profit with cash, dividing margin by COGS), not obviously wrong options.
+5. Plain, friendly English a busy owner can read fast.
+6. Answer with JSON only, matching the schema.`;
 }
 
 /** Permintaan pengguna — konteks materi + angka sudah di system instruction. */
 export function latihanAiRequest() {
-  return 'Buat satu soal latihan personalnya sekarang.';
+  return 'Write their personal practice question now.';
 }
