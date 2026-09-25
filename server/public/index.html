@@ -711,7 +711,7 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
 
 <div class="starfield" aria-hidden="true"></div>
 
-<!-- Rumus simulasi KUR — berkas yang sama dengan yang diuji server (lib/simulasi-kur.js).
+<!-- Installment math — the same tested server file (lib/simulasi-cicilan.js).
      type="module" dieksekusi setelah dokumen siap; pemakaiannya baru saat halaman
      Laporan dibuka, jadi urutannya aman. -->
 <script type="module" src="/simulasi-cicilan.js"></script>
@@ -3664,7 +3664,7 @@ async function loadReport() {
 ============================================================
  *
  * Angka yang disimulasikan tidak punya hitungan kedua: rumus cicilan,
- * ambang 30%/50%, dan statusnya hidup di lib/simulasi-kur.js — berkas yang
+ * ambang 30%/50%, dan statusnya hidup di lib/simulasi-cicilan.js — berkas yang
  * sama diimpor uji server dan dimuat peramban di sini (window.NOVA_SIMULASI).
  * Penggeser hanya membaca dan menampilkan; tidak ada satu pun panggilan API
  * saat digeser, jadi hasilnya terasa seketika.
