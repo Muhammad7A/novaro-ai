@@ -62,6 +62,7 @@ import { buatIdProposal, proposalScanAktif, terbitkanToken } from './lib/proposa
 import { modulPraktikTerverifikasi } from './lib/praktik.js';
 import { adaLatihan, periksa, sanitasiLatihanAI, soalPublik } from './lib/latihan.js';
 import { GalatMutasi, store } from './lib/store.js';
+import { tolakTopik } from './lib/batas-topik.js';
 import { FORMAT_TOKEN_SESI, emailSah, tokenBaru } from './lib/autentikasi.js';
 import { kirimSurel } from './lib/surel.js';
 import { PENYEDIA_OAUTH, penyediaSiap, urlOtorisasi, uriPanggilanBalik } from './lib/oauth.js';
@@ -1298,6 +1299,18 @@ app.post(
   async (req, res) => {
   const message = String(req.body?.message ?? '').trim().slice(0, 2000);
   if (!message) return res.status(400).json({ error: 'The question cannot be empty.' });
+
+  /*
+   * Pagar wilayah regulated advice (W1-0, pola PROHIBITED_STEMS Groundwork):
+   * gagal-tutup DI MUKA — janji hasil, penghindaran pajak, representasi hukum,
+   * dan rekomendasi investasi spesifik ditolak sebelum model dipanggil.
+   * Menolak di muka juga berarti tidak membakar anggaran token untuk
+   * pertanyaan yang tidak boleh dijawab.
+   */
+  const tolakan = tolakTopik(message);
+  if (tolakan) {
+    return res.status(422).json({ error: tolakan.pesan, topikDitolak: true });
+  }
 
   const history = await store.getChat(req.user.id);
   const { metrics, transactions } = await metricsFor(req.user);
