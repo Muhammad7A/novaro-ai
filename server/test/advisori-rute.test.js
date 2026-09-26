@@ -291,10 +291,10 @@ test('tap: nol tulisan uang — transaksi dan slot tidak tersentuh', async () =>
   assert.equal(sesudah.recommendations?.ringkasan, sebelum.recommendations?.ringkasan, 'slot tetap utuh — tap bukan tulisan uang');
 });
 
-test('HTML: tombol "Saya sudah coba" + label kejujuran + endpoint terekam', () => {
+test('HTML: tombol "I tried this" + label kejujuran + endpoint terekam', () => {
   const html = readFileSync(path.join(AKAR, 'public', 'index.html'), 'utf8');
-  assert.match(html, /Saya sudah coba/, 'tombol satu-ketuknya ada');
-  assert.match(html, /kamu menandai mencoba ini \(/, 'label kebenaran tampilan membaca data server');
+  assert.match(html, /I tried this/, 'tombol satu-ketuknya ada');
+  assert.match(html, /you marked this as tried \(/, 'label kebenaran tampilan membaca data server');
   assert.match(html, /\/advisori\/tindak/, 'endpoint eksplisit yang dipanggil');
   assert.match(html, /renderTindakAdvisori/, 'hanya entri aktif yang menawarkan tombol');
   assert.doesNotMatch(html, /gemini/i);

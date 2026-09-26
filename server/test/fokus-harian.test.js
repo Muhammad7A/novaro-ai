@@ -358,8 +358,11 @@ test('tanpa kode akses: 401', async () => {
 test('rute: bentuk fokus utuh dan hanya memuat nilai yang sah', async () => {
   const { user, accessCode } = await store.createUser({ name: 'Focus Owner', business: 'Focus Test Shop', batch: '' });
   await store.saveProfile(user.id, PROFIL);
+  // Tanggal WIB, bukan UTC: layanan membaca hari WIB — menyemai dgn tanggal
+  // UTC membuat baris "hari ini" jadi "kemarin" selama 7 jam pertama WIB.
+  const { tanggalWIB } = await import('../lib/cashbook.js');
   await store.addTransaction(user.id, {
-    tanggal: new Date().toISOString().slice(0, 10),
+    tanggal: tanggalWIB(),
     jenis: 'masuk', kategori: 'penjualan', keterangan: 'Today sales', jumlah: 450,
   }, { aktor: 'manusia' });
 

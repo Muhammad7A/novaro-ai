@@ -1,0 +1,548 @@
+{
+  "alat": "eval-advisori",
+  "versi": 1,
+  "dijalankan": "2026-09-26T10:39:16.018Z",
+  "fixture": "scripts/fixtures/golden-advisori.json",
+  "skor": "8/23",
+  "ok": false,
+  "liputan": {
+    "terliput": 30,
+    "total": 30,
+    "takTerliput": [],
+    "aturanAsing": []
+  },
+  "kasus": [
+    {
+      "id": "r01",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "lolos-utuh"
+      ],
+      "status": "gagal",
+      "diff": [
+        {
+          "jalur": "$.rekomendasi.0.prioritas",
+          "harapan": "tinggi",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.0.modulTerkait",
+          "harapan": 2,
+          "nyata": null
+        },
+        {
+          "jalur": "$.rekomendasi.1.prioritas",
+          "harapan": "rendah",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.1.modulTerkait",
+          "harapan": 9,
+          "nyata": null
+        }
+      ],
+      "bentuk": [
+        "rekomendasi[0].prioritas di luar kosakata",
+        "rekomendasi[1].prioritas di luar kosakata"
+      ]
+    },
+    {
+      "id": "r02",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "potong-ringkasan-600",
+        "potong-judul-80",
+        "potong-alasan-400",
+        "potong-dampak-200",
+        "potong-langkah-200",
+        "maks-4-langkah",
+        "maks-5-peringatan",
+        "potong-peringatan-200",
+        "maks-3-target",
+        "potong-target-200"
+      ],
+      "status": "gagal",
+      "diff": [
+        {
+          "jalur": "$.rekomendasi.0.prioritas",
+          "harapan": "sedang",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.0.modulTerkait",
+          "harapan": 5,
+          "nyata": null
+        }
+      ],
+      "bentuk": [
+        "rekomendasi[0].prioritas di luar kosakata"
+      ]
+    },
+    {
+      "id": "r03",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "maks-5-rekomendasi"
+      ],
+      "status": "gagal",
+      "diff": [
+        {
+          "jalur": "$.rekomendasi.0.prioritas",
+          "harapan": "sedang",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.0.modulTerkait",
+          "harapan": 1,
+          "nyata": null
+        },
+        {
+          "jalur": "$.rekomendasi.1.prioritas",
+          "harapan": "sedang",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.1.modulTerkait",
+          "harapan": 2,
+          "nyata": null
+        },
+        {
+          "jalur": "$.rekomendasi.2.prioritas",
+          "harapan": "sedang",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.2.modulTerkait",
+          "harapan": 3,
+          "nyata": null
+        },
+        {
+          "jalur": "$.rekomendasi.3.prioritas",
+          "harapan": "sedang",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.3.modulTerkait",
+          "harapan": 4,
+          "nyata": null
+        }
+      ],
+      "bentuk": [
+        "rekomendasi[0].prioritas di luar kosakata",
+        "rekomendasi[1].prioritas di luar kosakata",
+        "rekomendasi[2].prioritas di luar kosakata",
+        "rekomendasi[3].prioritas di luar kosakata",
+        "rekomendasi[4].prioritas di luar kosakata"
+      ]
+    },
+    {
+      "id": "r04",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "buang-hantu"
+      ],
+      "status": "gagal",
+      "diff": [
+        {
+          "jalur": "$.rekomendasi.0.prioritas",
+          "harapan": "sedang",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.0.modulTerkait",
+          "harapan": 12,
+          "nyata": null
+        }
+      ],
+      "bentuk": [
+        "rekomendasi[0].prioritas di luar kosakata"
+      ]
+    },
+    {
+      "id": "r05",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "prioritas-tengah"
+      ],
+      "status": "gagal",
+      "diff": [
+        {
+          "jalur": "$.rekomendasi.0.prioritas",
+          "harapan": "sedang",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.0.modulTerkait",
+          "harapan": 4,
+          "nyata": null
+        },
+        {
+          "jalur": "$.rekomendasi.1.prioritas",
+          "harapan": "sedang",
+          "nyata": "medium"
+        }
+      ],
+      "bentuk": [
+        "rekomendasi[0].prioritas di luar kosakata",
+        "rekomendasi[1].prioritas di luar kosakata"
+      ]
+    },
+    {
+      "id": "r06",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "modul-rentang"
+      ],
+      "status": "gagal",
+      "diff": [
+        {
+          "jalur": "$.rekomendasi.0.prioritas",
+          "harapan": "sedang",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.1.prioritas",
+          "harapan": "tinggi",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.2.prioritas",
+          "harapan": "rendah",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.2.modulTerkait",
+          "harapan": 7,
+          "nyata": null
+        }
+      ],
+      "bentuk": [
+        "rekomendasi[0].prioritas di luar kosakata",
+        "rekomendasi[1].prioritas di luar kosakata",
+        "rekomendasi[2].prioritas di luar kosakata"
+      ]
+    },
+    {
+      "id": "r07",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "langkah-kosong-dibuang"
+      ],
+      "status": "gagal",
+      "diff": [
+        {
+          "jalur": "$.rekomendasi.0.prioritas",
+          "harapan": "sedang",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.0.modulTerkait",
+          "harapan": 15,
+          "nyata": null
+        }
+      ],
+      "bentuk": [
+        "rekomendasi[0].prioritas di luar kosakata"
+      ]
+    },
+    {
+      "id": "r08",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "502-rekomendasi-kosong"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "r09",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "502-bukan-obyek"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "r10",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "502-ringkasan-kosong"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "r11",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "medan-asing-dibuang"
+      ],
+      "status": "gagal",
+      "diff": [
+        {
+          "jalur": "$.rekomendasi.0.prioritas",
+          "harapan": "sedang",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.0.modulTerkait",
+          "harapan": 21,
+          "nyata": null
+        }
+      ],
+      "bentuk": [
+        "rekomendasi[0].prioritas di luar kosakata"
+      ]
+    },
+    {
+      "id": "r12",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "elemen-bukan-obyek",
+        "maks-5-rekomendasi"
+      ],
+      "status": "gagal",
+      "diff": [
+        {
+          "jalur": "$.rekomendasi.0.prioritas",
+          "harapan": "sedang",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.0.modulTerkait",
+          "harapan": 23,
+          "nyata": null
+        },
+        {
+          "jalur": "$.rekomendasi.1.prioritas",
+          "harapan": "rendah",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.1.modulTerkait",
+          "harapan": 2,
+          "nyata": null
+        },
+        {
+          "jalur": "$.rekomendasi.2.prioritas",
+          "harapan": "rendah",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.2.modulTerkait",
+          "harapan": 3,
+          "nyata": null
+        },
+        {
+          "jalur": "$.rekomendasi.3.prioritas",
+          "harapan": "rendah",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.3.modulTerkait",
+          "harapan": 4,
+          "nyata": null
+        }
+      ],
+      "bentuk": [
+        "rekomendasi[0].prioritas di luar kosakata",
+        "rekomendasi[1].prioritas di luar kosakata",
+        "rekomendasi[2].prioritas di luar kosakata",
+        "rekomendasi[3].prioritas di luar kosakata",
+        "rekomendasi[4].prioritas di luar kosakata"
+      ]
+    },
+    {
+      "id": "r13",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "langkah-bukan-daftar"
+      ],
+      "status": "gagal",
+      "diff": [
+        {
+          "jalur": "$.rekomendasi.0.prioritas",
+          "harapan": "sedang",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.0.modulTerkait",
+          "harapan": 25,
+          "nyata": null
+        }
+      ],
+      "bentuk": [
+        "rekomendasi[0].prioritas di luar kosakata"
+      ]
+    },
+    {
+      "id": "r14",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "502-bukan-obyek"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "r15",
+      "jenis": "rekomendasi",
+      "aturan": [
+        "batas-presisi",
+        "modul-rentang"
+      ],
+      "status": "gagal",
+      "diff": [
+        {
+          "jalur": "$.rekomendasi.0.prioritas",
+          "harapan": "tinggi",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.0.modulTerkait",
+          "harapan": 1,
+          "nyata": null
+        },
+        {
+          "jalur": "$.rekomendasi.1.prioritas",
+          "harapan": "rendah",
+          "nyata": "medium"
+        },
+        {
+          "jalur": "$.rekomendasi.1.modulTerkait",
+          "harapan": 32,
+          "nyata": null
+        }
+      ],
+      "bentuk": [
+        "rekomendasi[0].prioritas di luar kosakata",
+        "rekomendasi[1].prioritas di luar kosakata"
+      ]
+    },
+    {
+      "id": "c01",
+      "jenis": "checkup",
+      "aturan": [
+        "lolos-utuh"
+      ],
+      "status": "gagal",
+      "diff": [
+        {
+          "jalur": "$.item.1.tipe",
+          "harapan": "perhatian",
+          "nyata": "attention"
+        }
+      ],
+      "bentuk": [
+        "item[1].tipe di luar kosakata"
+      ]
+    },
+    {
+      "id": "c02",
+      "jenis": "checkup",
+      "aturan": [
+        "tipe-jatuh-perhatian"
+      ],
+      "status": "gagal",
+      "diff": [
+        {
+          "jalur": "$.item.0.tipe",
+          "harapan": "perhatian",
+          "nyata": "attention"
+        },
+        {
+          "jalur": "$.item.1.tipe",
+          "harapan": "perhatian",
+          "nyata": "attention"
+        }
+      ],
+      "bentuk": [
+        "item[0].tipe di luar kosakata",
+        "item[1].tipe di luar kosakata"
+      ]
+    },
+    {
+      "id": "c03",
+      "jenis": "checkup",
+      "aturan": [
+        "maks-6-item",
+        "teks-kosong-dibuang"
+      ],
+      "status": "gagal",
+      "diff": [
+        {
+          "jalur": "$.item.2.tipe",
+          "harapan": "perhatian",
+          "nyata": "attention"
+        }
+      ],
+      "bentuk": [
+        "item[2].tipe di luar kosakata"
+      ]
+    },
+    {
+      "id": "c04",
+      "jenis": "checkup",
+      "aturan": [
+        "potong-teks-200",
+        "potong-insight-400"
+      ],
+      "status": "gagal",
+      "diff": [
+        {
+          "jalur": "$.item.0.tipe",
+          "harapan": "perhatian",
+          "nyata": "attention"
+        }
+      ],
+      "bentuk": [
+        "item[0].tipe di luar kosakata"
+      ]
+    },
+    {
+      "id": "c05",
+      "jenis": "checkup",
+      "aturan": [
+        "502-item-kosong"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "c06",
+      "jenis": "checkup",
+      "aturan": [
+        "502-insight-kosong"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "c07",
+      "jenis": "checkup",
+      "aturan": [
+        "502-bukan-obyek"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    },
+    {
+      "id": "c08",
+      "jenis": "checkup",
+      "aturan": [
+        "batas-presisi"
+      ],
+      "status": "lulus",
+      "diff": [],
+      "bentuk": []
+    }
+  ]
+}

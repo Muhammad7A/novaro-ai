@@ -53,13 +53,20 @@ const PROFIL_PESERTA = {
   namaUsaha: 'Toko Peserta Sungguhan',
 };
 
-const hariIni = new Date();
-const isoDari = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+/*
+ * Tanggal fixture diturunkan dari hari WIB, bukan jam lokal mesin: layanan
+ * (dan mutatornya) membaca kalender WIB — pada mesin dengan zona waktu di
+ * depan WIB, jam lokal sudah ganti bulan padahal WIB belum, dan seeding
+ * "tanggal 1 bulan ini" menjadi tanggal masa depan yang ditolak mutator.
+ */
+const { tanggalWIB } = await import('../lib/cashbook.js');
+const hariIniWIB = tanggalWIB();
 const bulanLaluISO = (() => {
-  const t = new Date(hariIni.getFullYear(), hariIni.getMonth() - 1, 20);
-  return isoDari(t.getFullYear(), t.getMonth() + 1, 20);
+  const [y, m] = hariIniWIB.split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 2, 20)); // tanggal 20 selalu aman lintas panjang bulan
+  return t.toISOString().slice(0, 10);
 })();
-const bulanIniISO = isoDari(hariIni.getFullYear(), hariIni.getMonth() + 1, 1);
+const bulanIniISO = `${hariIniWIB.slice(0, 7)}-01`;
 
 const buatAkun = async (nama, batch, profil, denganRiwayat) => {
   const { user, accessCode } = await store.createUser({ name: nama, business: profil.namaUsaha, batch });

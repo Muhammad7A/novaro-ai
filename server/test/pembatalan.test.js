@@ -19,6 +19,15 @@ import test from 'node:test';
 const DATA_DIR = mkdtempSync(path.join(tmpdir(), 'nova-batal-uji-'));
 process.env.NOVA_DATA_DIR = DATA_DIR;
 process.env.PORT = '0';
+/*
+ * Pin jalur AI — alasan sama dengan komentar berkas ini: tanpa pin, mesin
+ * yang punya GOOGLE_CLOUD_PROJECT di lingkungannya membuat backendAI()
+ * memilih Vertex, panggilannya tidak pernah menyentuh layanan palsu di
+ * bawah, dan uji lulus/gagal karena faktor yang bukan miliknya.
+ * (Environment-rot, senada date-rot.)
+ */
+process.env.NOVA_AI_BACKEND = 'anthropic';
+delete process.env.GOOGLE_CLOUD_PROJECT;
 process.on('exit', () => rmSync(DATA_DIR, { recursive: true, force: true }));
 
 const { store } = await import('../lib/store.js');

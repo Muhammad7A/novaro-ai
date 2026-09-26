@@ -801,3 +801,31 @@ Di Render, cukup `git push` — deploy jalan sendiri.
 
 Langkah 5 terasa berlebihan, tapi seminggu memakai aplikasinya sendiri akan
 memperlihatkan hal-hal yang tidak muncul dalam percobaan 10 menit.
+
+---
+
+## Enterprise quickstart — magic-link login & interview sidecar
+
+Edition enterprise (AS) menambah dua permukaan opt-in di atas kode akses.
+Keduanya MATI sampai dikonfigurasi — bila kosong semua, server berperilaku
+persis seperti edisi pilot yang dijelaskan di seluruh bagian di atas.
+
+**Cara masuk.** Kode akses (`NOVA-XXXX-XXXX`) tetap berlaku. Login tautan
+ajaib surel tersedia begitu `MAIL_PROVIDER` disetel: kosong = mode dev
+(tautan sekali-pakai, umur 15 menit, tercetak di log server, bukan di
+inbox), `test` = kotak keluar di memori untuk uji otomatis, nilai penyedia
+sungguhan ditolak keras — memang belum ada yang diimplementasikan.
+
+**Sidecar interviu AI** (mesin pewawancara Groundwork). Setel
+`NOVA_INTERVIEW_SIDECAR_URL` + `NOVA_INTERVIEW_SECRET` untuk menyalakannya;
+sebelum itu setiap rute interviu menjawab 503 gagal-tutup dan fiturnya
+tersembunyi. Inilah kontrak "sidecar mati = subset fitur": sisa aplikasi
+tidak berubah sedikit pun. Rahasia hanya dikirim ke sidecar, tidak pernah
+dicatat. `NOVA_INTERVIEW_TIMEOUT_MS` membatasi relay (bawaan 10 detik).
+
+**Saran untuk profil enterprise:** naikkan batas waktu stream aplikasi
+`NOVA_AI_STREAM_TIMEOUT_MS` ke sekitar `240000` — penyusunan rekomendasi
+sering melewati satu menit.
+
+Acuan lengkap dengan komentar: [`server/.env.example`](.env.example),
+bagian paling bawah.

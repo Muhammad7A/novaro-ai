@@ -69,6 +69,47 @@ Buka <http://localhost:3000>.
 
 ---
 
+## Enterprise quickstart (magic-link login & AI interview)
+
+The enterprise (US) edition adds two opt-in surfaces on top of access-code
+sign-in. Both stay OFF until configured — with nothing set, the server behaves
+exactly like the pilot edition described everywhere else in this document.
+
+**Sign-in options.** Access codes (`NOVA-XXXX-XXXX`) keep working. Email
+magic-link sign-in becomes available once `MAIL_PROVIDER` is configured:
+unset means dev mode (the one-time link, 15-minute TTL, is printed to the
+server log instead of emailed), `test` selects the in-memory outbox used by
+the test suite, and any real provider value fails loudly — providers are not
+implemented yet, by design, until one is chosen.
+
+**AI interview sidecar** (Groundwork interviewer engine). Set
+`NOVA_INTERVIEW_SIDECAR_URL` and `NOVA_INTERVIEW_SECRET` to turn it on; until
+then every interview route answers 503 fail-closed and the feature stays
+hidden. That is the "sidecar off = feature subset" contract: the rest of the
+app is unaffected. The secret is sent only to the sidecar and never logged.
+`NOVA_INTERVIEW_TIMEOUT_MS` caps the relay (default 10 s).
+
+**Recommended for the enterprise profile:** raise the app-level stream
+deadline `NOVA_AI_STREAM_TIMEOUT_MS` to about `240000` — recommendation
+builds regularly run past one minute on the enterprise prompt set.
+
+Minimal `.env` for the enterprise profile:
+
+```bash
+NOVA_AI_BACKEND=anthropic
+ANTHROPIC_API_KEY=sk-ant-...
+NOVA_AI_STREAM_TIMEOUT_MS=240000
+# magic-link sign-in (dev mode: link printed to the server log)
+MAIL_PROVIDER=
+# AI interview sidecar — empty = interview features off (fail-closed 503)
+NOVA_INTERVIEW_SIDECAR_URL=
+NOVA_INTERVIEW_SECRET=
+```
+
+The full, commented variable reference lives in [`server/.env.example`](.env.example).
+
+---
+
 ## Menambahkan pengguna
 
 Pengguna ditambahkan manual oleh pengelola program. Setiap pengguna dapat satu kode akses.

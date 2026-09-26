@@ -18,6 +18,16 @@ import test from 'node:test';
 const DATA_DIR = mkdtempSync(path.join(tmpdir(), 'nova-uji-'));
 process.env.NOVA_DATA_DIR = DATA_DIR;
 process.env.PORT = '0'; // biarkan sistem memilih port bebas
+/*
+ * Pin jalur AI: tanpa pin ini, mesin yang punya GOOGLE_CLOUD_PROJECT di
+ * lingkungannya (laptop pendamping yang sedang login gcloud) membuat
+ * backendAI() memilih Vertex — dan uji layanan Anthropic palsu di bawah
+ * diam-diam menghubungi Vertex sungguhan, gagal dengan galat yang bukan
+ * milik yang diuji. (Environment-rot, senada date-rot: asumsi "mesin uji
+ * bersih" kedaluwarsa seiring mesin berubah.)
+ */
+process.env.NOVA_AI_BACKEND = 'anthropic';
+delete process.env.GOOGLE_CLOUD_PROJECT;
 process.on('exit', () => rmSync(DATA_DIR, { recursive: true, force: true }));
 
 const { store } = await import('../lib/store.js');
