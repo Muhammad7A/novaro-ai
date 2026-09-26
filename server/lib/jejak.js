@@ -78,6 +78,12 @@ export const SKEMA_JEJAK = {
    * advisori.js). Sinyal EKSPLISIT ini mengalahkan derivasi korelasional
    * bila keduanya ada; contentless — tanpa isi nasihat, tanpa teks bebas. */
   advisori_ditindaki: { id: 'id' },
+  /* Sidecar interviu (W1 fase 1–2): fakta siklus interviu SAJA — id intake,
+   * hitungan discrepancy, coverage 0..1. Pertanyaan, jawaban, dan seluruh
+   * teks percakapan TIDAK PERNAH masuk jejak maupun rekam pengguna
+   * (ratchet: teks bebas hidup di respons HTTP, lalu lenyap). */
+  interview_started: { intakeId: 'id', jumlah: 'angka' },
+  interview_completed: { intakeId: 'id', coverage: 'angka' },
   /* Rel proposal T1 surface #1 (scan-nota; addendum §25 2026-09-12).
    * proposal_shown: usulan tampil di layar — id + tingkat keyakinan tutup
    * ('ok'|'warning'|'low'), menunggangi tulisan usage rute scan. TANPA delta

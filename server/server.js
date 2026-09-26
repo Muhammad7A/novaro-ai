@@ -59,6 +59,7 @@ import { susunFokusHarian } from './lib/fokus-harian.js';
 import { bulanCheckpoint, catatTindakAdvisori, evaluasiTertunda } from './lib/advisori.js';
 import { deteksiKonteks } from './lib/deteksi.js';
 import { buatIdProposal, proposalScanAktif, terbitkanToken } from './lib/proposal.js';
+import { kirimJawaban, mulaiInterviu, sidecarTersedia } from './lib/interview.js';
 import { modulPraktikTerverifikasi } from './lib/praktik.js';
 import { adaLatihan, periksa, sanitasiLatihanAI, soalPublik } from './lib/latihan.js';
 import { GalatMutasi, store } from './lib/store.js';
@@ -928,6 +929,10 @@ app.get('/api/me', authenticate, async (req, res) => {
     user: store.publicUser(req.user),
     metrics: req.user.profile ? metrics : null,
     aiConfigured: isConfigured(),
+    // Flag jujur konfigurasi sidecar interviu (W1): 'on' = ada URL untuk
+    // dipanggil — bukan janji sidecar hidup; kegagalan runtime tetap
+    // dilaporkan rute interviu sendiri sebagai kegagalan bertipe.
+    sidecar: sidecarTersedia() ? 'on' : 'off',
     consent: hasConsented(req.user) ? null : CONSENT_TEXT,
     anggaran: await anggaranUntuk(req.user),
     belajar: ringkasJadwal(req.user),
@@ -1075,6 +1080,105 @@ app.post('/api/advisori/tindak', authenticate, requireConsent, async (req, res) 
     const { status, message } = describeError(err);
     log.error('advisori', 'tap tindak lanjut gagal', { userId: req.user.id, status, sebab: err?.message ?? String(err) });
     res.status(status).json({ error: message });
+  }
+});
+
+/* ------------------------------------------------- Sidecar interviu (W1) */
+
+/**
+ * Keadaan giliran interviu — DI MEMORI PROSES, per pengguna, TIDAK di store.
+ *
+ * Sesi interviu adalah kejadian sesi-layar: satu percakapan yang hidup selama
+ * peserta membuka dialognya. Menyimpannya di rekam pengguna berarti teks
+ * percakapan mengancam masuk basis data — persis yang ratchet jejak larang.
+ * Yang pernah tersimpan hanyalah FAKTA siklusnya (event interview_started/
+ * completed yang contentless). Konsekuensinya diakui: server restart =
+ * sesi berjalan hilang — peserta memulai interviu lagi; intake yang hilang
+ * di sisi Novaro tidak meninggalkan setengah keadaan apa pun.
+ */
+const sesiInterviu = new Map();
+
+/** Digest angka kernel untuk sidecar — server yang menghitung, bukan peserta. */
+function digestMetrik(m) {
+  if (!m) return null;
+  return {
+    omzet: m.omzet ?? 0,
+    labaBersih: m.labaBersih ?? 0,
+    marginBersih: m.marginBersih ?? 0,
+    saldoKas: m.saldoKas ?? 0,
+    prive: m.prive ?? 0,
+    cicilanSaatIni: m.cicilanSaatIni ?? 0,
+    hariTercatat: m.hariTercatat ?? 0,
+    hariBerjalan: m.hariBerjalan ?? 0,
+    bulanLengkap: m.bulanLengkap === true,
+  };
+}
+
+const galatInterviu = (err, userId) => {
+  // Kegagalan bertipe dari lib/interview.js: jawab jujur, catat kode-nya,
+  // dan TIDAK ada yang tersimpan di sisi mana pun.
+  const status = [502, 503].includes(err?.status) ? err.status : 502;
+  log.warn('interview', 'sidecar gagal', { userId, kode: err?.kode ?? 'sidecar-mati', sebab: err?.message ?? String(err) });
+  return { status, body: { error: 'Layanan interviu belum tersedia. Coba lagi sebentar.' } };
+};
+
+/**
+ * Memulai intake interviu: profil + digest metrik dikirim ke sidecar; yang
+ * tersimpan HANYA fakta siklus (interview_started {intakeId, jumlah}).
+ * Pertanyaan pembuka hidup di respons dan keadaan memori — tidak di mana pun
+ * yang permanen.
+ */
+app.post('/api/interview/start', authenticate, requireConsent, async (req, res) => {
+  try {
+    if (!sidecarTersedia()) {
+      return res.status(503).json({ error: 'Layanan interviu belum diatur di server ini.' });
+    }
+    if (sesiInterviu.has(req.user.id)) {
+      // Satu interviu aktif per peserta — mulai lagi = lanjutkan yang lama.
+      return res.status(409).json({ error: 'Ada interviu yang masih berjalan. Jawab dulu pertanyaan terakhirnya.' });
+    }
+    const { metrics } = await metricsFor(req.user);
+    const hasil = await mulaiInterviu({ profil: req.user.profile ?? null, metrik: digestMetrik(metrics) });
+    sesiInterviu.set(req.user.id, { intakeId: hasil.intakeId, dibuat: new Date().toISOString() });
+    await store.logEvent(req.user.id, 'interview_started', {
+      intakeId: hasil.intakeId,
+      jumlah: hasil.jumlahDiscrepancy,
+    });
+    res.json({ intakeId: hasil.intakeId, jumlahDiscrepancy: hasil.jumlahDiscrepancy, pertanyaan: hasil.pertanyaan });
+  } catch (err) {
+    const { status, body } = galatInterviu(err, req.user.id);
+    res.status(status).json(body);
+  }
+});
+
+/**
+ * Satu giliran jawaban: relay ke sidecar atas sesi yang hidup di memori.
+ * Selesai → fakta penutupan (interview_completed {intakeId, coverage}) lalu
+ * keadaan memori dibuang. Teks jawaban peserta dan teks pertanyaan sidecar
+ * TIDAK PERNAH tersimpan di mana pun.
+ */
+app.post('/api/interview/answer', authenticate, requireConsent, async (req, res) => {
+  try {
+    const sesi = sesiInterviu.get(req.user.id);
+    if (!sesi) {
+      return res.status(409).json({ error: 'Tidak ada interviu yang berjalan. Mulai dulu dari dasbor.' });
+    }
+    const jawaban = String(req.body?.jawaban ?? '').trim();
+    if (!jawaban) {
+      return res.status(400).json({ error: 'Jawaban tidak boleh kosong.' });
+    }
+    const hasil = await kirimJawaban({ intakeId: sesi.intakeId, jawaban });
+    if (hasil.selesai) {
+      sesiInterviu.delete(req.user.id);
+      await store.logEvent(req.user.id, 'interview_completed', {
+        intakeId: sesi.intakeId,
+        coverage: hasil.coverage,
+      });
+    }
+    res.json({ pertanyaan: hasil.pertanyaan, selesai: hasil.selesai, coverage: hasil.coverage });
+  } catch (err) {
+    const { status, body } = galatInterviu(err, req.user.id);
+    res.status(status).json(body);
   }
 });
 
