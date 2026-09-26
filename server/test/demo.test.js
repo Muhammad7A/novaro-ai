@@ -56,7 +56,7 @@ test('generator deterministik — akun yang sama menghasilkan angka yang sama', 
   assert.deepEqual(a.recommendations.targetBulanIni, b.recommendations.targetBulanIni);
 });
 
-test('ekonomi persona masuk akal: laba positif, margin 10–60 persen', () => {
+test('ekonomi persona masuk akal: laba sesuai desain, margin dalam rentang persona', () => {
   const hariIni = tanggalWIB();
   for (const persona of PERSONA_DEMO) {
     const d = isiDemoPenuh(persona, hariIni);
@@ -67,6 +67,11 @@ test('ekonomi persona masuk akal: laba positif, margin 10–60 persen', () => {
      * (upah mingguan, listrik tgl 1) sehingga margin bulan berjalan sempit —
      * itu artefak kalender penempatan biaya, bukan ekonomi persona yang
      * sedang diuji. Riwayat 92 hari selalu memuat minimal satu bulan penuh.
+     *
+     * Rentang margin kini PER-PERSONA (persona.ekonomi): sejak edisi US
+     * persona sengaja dibedakan derajat kesehatnya — salah satunya
+     * (studio desain) DIRANCANG merugi, jadi batas "laba positif" hanya
+     * berlaku bagi persona non-rugi. Angka dalam dolar AS.
      */
     const bulanBerjalan = hariIni.slice(0, 7);
     const bulanUji = [...new Set(d.transactions.map((t) => t.tanggal.slice(0, 7)))]
@@ -75,14 +80,17 @@ test('ekonomi persona masuk akal: laba positif, margin 10–60 persen', () => {
       .pop();
     assert.ok(bulanUji, persona.nama + ': riwayat harus memuat bulan lengkap');
     const r = ringkasBulan(d.transactions, bulanUji);
-    assert.ok(r.penjualan > 1_000_000, `${persona.nama}: omzet bulan terlalu kecil`);
-    assert.ok(r.laba > 0, `${persona.nama}: demo tidak boleh rugi`);
-    assert.ok(r.margin >= 10 && r.margin <= 60, `${persona.nama}: margin ${r.margin.toFixed(1)}% di luar rentang wajar`);
+    assert.ok(r.penjualan > 5_000, `${persona.nama}: monthly sales too small for a US demo (got $${Math.round(r.penjualan)})`);
+    assert.ok(persona.ekonomi.rugi ? r.laba < 0 : r.laba > 0, `${persona.nama}: laba ${Math.round(r.laba)} tidak sesuai desain (rugi=${persona.ekonomi.rugi})`);
+    assert.ok(
+      r.margin >= persona.ekonomi.marginMin && r.margin <= persona.ekonomi.marginMax,
+      `${persona.nama}: margin ${r.margin.toFixed(1)}% di luar rentang desain [${persona.ekonomi.marginMin}, ${persona.ekonomi.marginMax}]`,
+    );
   }
 });
 
 test('rekomendasi mengikuti bentuk skema persis', () => {
-  const PRIORITAS = ['tinggi', 'sedang', 'rendah'];
+  const PRIORITAS = ['high', 'medium', 'low'];
   const d = isiDemoPenuh(PERSONA_DEMO[1], '2026-08-30');
   const rec = d.recommendations;
   assert.equal(typeof rec.ringkasan, 'string');
@@ -159,7 +167,7 @@ test('sebelum ada akun demo terisi, /api/demo menjawab 503 yang menjelaskan', as
   const res = await minta('/api/demo', { method: 'POST' });
   assert.equal(res.status, 503);
   const data = await res.json();
-  assert.match(data.error, /belum siap/i);
+  assert.match(data.error, /not ready|belum siap/i);
 });
 
 test('hidrasi mengisi akun DEMO tanpa menyentuh peserta penelitian', async () => {

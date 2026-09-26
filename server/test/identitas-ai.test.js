@@ -229,7 +229,7 @@ test('index.html tidak lagi mengklaim model yang tidak ia tahu', () => {
 
 test('kartu publik menyebut asal-usul catatan AI, bukan mengatasnamakan pemilik', () => {
   const html = bacaPublik('kartu.html');
-  assert.ok(html.includes('analisis AI'), 'atribusi AI eksplisit ada');
+  assert.ok(html.includes('AI analysis'), 'atribusi AI eksplisit ada');
   assert.ok(html.includes('insightSumber'), 'pilihan kepala catatan mengikuti sumbernya');
   assert.ok(!/Catatan utama/.test(html), 'kepala generik yang menyamakan catatan AI dengan catatan pemilik sudah tiada');
 });

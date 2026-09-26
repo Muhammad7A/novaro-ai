@@ -25,7 +25,7 @@
  * KENAPA ANGKANYA DIBANGKITKAN, BUKAN DITULIS TANGAN
  *
  * Lima persona × 90 hari × 2–5 transaksi = ribuan baris. Yang ditulis
- * tangan hanyalah POLANYa (berapa kali belanja bahan seminggu, berapa
+ * tangan hanyalah POLAnya (berapa kali belanja bahan seminggu, berapa
  * persen omzetnya, kapan cicilan jatuh). Angka hariannya dibangkitkan
  * dari PRNG berbenih tetap — sehingga:
  *
@@ -35,11 +35,13 @@
  *     sama, bukan dikarang terpisah — AI demo tidak pernah terlihat
  *     "halusinasi" karena menjumlah angka yang tidak saling cocok.
  *
- * Semua persona sengaja dibuat SEHAT tapi tidak sempurna: laba positif,
- * margin wajar, cicilan tertanggung — dengan satu-dua kelemahan jujur
- * (prive terlalu sering, uang masih tercampur) supaya rekomendasi AI
- * punya sesuatu yang nyata untuk diperbaiki. Demo yang serba sempurna
- * membuat fitur rekomendasi tidak punya pekerjaan.
+ * Sejak edisi enterprise US (2026-09-25) seluruh isi berbahasa Inggris
+ * dan bersatuan dolar AS. Persona sengaja DIBEDAKAN derajat
+ * kesehatannya: taco truck yang sehat, roastery bermargin tipis,
+ * jasa kebersihan yang stres arus kas, toko lilin yang tumbuh cepat,
+ * dan studio desain yang merugi — supaya rekomendasi AI punya pekerjaan
+ * nyata yang berbeda di tiap akun. Demo yang serba sempurna membuat
+ * fitur rekomendasi tidak punya pekerjaan.
  *
  * ------------------------------------------------------------------
  * BATAS YANG DIJAGA
@@ -53,6 +55,7 @@ import { createHash } from 'node:crypto';
 import { tanggalWIB } from './cashbook.js';
 import { CONSENT_VERSION } from './consent.js';
 import { KURIKULUM } from './kurikulum.js';
+import { formatDolar } from './metrics.js';
 
 /* --------------------------------------------------------------- Kode demo */
 
@@ -65,10 +68,11 @@ import { KURIKULUM } from './kurikulum.js';
  * tidak mungkin bertabrakan dengan angka ini, dan pembatas login tetap
  * berlaku untuk kode apa pun.
  *
- * Pemetaannya tetap: 101–105 adalah kelima usaha contoh asli (warung nasi,
- * kelontong, laundry, snack, keripik) — nomor yang sama dengan nomor peserta
- * lama mereka. 106–120 diikat ke akun yang dibuat otomatis saat server
- * menyala (lihat pastikanDemoSiap di server.js) dengan persona berputar.
+ * Pemetaannya tetap: 101–105 adalah kelima usaha contoh asli (taco truck,
+ * roastery kopi, jasa kebersihan, toko lilin, studio desain) — nomor yang
+ * sama dengan nomor peserta lama mereka. 106–120 diikat ke akun yang
+ * dibuat otomatis saat server menyala (lihat pastikanDemoSiap di
+ * server.js) dengan persona berputar.
  */
 export const KODE_DEMO = Array.from({ length: 20 }, (_, i) => String(101 + i));
 
@@ -95,250 +99,267 @@ function prngDari(benih) {
 }
 
 const antar = (rng, min, max) => min + rng() * (max - min);
-const bulat = (n) => Math.round(n / 1000) * 1000; // dibulatkan ke ribuan — seperti uang sungguhan
+const bulat = (n) => Math.round(n); // dibulatkan ke dolar penuh — seperti uang tunai sungguhan
 
 /* --------------------------------------------------------------- Persona */
 
 /**
  * Tiap persona mendefinisikan POLA usaha, bukan transaksinya.
  *
- *   penjualanHarian(hariKe, rng)  → omzet hari itu (Rp), 0 = tutup
+ *   penjualanHarian(hariKe, rng)  → omzet hari itu ($), 0 = tutup
  *   belanjaBahan(omzet, rng)     → biaya bahan hari itu
  *   tetap()                      → transaksi rutin: [jenis, kategori, jumlah, hari-ofset, keterangan]
  *   prive(rng)                   → pengambilan pribadi hari itu (atau null)
+ *   ekonomi                      → rentang margin bulan-penuh yang dijanjikan
+ *                                  persona ini (dipatroli test/demo.test.js;
+ *                                  `rugi: true` = persona memang dirancang merugi)
  */
 const DAFTAR_PERSONA = [
   {
     id: 'usr_f37a37b403ed',
-    nama: 'Warung Nasi Bu Rina',
-    bisnis: 'Warung nasi rames & kopi',
+    nama: 'Verde Road Tacos',
+    bisnis: 'Food truck — street tacos & catering',
     hariMulaiLalu: 24,
     sesiSelesai: 7,
     modulPustaka: 2,
+    ekonomi: { marginMin: 24, marginMax: 44, rugi: false },
     profil: {
-      namaUsaha: 'Warung Nasi Bu Rina',
+      namaUsaha: 'Verde Road Tacos',
       jenisUsaha: 'kuliner',
-      lokasi: 'Semarang',
+      lokasi: 'Austin, TX',
       lamaUsahaBulan: 36,
       jumlahKaryawan: 1,
-      produkUtama: 'Nasi rames, nasi ayam, kopi tubruk',
-      omzetBulanan: 19500000,
-      belanjaBulanan: 8200000,
-      biayaOperasional: 2400000,
-      cicilanBulanan: 450000,
+      produkUtama: 'Street tacos, burrito bowls, aguas frescas',
+      omzetBulanan: 26500,
+      belanjaBulanan: 11300,
+      biayaOperasional: 5600,
+      cicilanBulanan: 950,
       pencatatan: 'aplikasi',
-      rekeningTerpisah: false,
+      rekeningTerpisah: true,
       punyaNib: true,
-      tujuan: 'ajukan-kur',
-      tantangan: 'Uang warung dan uang dapur rumah sering tercampur, jadi tidak tahu laba sebenarnya.',
+      tujuan: 'kembangkan-usaha',
+      tantangan: 'Weekend catering deposits still land in the personal account, so real profit stays fuzzy.',
     },
     penjualanHarian(hariKe, rng) {
-      // Warung makan buka tiap hari; akhir pekan lebih ramai (orang tak masak).
-      const dasar = antar(rng, 550, 750);
-      const faktor = hariKe % 7 >= 5 ? 1.2 : 1;
-      return bulat(dasar * faktor * 1000);
+      // Truck buka tiap hari; akhir pekan lebih ramai (festival & larut malam).
+      const dasar = antar(rng, 700, 950);
+      const faktor = hariKe % 7 >= 5 ? 1.22 : 1;
+      return bulat(dasar * faktor);
     },
     belanjaBahan(omzet, rng) {
-      return bulat(omzet * antar(rng, 0.55, 0.62));
+      return bulat(omzet * antar(rng, 0.42, 0.48));
     },
     tetap: [
-      { kategori: 'operasional', jumlah: 22000, tiapHari: 3, keterangan: 'Gas 3 kg' },
-      { kategori: 'operasional', jumlah: 500000, tiapHari: 7, keterangan: 'Upah penjual (mingguan)' },
-      { kategori: 'operasional', jumlah: 185000, tiapHari: 30, keterangan: 'Listrik & air' },
+      { kategori: 'operasional', jumlah: 90, tiapHari: 3, keterangan: 'Propane tank swap' },
+      { kategori: 'operasional', jumlah: 210, tiapHari: 7, keterangan: 'Commissary kitchen & truck parking' },
+      { kategori: 'operasional', jumlah: 620, tiapHari: 7, keterangan: 'Weekend helper wages' },
+      { kategori: 'operasional', jumlah: 165, tiapHari: 7, keterangan: 'Square processing fees' },
+      { kategori: 'operasional', jumlah: 385, tiapHari: 30, keterangan: 'Truck insurance & health permit' },
     ],
-    cicilan: { jumlah: 450000, tgl: 5, keterangan: 'Cicilan KUR warung' },
+    cicilan: { jumlah: 950, tgl: 5, keterangan: 'SBA microloan payment' },
     prive(rng) {
-      // Senin & Jumat ambil belanja dapur rumah — kebiasaan yang nanti
-      // diangkat rekomendasi AI sebagai "uang masih tercampur".
-      return rng() < 0.3 ? bulat(antar(rng, 60, 110) * 1000) : null;
+      // Sabtu & Minggu ambil uang jajan keluarga — kebiasaan yang nanti
+      // diangkat rekomendasi AI sebagai "owner draw belum dipisah".
+      return rng() < 0.3 ? bulat(antar(rng, 90, 160)) : null;
     },
-    keteranganJual: ['Jual nasi rames', 'Penjualan warung harian', 'Jual nasi ayam + kopi'],
+    keteranganJual: ['Downtown lunch service', 'Late-night weekend sales', 'Private catering event'],
   },
   {
     id: 'usr_3683b1949f69',
-    nama: 'Toko Kelontong Maju Jaya',
-    bisnis: 'Toko kelontong sembako',
+    nama: 'Lark & Ember Coffee Roasters',
+    bisnis: 'Boutique coffee roastery & café',
     hariMulaiLalu: 22,
     sesiSelesai: 7,
     modulPustaka: 1,
+    ekonomi: { marginMin: 5, marginMax: 24, rugi: false },
     profil: {
-      namaUsaha: 'Toko Kelontong Maju Jaya',
-      jenisUsaha: 'retail',
-      lokasi: 'Semarang',
-      lamaUsahaBulan: 60,
-      jumlahKaryawan: 0,
-      produkUtama: 'Sembako, minuman, kudapan',
-      omzetBulanan: 15000000,
-      belanjaBulanan: 11800000,
-      biayaOperasional: 1100000,
-      cicilanBulanan: 0,
+      namaUsaha: 'Lark & Ember Coffee Roasters',
+      jenisUsaha: 'produksi',
+      lokasi: 'Portland, OR',
+      lamaUsahaBulan: 42,
+      jumlahKaryawan: 2,
+      produkUtama: 'Small-batch roasted beans, espresso drinks, wholesale accounts',
+      omzetBulanan: 21000,
+      belanjaBulanan: 12000,
+      biayaOperasional: 5900,
+      cicilanBulanan: 420,
       pencatatan: 'buku',
       rekeningTerpisah: true,
       punyaNib: true,
       tujuan: 'naikkan-laba',
-      tantangan: 'Margin tipis; stok yang lambat laku memakan kas.',
+      tantangan: 'Green bean prices keep climbing, but wholesale customers push back on every price increase.',
     },
     penjualanHarian(hariKe, rng) {
-      const dasar = antar(rng, 420, 620);
-      const faktor = hariKe % 7 >= 5 ? 1.25 : 1;
-      return bulat(dasar * faktor * 1000);
+      const dasar = antar(rng, 600, 760);
+      const faktor = hariKe % 7 >= 5 ? 1.12 : 1;
+      return bulat(dasar * faktor);
     },
     /*
-     * Belanja HARIAN, bukan borongan dua-mingguan. Kulakan besar membuat
-     * bulan kalender bergantian memuat satu vs dua pembelian — margin
-     * bergelombang 25%↔70%, dan pada benih tanggal tertentu warung contoh
-     * ini tampak RUGI (pernah −11%). Belanja harian pada porsi 62–68% omzet
-     * menempel pada profil persona (belanja 11,8 jt dari omzet 15 jt) dan
-     * menghasilkan margin sehat yang stabil di setiap bulan dan setiap
-     * benih tanggal. Kisah "borongan membuat laporan bergelombang" tetap
-     * diajarkan Modul 11 — lewat materinya, bukan lewat akun contoh yang
-     * harus selalu sehat.
+     * Belanja HARIAN proporsional, bukan borongan dua-mingguan: kulakan
+     * besar membuat bulan kalender bergantian memuat satu vs dua pembelian
+     * dan margin bergelombang di setiap benih tanggal. Porsi harian
+     * 55–60% omzet menempel pada profil persona (bahan $12 rb dari omzet
+     * $21 rb) dan menghasilkan margin tipis yang stabil di setiap bulan
+     * dan setiap benih tanggal. Kisah "borongan membuat laporan
+     * bergelombang" tetap diajarkan lewat materi Modul 110 — bukan lewat
+     * akun contoh.
      */
     belanjaBahan(omzet, rng) {
-      return bulat(omzet * antar(rng, 0.62, 0.68));
+      return bulat(omzet * antar(rng, 0.55, 0.6));
     },
     tetap: [
-      { kategori: 'operasional', jumlah: 260000, tiapHari: 30, keterangan: 'Listrik toko' },
-      { kategori: 'operasional', jumlah: 30000, tiapHari: 7, keterangan: 'Kantong & plastik' },
+      { kategori: 'operasional', jumlah: 720, tiapHari: 7, keterangan: 'Part-time barista wages' },
+      { kategori: 'operasional', jumlah: 150, tiapHari: 7, keterangan: 'Farmers market booth fee' },
+      { kategori: 'operasional', jumlah: 95, tiapHari: 7, keterangan: 'Bags, labels & milk' },
+      { kategori: 'operasional', jumlah: 1400, tiapHari: 30, keterangan: 'Roastery & café rent' },
+      { kategori: 'operasional', jumlah: 310, tiapHari: 30, keterangan: 'Utilities (roaster power)' },
     ],
+    cicilan: { jumlah: 420, tgl: 12, keterangan: 'Roaster equipment loan payment' },
     prive(rng) {
-      return rng() < 0.5 ? bulat(antar(rng, 120, 180) * 1000) : null;
+      return rng() < 0.35 ? bulat(antar(rng, 70, 120)) : null;
     },
-    keteranganJual: ['Penjualan kasir harian', 'Penjualan akhir pekan', 'Penjualan sembako'],
+    keteranganJual: ['Wholesale roast delivery', 'Café counter sales', 'Farmers market brew stand'],
   },
   {
     id: 'usr_a5354dec9411',
-    nama: 'Laundry Kilat Mbak Dewi',
-    bisnis: 'Laundry kiloan & satuan',
+    nama: 'Sunrise Pro Cleaning',
+    bisnis: 'One-person cleaning services',
     hariMulaiLalu: 6,
     sesiSelesai: 6,
     modulPustaka: 0,
+    ekonomi: { marginMin: 20, marginMax: 48, rugi: false },
     profil: {
-      namaUsaha: 'Laundry Kilat Mbak Dewi',
+      namaUsaha: 'Sunrise Pro Cleaning',
       jenisUsaha: 'jasa',
-      lokasi: 'Semarang',
-      lamaUsahaBulan: 18,
-      jumlahKaryawan: 1,
-      produkUtama: 'Cuci kiloan, setrika, cuci sepatu',
-      omzetBulanan: 9500000,
-      belanjaBulanan: 1400000,
-      biayaOperasional: 2600000,
-      cicilanBulanan: 620000,
+      lokasi: 'Columbus, OH',
+      lamaUsahaBulan: 20,
+      jumlahKaryawan: 0,
+      produkUtama: 'Residential cleaning, move-out cleans, small offices',
+      omzetBulanan: 9700,
+      belanjaBulanan: 2400,
+      biayaOperasional: 3900,
+      cicilanBulanan: 1450,
       pencatatan: 'kadang',
       rekeningTerpisah: false,
       punyaNib: false,
       tujuan: 'rapikan-keuangan',
-      tantangan: 'Pelanggan sering bayar tempo, catatannya mental saja.',
+      tantangan: 'Clients pay weeks late, so cash runs dry even when the calendar is full.',
     },
     penjualanHarian(hariKe, rng) {
-      // Minggu sepi (orang mencuci sendiri), Senin–Jumat ramai.
-      const dasar = antar(rng, 200, 340);
-      const faktor = hariKe % 7 === 6 ? 0.45 : 1;
-      return bulat(dasar * faktor * 1000);
+      // Minggu sepi (pelanggan rumah merapikan sendiri), Senin–Jumat penuh.
+      const dasar = antar(rng, 300, 420);
+      const faktor = hariKe % 7 === 6 ? 0.3 : 1;
+      return bulat(dasar * faktor);
+    },
+    belanjaBahan(omzet, rng) {
+      return bulat(omzet * antar(rng, 0.22, 0.28));
+    },
+    tetap: [
+      { kategori: 'operasional', jumlah: 95, tiapHari: 3, keterangan: 'Gas & van upkeep' },
+      { kategori: 'operasional', jumlah: 420, tiapHari: 7, keterangan: 'Google ads & lead fees' },
+      { kategori: 'operasional', jumlah: 180, tiapHari: 7, keterangan: 'Linen & laundry service' },
+      { kategori: 'operasional', jumlah: 290, tiapHari: 30, keterangan: 'Insurance, bond & license' },
+      { kategori: 'operasional', jumlah: 65, tiapHari: 30, keterangan: 'Phone & scheduling apps' },
+    ],
+    cicilan: { jumlah: 1450, tgl: 10, keterangan: 'Van & equipment loan payment' },
+    prive(rng) {
+      // Ambil hampir tiap dua hari — pengambilan pribadi MELAMPAUI laba:
+      // cicilan van $1.450 + prive ~$3.5 rb dari laba ~$3.4 rb = stres kas.
+      return rng() < 0.6 ? bulat(antar(rng, 170, 230)) : null;
+    },
+    keteranganJual: ['Weekly house cleaning route', 'Move-out clean — apartment', 'Small office cleaning contract'],
+  },
+  {
+    id: 'usr_e6d4a8e4f5cd',
+    nama: 'Ember & Oak Candle Co.',
+    bisnis: 'E-commerce candle shop (online + wholesale)',
+    hariMulaiLalu: 2,
+    sesiSelesai: 2,
+    modulPustaka: 0,
+    ekonomi: { marginMin: 20, marginMax: 44, rugi: false },
+    profil: {
+      namaUsaha: 'Ember & Oak Candle Co.',
+      jenisUsaha: 'online',
+      lokasi: 'Asheville, NC',
+      lamaUsahaBulan: 11,
+      jumlahKaryawan: 1,
+      produkUtama: 'Soy candles, wax melts, gift sets (online + wholesale)',
+      omzetBulanan: 13200,
+      belanjaBulanan: 5100,
+      biayaOperasional: 3800,
+      cicilanBulanan: 0,
+      pencatatan: 'excel',
+      rekeningTerpisah: false,
+      punyaNib: true,
+      tujuan: 'kelola-stok',
+      tantangan: 'Wholesale orders are outpacing the cash available for wax and jars.',
+    },
+    penjualanHarian(hariKe, rng) {
+      // Order online tiap hari; pesanan grosir datang bergelombang tiap 3 hari.
+      const dasar = antar(rng, 200, 280);
+      const grosir = hariKe % 3 === 0 ? antar(rng, 480, 720) : 0;
+      return bulat(dasar + grosir);
+    },
+    belanjaBahan(omzet, rng) {
+      return bulat(omzet * antar(rng, 0.36, 0.42));
+    },
+    tetap: [
+      { kategori: 'operasional', jumlah: 390, tiapHari: 7, keterangan: 'Facebook & Instagram ads' },
+      { kategori: 'operasional', jumlah: 255, tiapHari: 7, keterangan: 'Shipping & labels' },
+      { kategori: 'operasional', jumlah: 120, tiapHari: 7, keterangan: 'Boxes & packaging' },
+      { kategori: 'operasional', jumlah: 175, tiapHari: 14, keterangan: 'Craft fair booth fees' },
+      { kategori: 'operasional', jumlah: 115, tiapHari: 30, keterangan: 'Shopify & apps' },
+    ],
+    prive(rng) {
+      return rng() < 0.2 ? bulat(antar(rng, 80, 130)) : null;
+    },
+    keteranganJual: ['Shopify daily orders', 'Etsy weekend orders', 'Wholesale order — gift shop'],
+  },
+  {
+    id: 'usr_6d2ff8796a9f',
+    nama: 'Northline Design Studio',
+    bisnis: 'Freelance design studio (solo + subcontractors)',
+    hariMulaiLalu: 20,
+    sesiSelesai: 5,
+    modulPustaka: 1,
+    ekonomi: { marginMin: -65, marginMax: -12, rugi: true },
+    profil: {
+      namaUsaha: 'Northline Design Studio',
+      jenisUsaha: 'jasa',
+      lokasi: 'Denver, CO',
+      lamaUsahaBulan: 8,
+      jumlahKaryawan: 0,
+      produkUtama: 'Brand identity, web design, monthly design retainers',
+      omzetBulanan: 8400,
+      belanjaBulanan: 0,
+      biayaOperasional: 11300,
+      cicilanBulanan: 0,
+      pencatatan: 'belum',
+      rekeningTerpisah: false,
+      punyaNib: false,
+      tujuan: 'ajukan-kur',
+      tantangan: 'Project income is lumpy and the subcontractor retainer eats most of it.',
+    },
+    penjualanHarian(hariKe, rng) {
+      // Retainer kecil tiap hari; invoice proyek besar tiap 3 hari —
+      // pendapatan lebih kecil dari biaya tetap: persona ini DIRANCANG merugi.
+      const dasar = antar(rng, 90, 130);
+      const proyek = hariKe % 3 === 0 ? antar(rng, 390, 620) : 0;
+      return bulat(dasar + proyek);
     },
     belanjaBahan() {
       return null;
     },
     tetap: [
-      { kategori: 'operasional', jumlah: 200000, tiapHari: 7, keterangan: 'Deterjen, pewangi, tisu' },
-      { kategori: 'operasional', jumlah: 450000, tiapHari: 30, keterangan: 'Listrik & air (pemanas)' },
-      { kategori: 'operasional', jumlah: 600000, tiapHari: 7, keterangan: 'Upah penjaga (mingguan)' },
-    ],
-    belanjaBesar: { tiapHari: 21, porsi: [0.05, 0.08], keterangan: 'Stok mesin cuci & sabun kiloan' },
-    cicilan: { jumlah: 620000, tgl: 10, keterangan: 'Cicilan mesin cuci 2 unit' },
-    prive(rng) {
-      return rng() < 0.35 ? bulat(antar(rng, 80, 130) * 1000) : null;
-    },
-    keteranganJual: ['Hasil cucian kiloan', 'Setrika satuan', 'Cuci sepatu 2 pasang'],
-  },
-  {
-    id: 'usr_e6d4a8e4f5cd',
-    nama: 'Dapur Snack Aulia',
-    bisnis: 'Kue & snack pre-order online',
-    hariMulaiLalu: 2,
-    sesiSelesai: 2,
-    modulPustaka: 0,
-    profil: {
-      namaUsaha: 'Dapur Snack Aulia',
-      jenisUsaha: 'online',
-      lokasi: 'Semarang',
-      lamaUsahaBulan: 9,
-      jumlahKaryawan: 0,
-      produkUtama: 'Brownies, nastar, pisang crispy (pre-order)',
-      omzetBulanan: 7800000,
-      belanjaBulanan: 3100000,
-      biayaOperasional: 900000,
-      cicilanBulanan: 0,
-      pencatatan: 'belum',
-      rekeningTerpisah: false,
-      punyaNib: false,
-      tujuan: 'kembangkan-usaha',
-      tantangan: 'Order datang burst saat ramai, bahan sering kehabisan dadakan.',
-    },
-    penjualanHarian(hariKe, rng) {
-      // Pre-order bergelombang: dua-tiga hari ramai lalu sepi.
-      const gelombang = hariKe % 3 === 0 ? antar(rng, 650, 980) : antar(rng, 90, 220);
-      return bulat(gelombang * 1000);
-    },
-    belanjaBahan(omzet, rng) {
-      if (omzet < 400000) return null; // hari sepi tidak belanja bahan
-      return bulat(omzet * antar(rng, 0.5, 0.58));
-    },
-    tetap: [
-      { kategori: 'operasional', jumlah: 85000, tiapHari: 7, keterangan: 'Kardus, paper bag, sticker' },
-      { kategori: 'operasional', jumlah: 100000, tiapHari: 7, keterangan: 'Iklan medsos' },
+      { kategori: 'operasional', jumlah: 2050, tiapHari: 7, keterangan: 'Subcontract illustrator retainer' },
+      { kategori: 'operasional', jumlah: 420, tiapHari: 7, keterangan: 'Co-working studio membership' },
+      { kategori: 'operasional', jumlah: 95, tiapHari: 7, keterangan: 'Adobe CC, fonts & portfolio site' },
+      { kategori: 'operasional', jumlah: 300, tiapHari: 30, keterangan: 'Accountant & legal' },
     ],
     prive(rng) {
-      return rng() < 0.25 ? bulat(antar(rng, 70, 120) * 1000) : null;
+      return rng() < 0.35 ? bulat(antar(rng, 90, 150)) : null;
     },
-    keteranganJual: ['Batch brownies PO', 'Nastar 20 toples', 'Penjualan pisang crispy'],
-  },
-  {
-    id: 'usr_6d2ff8796a9f',
-    nama: 'Keripik Singkong Pak Kumis',
-    bisnis: 'Produksi keripik rumahan',
-    hariMulaiLalu: 20,
-    sesiSelesai: 5,
-    modulPustaka: 1,
-    profil: {
-      namaUsaha: 'Keripik Singkong Pak Kumis',
-      jenisUsaha: 'produksi',
-      lokasi: 'Semarang',
-      lamaUsahaBulan: 48,
-      jumlahKaryawan: 2,
-      produkUtama: 'Keripik singkong balado & original',
-      omzetBulanan: 12500000,
-      belanjaBulanan: 6100000,
-      biayaOperasional: 2300000,
-      cicilanBulanan: 380000,
-      pencatatan: 'excel',
-      rekeningTerpisah: true,
-      punyaNib: true,
-      tujuan: 'kelola-stok',
-      tantangan: 'Harga singkong naik-turun, HPP jadi sulit ditebak.',
-    },
-    penjualanHarian(hariKe, rng) {
-      // Reseller jemput tiap 2–3 hari; retail kecil tiap hari.
-      const dasar = antar(rng, 120, 220);
-      const ambil = hariKe % 3 === 0 ? antar(rng, 550, 850) : 0;
-      return bulat((dasar + ambil) * 1000);
-    },
-    belanjaBahan(omzet, rng) {
-      if (omzet < 300000) return null;
-      return bulat(omzet * antar(rng, 0.5, 0.58));
-    },
-    tetap: [
-      { kategori: 'operasional', jumlah: 24000, tiapHari: 3, keterangan: 'Gas 12 kg (goreng)' },
-      { kategori: 'operasional', jumlah: 95000, tiapHari: 7, keterangan: 'Minyak goreng & bumbu balado' },
-      { kategori: 'operasional', jumlah: 70000, tiapHari: 7, keterangan: 'Kemasan & label' },
-      { kategori: 'operasional', jumlah: 200000, tiapHari: 30, keterangan: 'Listrik & air' },
-      { kategori: 'operasional', jumlah: 900000, tiapHari: 14, keterangan: 'Upah 2 pekerja (dua mingguan)' },
-    ],
-    cicilan: { jumlah: 380000, tgl: 5, keterangan: 'Cicilan mesin pemotong' },
-    prive(rng) {
-      return rng() < 0.3 ? bulat(antar(rng, 100, 160) * 1000) : null;
-    },
-    keteranganJual: ['Kirim reseller 30 kg', 'Penjualan retail rumah', 'Kirim reseller 50 kg'],
+    keteranganJual: ['Logo design milestone invoice', 'Monthly retainer — web design', 'Brand refresh deposit'],
   },
 ];
 
@@ -393,7 +414,7 @@ function transaksiHari(persona, hariKe, tanggal, rng) {
   }
 
   const bahan = persona.belanjaBahan(omzet, rng);
-  if (bahan) dorong('keluar', 'belanja-bahan', bahan, 'Belanja bahan / baku');
+  if (bahan) dorong('keluar', 'belanja-bahan', bahan, 'Materials & supplies restock');
 
   for (const t of persona.tetap ?? []) {
     if (hariKe % t.tiapHari !== 0) continue;
@@ -402,12 +423,10 @@ function transaksiHari(persona, hariKe, tanggal, rng) {
 
   if (persona.belanjaBesar && hariKe % persona.belanjaBesar.tiapHari === 0 && hariKe > 0) {
     /*
-     * Faktor penyetel porsi bahan per persona (bawaan 0.9). Kelontong
-     * memakai 0.72: dengan 0.9, belanja borongannya menyerap 82–87% omzet —
-     * melampaui 70,7% yang dinyatakan profilnya sendiri — sehingga pada
-     * benih tanggal tertentu warung contoh ini RUGI, melanggar janji bahwa
-     * semua persona demo sehat. 0.72 menurunkan porsinya ke 65–70% omzet
-     * (margin ±12%) di benih tanggal berapa pun.
+     * Belanja borongan stok untuk periode berikut. Faktor penyetel per
+     * persona (bawaan 0.9) menjaga porsi bahan tetap di kisaran yang
+     * dijanjikan profil persona pada benih tanggal mana pun — borongan
+     * yang terlalu besar bisa membuat akun contoh tampak rugi.
      */
     const acuan = omzet * persona.belanjaBesar.tiapHari * (persona.belanjaBesar.faktor ?? 0.9); // stok untuk periode berikut
     dorong('keluar', 'belanja-bahan', bulat(acuan * antar(rng, persona.belanjaBesar.porsi[0], persona.belanjaBesar.porsi[1])), persona.belanjaBesar.keterangan);
@@ -419,7 +438,7 @@ function transaksiHari(persona, hariKe, tanggal, rng) {
   }
 
   const prive = persona.prive(rng);
-  if (prive) dorong('keluar', 'prive', prive, dow % 7 >= 5 ? 'Prive akhir pekan' : 'Prive keperluan rumah');
+  if (prive) dorong('keluar', 'prive', prive, dow % 7 >= 5 ? 'Weekend owner draw' : 'Owner draw (personal)');
 
   return rows;
 }
@@ -441,7 +460,7 @@ export function ringkasBulan(trx, bulan) {
   return r;
 }
 
-const rp = (n) => 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(n));
+const usd = formatDolar; // satu sumber format dolar — sama dengan yang dipakai metrik & AI
 
 /** Bulan penuh terakhir sebelum hari ini, sebagai YYYY-MM. */
 function bulanPenuhTerakhir(hariIni) {
@@ -462,72 +481,97 @@ export function susunRekomendasi(persona, trx, hariIni) {
   // uji — pola yang sama dengan keUsage di lib/gemini.js.
   const bulan = bulanPenuhTerakhir(hariIni);
   const s = ringkasBulan(trx, bulan);
-  const namaBulan = new Date(`${bulan}-01T00:00:00Z`).toLocaleDateString('id-ID', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const namaBulan = new Date(`${bulan}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
   const labaCicilan = s.cicilan > 0 ? (s.cicilan / Math.max(s.laba, 1)) * 100 : 0;
+  const porsiBahan = Math.round((s.bahan / Math.max(s.penjualan, 1)) * 100);
+  const porsiOperasional = Math.round((s.operasional / Math.max(s.penjualan, 1)) * 100);
 
   const rekomendasi = [
+    // Persona jasa (tanpa bahan) mendapat versi biaya operasional — judul
+    // "kunci porsi bahan di 0% omzet" akan jadi kebohongan untuk mereka.
+    s.bahan > 0
+      ? {
+        judul: `Keep materials at or below ${Math.max(porsiBahan - 2, 1)}% of sales`,
+        prioritas: s.margin < 15 ? 'high' : 'medium',
+        alasan: `In ${namaBulan}, materials took ${usd(s.bahan)} out of ${usd(s.penjualan)} in sales. Every 2-point drop in that share adds about ${usd(s.penjualan * 0.02)} of profit a month.`,
+        langkah: [
+          'Log every materials purchase the moment it happens — this app files it under the right category automatically.',
+          `Set a weekly purchasing cap from last month's pace (roughly ${usd(s.bahan / 4.3)}) and keep it visible.`,
+          'Compare once a week: materials this week vs sales this week.',
+        ],
+        dampak: `About ${usd(s.penjualan * 0.02)} of extra monthly profit if the share drops 2 points.`,
+        modulTerkait: nomorSesi(4) ?? nomorSesi(6), // 104 — membaca laporan laba rugi
+      }
+      : {
+        judul: `Hold operating costs near ${porsiOperasional}% of sales`,
+        prioritas: s.margin < 15 ? 'high' : 'medium',
+        alasan: `These books carry no material costs, so operating costs are the whole cost story: ${usd(s.operasional)} in ${namaBulan} against ${usd(s.penjualan)} in sales.`,
+        langkah: [
+          'Tag the two largest operating lines (here: subcontractors and rent) and track them weekly, not monthly.',
+          'Before adding any new recurring cost, check it against this month\'s sales first.',
+          'Review the Cash Book by category once a week to catch creep early.',
+        ],
+        dampak: `Every 5% trimmed from operating costs is about ${usd(s.operasional * 0.05)} back in profit each month.`,
+        modulTerkait: nomorSesi(6) ?? nomorSesi(4), // 106 — disiplin biaya
+      },
     {
-      judul: `Kunci porsi bahan di ${Math.round((s.bahan / Math.max(s.penjualan, 1)) * 100)}% omzet`,
-      prioritas: s.margin < 15 ? 'tinggi' : 'sedang',
-      alasan: `Bulan ${namaBulan} bahan menyerap ${rp(s.bahan)} dari penjualan ${rp(s.penjualan)}. Setiap turun 2 poin saja menambah laba sekitar ${rp(s.penjualan * 0.02)} sebulan.`,
+      judul: 'Separate business money from personal money',
+      prioritas: s.prive > s.laba * 0.6 ? 'high' : 'medium',
+      alasan: s.laba > 0
+        ? `Owner draws in ${namaBulan} came to ${usd(s.prive)} against ${usd(s.laba)} of profit — ${Math.round((s.prive / s.laba) * 100)}% of the profit left the business before it could be reinvested.`
+        : `Owner draws in ${namaBulan} came to ${usd(s.prive)} while the books show a loss of ${usd(Math.abs(s.laba))} — every draw widens the gap.`,
       langkah: [
-        'Catat total belanja bahan tiap kali belanja — aplikasi ini sudah mengelompokkannya otomatis.',
-        'Tetapkan patokan belanja mingguan dari rata-rata bulan lalu, tulis di papan warung.',
-        'Bandingkan tiap akhir minggu: bahan minggu ini vs omzet minggu ini.',
+        'Pay yourself a fixed "owner salary" once a week for the same amount, recorded as an owner draw.',
+        'Leave everything else in the business account until the month closes.',
+        'Check the Cash Book page: draws are already listed separately from business expenses.',
       ],
-      dampak: `Sekitar ${rp(s.penjualan * 0.02)} laba tambahan per bulan bila porsi turun 2%.`,
-      modulTerkait: nomorSesi(5) ?? nomorSesi(4),
+      dampak: "Business cash stays steadier for next month's inventory and bills.",
+      modulTerkait: nomorSesi(1) ?? nomorSesi(2), // 101 — pisahkan uang usaha & pribadi
     },
     {
-      judul: 'Pisahkan uang usaha dan uang rumah',
-      prioritas: s.prive > s.laba * 0.6 ? 'tinggi' : 'sedang',
-      alasan: `Prive bulan ${namaBulan} tercatat ${rp(s.prive)} dari laba ${rp(s.laba)} — ${Math.round((s.prive / Math.max(s.laba, 1)) * 100)}% laba diambil keluar sebelum sempat diputar kembali.`,
+      judul: 'Make recording a 5-minute daily close',
+      prioritas: 'medium',
+      alasan: 'Tidy books are exactly what a lender asks for — most want 3–6 months of continuous records, not scattered weeks.',
       langkah: [
-        'Ambil "gaji tetap" sekali seminggu dengan jumlah sama, catat sebagai prive.',
-        'Sisanya biarkan di dompet/rekening usaha sampai akhir bulan.',
-        'Cek halaman Buku Kas: barang prive sudah dibedakan dari biaya usaha.',
+        "At close: record one line with the day's total sales before you pack up.",
+        'Snap photos of receipts and enter them the next morning when the day ran too long.',
+        'Glance at the "cash left per day" chart once a week.',
       ],
-      dampak: 'Kas usaha lebih stabil untuk belanja bahan awal bulan.',
-      modulTerkait: nomorSesi(1) ?? nomorSesi(2),
-    },
-    {
-      judul: 'Jadwalkan catat kas 5 menit tiap tutup',
-      prioritas: 'sedang',
-      alasan: 'Data yang rapi adalah syarat laporan KUR — bank meminta 3–6 bulan catatan berkelanjutan, bukan sebagian hari.',
-      langkah: [
-        'Tutup kas: catat satu baris penjualan total hari itu sebelum merapikan warung.',
-        'Foto nota belanja bahan, catat besok pagi bila malam sudah lelah.',
-        'Lihat grafik "sisa uang per hari" sekali seminggu.',
-      ],
-      dampak: 'Laporan KUR 3 bulan bisa dicetak tanpa mengarang angka.',
-      modulTerkait: nomorSesi(3) ?? nomorSesi(1),
+      dampak: 'Three months of clean records you can hand to a lender without patching holes.',
+      modulTerkait: nomorSesi(7) ?? nomorSesi(1), // 107 — tutup bulan
     },
   ];
 
   if (s.cicilan > 0) {
     rekomendasi.push({
-      judul: `Jaga cicilan di bawah 30% laba`,
-      prioritas: labaCicilan > 30 ? 'tinggi' : 'rendah',
-      alasan: `Cicilan ${rp(s.cicilan)} per bulan adalah ${Math.round(labaCicilan)}% dari laba ${namaBulan.toLowerCase()}. ${labaCicilan > 30 ? 'Ini di atas ambang aman — laba wajib naik sebelum menambah pinjaman.' : 'Masih dalam ambang aman bank.'}`,
+      judul: 'Keep loan payments under 30% of profit',
+      prioritas: labaCicilan > 30 ? 'high' : 'low',
+      alasan: `Loan payments of ${usd(s.cicilan)} a month equal ${Math.round(labaCicilan)}% of ${namaBulan} profit. ${labaCicilan > 30 ? 'That is above the safe line — profit has to grow before any new borrowing.' : 'That is still within a safe range.'}`,
       langkah: [
-        'Sisihkan uang cicilan di awal bulan, jangan menunggu sisa.',
-        'Simulasi di halaman Laporan: ganti jumlah bulan untuk melihat rata-rata laba.',
+        'Set the loan payment aside at the start of the month, not from whatever is left.',
+        'Run the loan simulation on the Reports page: shift the term to see the monthly payment move.',
       ],
-      dampak: 'Rasio cicilan-laba yang sehat memperbesar peluang KUR disetujui.',
-      modulTerkait: nomorSesi(7) ?? nomorSesi(5),
+      dampak: 'A healthy payment-to-profit ratio keeps future borrowing options open.',
+      modulTerkait: nomorPustaka()[3] ?? nomorSesi(7), // 111 — arus kas & runway
     });
   }
 
   return {
-    ringkasan: `Bulan ${namaBulan} ${persona.nama} mencatat penjualan ${rp(s.penjualan)} dengan laba bersih ${rp(s.laba)} (margin ${s.margin.toFixed(1)}%). ${s.prive > 0 ? `Pemilik mengambil prive ${rp(s.prive)} — uang pribadi dan usaha masih berputar di dompet yang sama.` : 'Pengambilan pribadi sudah tercatat rapi.'}`,
+    ringkasan: `In ${namaBulan}, ${persona.nama} recorded ${usd(s.penjualan)} in sales and ${s.laba >= 0
+      ? `a net profit of ${usd(s.laba)} (${s.margin.toFixed(1)}% margin)`
+      : `a net loss of ${usd(s.laba)} (${s.margin.toFixed(1)}% margin) — spending is outrunning sales`}. ${s.prive > 0 ? `The owner drew ${usd(s.prive)} for personal use — business and personal money still share one pocket.` : 'Owner draws are already recorded cleanly.'}`,
     rekomendasi,
     peringatan: labaCicilan > 30
-      ? [`Cicilan ${rp(s.cicilan)} menyerap ${Math.round(labaCicilan)}% laba — di atas patokan aman 30%.`]
-      : (s.margin < 10 ? [`Margin ${s.margin.toFixed(1)}% sangat tipis; periksa harga jual dan porsi bahan.`] : []),
+      ? [`Loan payments of ${usd(s.cicilan)} absorb ${Math.round(labaCicilan)}% of profit — above the 30% safe line.`]
+      : (s.margin < 0
+        ? [`The books show a loss of ${usd(Math.abs(s.laba))} for ${namaBulan} — costs must come down or sales rise before any new spending.`]
+        : (s.margin < 10 ? [`A ${s.margin.toFixed(1)}% margin is very thin — review pricing and your biggest cost line.`] : [])),
     targetBulanIni: [
-      `Belanja bahan maksimal ${Math.round((s.bahan / Math.max(s.penjualan, 1)) * 100 - 2)}% dari omzet`,
-      `Prive tetap sekali seminggu, total di bawah ${rp(Math.max(s.prive * 0.7, 100000))}`,
-      'Nol hari tanpa catat kas — termasuk hari sepi',
+      s.bahan > 0
+        ? `Keep materials under ${Math.max(porsiBahan - 2, 1)}% of sales`
+        : `Hold operating costs under ${porsiOperasional}% of sales`,
+      `One fixed owner draw per week, totaling under ${usd(Math.max(s.prive * 0.7, 300))}`,
+      'Zero unrecorded days — even the slow ones',
     ],
     generatedAt: `${hariIni}T02:00:00.000Z`,
     // Benih demo adalah susunan kurasi, BUKAN keluaran model mana pun. Tanpa
@@ -545,30 +589,32 @@ export function susunRekomendasi(persona, trx, hariIni) {
 function susunChat(persona, trx, hariIni) {
   const bulan = bulanPenuhTerakhir(hariIni);
   const s = ringkasBulan(trx, bulan);
-  const namaBulan = new Date(`${bulan}-01T00:00:00Z`).toLocaleDateString('id-ID', { month: 'long', timeZone: 'UTC' });
+  const namaBulan = new Date(`${bulan}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
   const tanya = (iso, h, m) => `${iso}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00.000Z`;
 
   return [
     {
       role: 'user',
-      content: 'Labaku bulan lalu sebenarnya berapa? Aku selama ini cuma merasakan sisa uangnya.',
+      content: 'What was my actual profit last month? I have only been going by whatever cash is left over.',
       ts: tanya(tanggalMundur(hariIni, 6), 20, 15),
     },
     {
       role: 'assistant',
-      content: `Dari catatan kas ${persona.nama} bulan ${namaBulan}: penjualan ${rp(s.penjualan)}, bahan ${rp(s.bahan)}, biaya operasional ${rp(s.operasional)}. Laba bersihnya **${rp(s.laba)}** (margin ${s.margin.toFixed(1)}%).${s.prive > 0 ? ` Yang sering membuat sisa uang terasa kecil adalah prive — bulan itu kamu mengambil ${rp(s.prive)} untuk keperluan pribadi. Prive tidak mengurangi laba, tapi mengurangi kas di tangan.` : ''} Cara menghitungnya dibahas di sesi "Laba rugi sederhana": laba dan uang tunai memang dua hal berbeda.`,
+      content: `From ${persona.nama}'s cash book for ${namaBulan}: sales ${usd(s.penjualan)}, materials ${usd(s.bahan)}, operating costs ${usd(s.operasional)}. Net profit: **${usd(s.laba)}** (${s.margin.toFixed(1)}% margin).${s.prive > 0 ? ` What usually makes the leftover cash feel smaller is owner draws — you took ${usd(s.prive)} for personal use that month. Draws do not change profit, but they do take cash out of the register.` : ''} The math comes from the "Read your P&L in five minutes" lesson: profit and cash are two different numbers.`,
       ts: tanya(tanggalMundur(hariIni, 6), 20, 16),
     },
     {
       role: 'user',
-      content: persona.profil.cicilanBulanan > 0 ? 'Kalau aku ajukan tambahan KUR, kuat tidak labaku menanggung cicilan baru?' : 'Bagaimana caranya supaya catatanku bisa dipakai buat mengajukan KUR?',
+      content: persona.profil.cicilanBulanan > 0
+        ? 'If I apply for another small-business loan, can my profit carry the extra payment?'
+        : 'How do I get my records ready for a small-business loan application?',
       ts: tanya(tanggalMundur(hariIni, 4), 9, 40),
     },
     {
       role: 'assistant',
       content: persona.profil.cicilanBulanan > 0
-        ? `Patokan umum: seluruh cicilan sebaiknya di bawah 30% laba bersih. Laba ${namaBulan.toLowerCase()}mu ${rp(s.laba)}${s.cicilan > 0 ? `, cicilan saat ini ${rp(s.cicilan)} (${Math.round((s.cicilan / Math.max(s.laba, 1)) * 100)}% laba)` : ''}. Artinya ruang cicilan tambahan yang aman sekitar **${rp(Math.max(s.laba * 0.3 - s.cicilan, 0))} per bulan**. Bank juga akan melihat kestabilan catatan 3–6 bulan — halaman Laporan menyusunnya otomatis dari buku kasmu. Materi ini di Modul 13.`
-        : `Bank pada umumnya meminta catatan penjualan dan pengeluaran 3–6 bulan berkelanjutan. Buku kasmu di sini sudah berformat itu — tinggal buka halaman **Laporan**, pilih 6 bulan, lalu cetak/simpan PDF-nya. Yang perlu dijaga: jangan ada hari kosong catatan, karena celah panjang membuat bank bertanya datanya lengkap atau tidak. Langkah-langkahnya di sesi "Laporan bulanan dan berkas untuk KUR".`,
+        ? `A common rule of thumb: keep total loan payments under 30% of net profit. Your ${namaBulan} profit was ${usd(s.laba)}${s.cicilan > 0 ? `, and current payments are ${usd(s.cicilan)} (${Math.round((s.cicilan / Math.max(s.laba, 1)) * 100)}% of profit)` : ''}. That leaves roughly **${usd(Math.max(s.laba * 0.3 - s.cicilan, 0))} per month** of safe room for an extra payment. Lenders also look for 3–6 months of steady records — the Reports page assembles those straight from your cash book. Module 111 (cash flow and runway) walks through this.`
+        : `Most lenders want 3–6 months of continuous sales and expense records. Your cash book here is already in that shape — open the **Reports** page, pick 6 months, and export the PDF. The one thing to protect: no gaps. A long silent stretch makes a lender question whether the records are complete. The routine lives in the month-end close lesson (Module 107).`,
       ts: tanya(tanggalMundur(hariIni, 4), 9, 42),
     },
   ];
@@ -641,16 +687,11 @@ function bangunEvents(persona, hariIni, transactions) {
 
 /**
  * Mengisi satu pengguna demo dari nol.
- * Mengembalikan patch yang diterapkan store — semua medan yang disentuh
- * adalah medan data (bukan kolom SQL terpisah) kecuali yang disebut eksplisit.
- */
-/**
- * Mengisi satu pengguna demo dari nol.
  *
  * `kunciSeed` menentukan benih angka. Bawaannya ID persona — begitulah
  * kelima akun asli selalu mendapat angka yang sama pada tanggal yang sama.
  * Akun tambahan yang berbagi persona (106–120) WAJIB mengirim kunci
- * berbeda (ID penggunanya), kalau tidak lima belas warung akan punya
+ * berbeda (ID penggunanya), kalau tidak lima belas usaha contoh akan punya
  * pembukuan identik baris demi baris.
  */
 export function isiDemoPenuh(persona, hariIni = tanggalWIB(), kunciSeed = persona.id) {
