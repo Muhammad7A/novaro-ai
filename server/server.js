@@ -59,7 +59,7 @@ import { susunFokusHarian } from './lib/fokus-harian.js';
 import { bulanCheckpoint, catatTindakAdvisori, evaluasiTertunda } from './lib/advisori.js';
 import { deteksiKonteks } from './lib/deteksi.js';
 import { buatIdProposal, proposalScanAktif, terbitkanToken } from './lib/proposal.js';
-import { kirimJawaban, mulaiInterviu, sidecarTersedia } from './lib/interview.js';
+import { kirimJawaban, mulaiInterviu, panggilExaminer, barisCoverageKonteks, sidecarTersedia } from './lib/interview.js';
 import { modulPraktikTerverifikasi } from './lib/praktik.js';
 import { adaLatihan, periksa, sanitasiLatihanAI, soalPublik } from './lib/latihan.js';
 import { GalatMutasi, store } from './lib/store.js';
@@ -1053,7 +1053,9 @@ app.get('/api/advisori/riwayat', authenticate, requireConsent, async (req, res) 
     // Deteksi konteks: satu pengamatan deterministik dari bulan lengkap terakhir.
     const transactions = await store.getTransactions(req.user.id);
     const deteksi = deteksiKonteks(petaBulanInti(transactions, user?.profile ?? null, lastMonths(3)));
-    res.json({ riwayat, deteksi });
+    // Examiner sidecar interviu (W1 fase 3) — hasil terakhir apa adanya;
+    // verdict 'insufficient'/'unavailable' adalah data jujur untuk tampilan.
+    res.json({ riwayat, deteksi, examiner: user?.examiner ?? null });
   } catch (err) {
     const { status, message } = describeError(err);
     log.error('advisori', 'riwayat gagal', { userId: req.user.id, status, sebab: err?.message ?? String(err) });
@@ -1174,6 +1176,25 @@ app.post('/api/interview/answer', authenticate, requireConsent, async (req, res)
         intakeId: sesi.intakeId,
         coverage: hasil.coverage,
       });
+      /*
+       * Examiner (W1 fase 3): setelah done, sidecar menilai cakupan intake.
+       * GAGAL-CLOSED: sidecar tak terjangkau / bentuk rusak TIDAK pernah
+       * menjatuhkan penutupan interviu — status 'unavailable' tercatat
+       * jujur (kejujuran, bukan crash), dan verdict 'insufficient' adalah
+       * DATA ("bukti belum cukup"), bukan galat.
+       */
+      let examiner;
+      try {
+        examiner = await panggilExaminer({ intakeId: sesi.intakeId });
+      } catch (errExaminer) {
+        log.warn('interview', 'examiner tak terjangkau — dicatat sebagai unavailable', { userId: req.user.id, kode: errExaminer?.kode ?? 'sidecar-mati' });
+        examiner = null;
+      }
+      const tersimpan = await store.simpanExaminer(req.user.id, examiner
+        ? { intakeId: sesi.intakeId, verdict: examiner.verdict, coverage: examiner.coverage, perArea: examiner.perArea }
+        : { intakeId: sesi.intakeId, verdict: 'unavailable', coverage: null, perArea: [] });
+      res.json({ pertanyaan: null, selesai: true, coverage: hasil.coverage, examiner: tersimpan });
+      return;
     }
     res.json({ pertanyaan: hasil.pertanyaan, selesai: hasil.selesai, coverage: hasil.coverage });
   } catch (err) {
@@ -1341,8 +1362,16 @@ app.post('/api/recommendations', authenticate, requireConsent, anggaranToken('re
       metrics,
       cashbook,
       // Supaya "modulTerkait" mengarah ke tempat peserta benar-benar berada,
-      // bukan ke modul yang baru akan dibukanya dua minggu lagi.
-      belajar: { kemajuan: `${ringkasKemajuan(req.user.progress?.done ?? {})}\n${jadwalUntukAI(req.user)}` },
+      // bukan ke modul yang baru akan dibukanya dua minggu lagi. Coverage
+      // interviu (W1 fase 3) ikut sebagai ANGKA berlabel sistem — bukan
+      // proses hasil interviu; null = tidak ada yang bisa dipercaya.
+      belajar: {
+        kemajuan: [
+          ringkasKemajuan(req.user.progress?.done ?? {}),
+          jadwalUntukAI(req.user),
+          barisCoverageKonteks(req.user.examiner),
+        ].filter(Boolean).join('\n'),
+      },
       signal: controller.signal,
     });
     /*

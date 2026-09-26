@@ -1273,6 +1273,36 @@ export const store = {
     });
   },
 
+  /**
+   * Hasil examiner sidecar interviu (W1 fase 3) — slot TUNGGAL terbaru,
+   * satu penulisan untuk rekam + peristiwanya.
+   *
+   * verdict 'ok'|'insufficient' = keluaran sidecar; 'unavailable' = sidecar
+   * tak terjangkau saat penutupan interviu — kegagalan yang dicatat jujur,
+   * bukan crash. perArea (area string dari sidecar + angka) tinggal DI SINI:
+   * untuk tampilan, bukan untuk jejak — kosakata area bukan milik skema
+   * event yang contentless.
+   */
+  async simpanExaminer(userId, examiner) {
+    return update((db) => {
+      const user = db.users.find((u) => u.id === userId);
+      if (!user) return null;
+      user.examiner = {
+        intakeId: examiner.intakeId,
+        verdict: examiner.verdict,
+        ...(Number.isFinite(examiner.coverage) ? { coverage: examiner.coverage } : {}),
+        perArea: Array.isArray(examiner.perArea) ? examiner.perArea : [],
+        pada: new Date().toISOString(),
+      };
+      pushEvent(user, 'interview_examined', {
+        intakeId: examiner.intakeId,
+        verdict: examiner.verdict,
+        ...(Number.isFinite(examiner.coverage) ? { coverage: examiner.coverage } : {}),
+      });
+      return user.examiner;
+    });
+  },
+
   /** Jejak pemakaian token harian, untuk memeriksa anggaran. */
   async getTokenLog(userId) {
     const db = await load();

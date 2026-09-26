@@ -28,7 +28,7 @@ process.env.NOVA_INTERVIEW_TIMEOUT_MS = '300'; // produksi tetap 10 dtk — uji 
 process.on('exit', () => rmSync(DATA_DIR, { recursive: true, force: true }));
 
 const { store } = await import('../lib/store.js');
-const { sidecarTersedia, TIMEOUT_MS, mulaiInterviu, kirimJawaban } = await import('../lib/interview.js');
+const { sidecarTersedia, TIMEOUT_MS, mulaiInterviu, kirimJawaban, sahExaminer, barisCoverageKonteks } = await import('../lib/interview.js');
 const { periksaMetaJejak } = await import('../lib/jejak.js');
 const { CONSENT_VERSION } = await import('../lib/consent.js');
 
@@ -55,7 +55,17 @@ const sidecar = createServer((req, res) => {
     if (perilaku === 'mati') return res.destroy(); // koneksi diputus
     if (perilaku === 'lambat') return; // tak pernah menjawab — timeout yang mengambil alih
     if (perilaku === 'rusak') return jawab(200, { entah: '?' });
-    // happy: /v1/intakes pembuka; /turns giliran (jawaban kedua menutup)
+    // happy: /v1/intakes pembuka; /turns giliran (jawaban kedua menutup);
+    // /v1/examiner/{id} penilaian cakupan — examiner-mati/rusak GAGALKAN
+    // HANYA examiner-nya (interviu tetap sehat, membedakan tahap kegagalan);
+    // insufficient = verdict jujur "bukti belum cukup", bukan galat.
+    if (req.url.startsWith('/v1/examiner/')) {
+      if (perilaku === 'examiner-mati') return res.destroy();
+      if (perilaku === 'examiner-rusak') return jawab(200, { verdict: 'luar-biasa', coverage: 2 });
+      return jawab(200, perilaku === 'insufficient'
+        ? { verdict: 'insufficient', coverage: 0.35, perArea: [{ area: 'cash', coverage: 0.5 }, { area: 'prive', coverage: 0.2 }] }
+        : { verdict: 'ok', coverage: 0.75, perArea: [{ area: 'cash', coverage: 0.9 }, { area: 'prive', coverage: 0.6 }] });
+    }
     if (req.url === '/v1/intakes') {
       hitungGiliran = 0;
       return jawab(200, { intakeId: INTAKE_AWAL, jumlahDiscrepancy: 1, pertanyaan: 'Berapa kas akhir bulan kemarin?' });
@@ -231,4 +241,100 @@ test('tanpa sesi: 409; jawaban kosong: 400; tanpa persetujuan: 451', async () =>
   await minta('/api/interview/start', { method: 'POST' });
   const r400 = await minta('/api/interview/answer', { method: 'POST', body: JSON.stringify({ jawaban: '   ' }) });
   assert.equal(r400.status, 400);
+});
+
+/* ------------------------------------------------- Examiner (W1 fase 3) */
+
+/** Satu siklus penuh untuk satu kode — start sampai selesai. */
+async function siklusPenuh(kode) {
+  await minta('/api/interview/start', { kode, method: 'POST' });
+  let terakhir = await (await minta('/api/interview/answer', {
+    kode, method: 'POST', body: JSON.stringify({ jawaban: 'dua ribu dolar kas' }),
+  })).json();
+  let jaga = 0;
+  while (!terakhir.selesai && jaga < 4) {
+    terakhir = await (await minta('/api/interview/answer', {
+      kode, method: 'POST', body: JSON.stringify({ jawaban: `jawaban lanjutan nomor ${jaga}` }),
+    })).json();
+    jaga += 1;
+  }
+  return terakhir;
+}
+
+const pesertaBaru = async (nama) => {
+  const { user: u, accessCode: k } = await store.createUser({ name: nama, business: '', batch: 'B1' });
+  await store.saveConsent(u.id, CONSENT_VERSION);
+  await store.saveProfile(u.id, { namaUsaha: nama, jenisUsaha: 'kuliner', pencatatan: 'buku', tujuan: 'naikkan-laba', omzetBulanan: 4_000_000 });
+  return { id: u.id, kode: k };
+};
+
+test('examiner ok: setelah done tersimpan + event contentless + riwayat membawanya', async () => {
+  perilaku = 'happy';
+  const p = await pesertaBaru('Bu Examiner Ok');
+  const jawaban = await siklusPenuh(p.kode);
+  assert.equal(jawaban.selesai, true);
+  assert.equal(jawaban.examiner?.verdict, 'ok', 'jawaban penutup membawa hasil examiner');
+
+  const disk = penggunaDisk(p.id);
+  assert.equal(disk.examiner.verdict, 'ok');
+  assert.equal(disk.examiner.coverage, 0.75);
+  assert.equal(disk.examiner.perArea.length, 2);
+  assert.match(disk.examiner.pada, /\d{4}-\d{2}-\d{2}T/);
+  const ev = disk.events.find((e) => e.type === 'interview_examined');
+  assert.deepEqual(ev.meta, { intakeId: INTAKE_AWAL, verdict: 'ok', coverage: 0.75 });
+  assert.deepEqual(periksaMetaJejak('interview_examined', ev.meta), []);
+
+  const riwayat = await (await minta('/api/advisori/riwayat', { kode: p.kode })).json();
+  assert.equal(riwayat.examiner.verdict, 'ok');
+  assert.deepEqual(riwayat.examiner.perArea.map((x) => x.area), ['cash', 'prive']);
+});
+
+test('examiner insufficient: data jujur tersimpan — bukan galat', async () => {
+  perilaku = 'insufficient';
+  const p = await pesertaBaru('Bu Examiner Tipis');
+  const jawaban = await siklusPenuh(p.kode);
+  assert.equal(jawaban.selesai, true, 'insufficient bukan kegagalan penutupan');
+  assert.equal(jawaban.examiner.verdict, 'insufficient');
+
+  const disk = penggunaDisk(p.id);
+  assert.equal(disk.examiner.verdict, 'insufficient');
+  assert.equal(disk.examiner.coverage, 0.35);
+  const riwayat = await (await minta('/api/advisori/riwayat', { kode: p.kode })).json();
+  assert.equal(riwayat.examiner.verdict, 'insufficient', 'tampilan menerima data apa adanya');
+});
+
+test('coverage fail-closed: examiner mati saat done → unavailable tercatat, tanpa crash', async () => {
+  perilaku = 'examiner-mati';
+  const p = await pesertaBaru('Bu Examiner Mati');
+  const jawaban = await siklusPenuh(p.kode);
+  assert.equal(jawaban.selesai, true, 'penutupan interviu tidak pernah jatuh karena examiner');
+
+  const disk = penggunaDisk(p.id);
+  assert.equal(disk.examiner.verdict, 'unavailable', 'kegagalan examiner tercatat jujur');
+  assert.ok(!('coverage' in disk.examiner), 'tanpa angka, tanpa angka karangan');
+  assert.deepEqual(disk.examiner.perArea, []);
+  const ev = disk.events.find((e) => e.type === 'interview_examined');
+  assert.deepEqual(ev.meta, { intakeId: INTAKE_AWAL, verdict: 'unavailable' });
+  assert.deepEqual(periksaMetaJejak('interview_examined', ev.meta), []);
+});
+
+test('coverage fail-closed: examiner bentuk rusak → unavailable juga', async () => {
+  perilaku = 'examiner-rusak';
+  const p = await pesertaBaru('Bu Examiner Rusak');
+  const jawaban = await siklusPenuh(p.kode);
+  assert.equal(jawaban.selesai, true);
+  assert.equal(penggunaDisk(p.id).examiner.verdict, 'unavailable');
+});
+
+test('unit: sahExaminer menolak bentuk asing; barisCoverage angka-saja', () => {
+  assert.throws(() => sahExaminer({ verdict: 'luar-biasa', coverage: 0.5 }), (e) => e.kode === 'payload-rusak');
+  assert.throws(() => sahExaminer({ verdict: 'ok', coverage: 2 }), (e) => e.kode === 'payload-rusak');
+  const sah = sahExaminer({ verdict: 'ok', coverage: 0.5, perArea: [{ area: 'x'.repeat(99), coverage: 0.4 }, { entah: 1 }] });
+  assert.equal(sah.perArea.length, 1, 'area tak sah dibuang; area kepanjangan dipotong');
+  assert.ok(sah.perArea[0].area.length <= 40);
+
+  assert.match(barisCoverageKonteks({ verdict: 'ok', coverage: 0.75 }), /coverage.*0\.75/);
+  assert.match(barisCoverageKonteks({ verdict: 'insufficient', coverage: 0.35 }), /0\.35/, 'insufficient tetap membawa angkanya');
+  assert.equal(barisCoverageKonteks({ verdict: 'unavailable', coverage: null }), null);
+  assert.equal(barisCoverageKonteks(null), null);
 });

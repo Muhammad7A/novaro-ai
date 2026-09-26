@@ -174,3 +174,57 @@ export async function kirimJawaban({ intakeId, jawaban }) {
   }
   return hasil;
 }
+
+/* --------------------------- Examiner (W1 fase 3) ------------------------ */
+
+/** Kosakata tertutup verdict examiner — satu-satunya yang dipercaya dari sidecar. */
+export const VERDICT_EXAMINER = ['ok', 'insufficient'];
+
+/**
+ * Kontrak v1 (tambahan fase 3):
+ *
+ *   POST {URL}/v1/examiner/{intakeId}   — Authorization sama
+ *     200 : { verdict: 'ok'|'insufficient', coverage: <0..1>,
+ *             perArea: [{ area: <string ≤40>, coverage: <0..1> }] }
+ *
+ * 'insufficient' adalah DATA jujur (bukti belum cukup), bukan kegagalan —
+ * yang gagal adalah bentuk, sambungan, dan kredensial.
+ */
+const potongArea = (s) => String(s ?? '').trim().slice(0, 40);
+
+/**
+ * Menilai hasil examiner — MURNI, dieksor untuk uji. Mengembalikan rekam
+ * yang aman disimpan, atau melempar payload-rusak bila bentuknya melanggar
+ * kontrak (verdict di luar kosakata, coverage di luar 0..1, perArea tidak
+ * sah). Medan asing tidak ikut — rekam DIBANGUN ULANG, bukan disebarkan.
+ */
+export function sahExaminer(isi) {
+  if (!isi || typeof isi !== 'object' || !VERDICT_EXAMINER.includes(isi.verdict) || !sahCoverage(isi.coverage)) {
+    throw galat('payload-rusak', 502, 'Hasil examiner sidecar tidak lengkap sesuai kontrak.');
+  }
+  const perArea = (Array.isArray(isi.perArea) ? isi.perArea : [])
+    .filter((p) => p && typeof p === 'object' && typeof potongArea(p.area) === 'string' && potongArea(p.area) && sahCoverage(p.coverage))
+    .map((p) => ({ area: potongArea(p.area), coverage: p.coverage }))
+    .slice(0, 12);
+  return { verdict: isi.verdict, coverage: isi.coverage, perArea };
+}
+
+/** Memanggil examiner untuk satu intake — kegagalan bertipe sama dengan klien. */
+export async function panggilExaminer({ intakeId }) {
+  if (!POLA_INTAKE_ID.test(String(intakeId ?? ''))) {
+    throw galat('payload-rusak', 502, 'Id interviu tidak dikenali.');
+  }
+  const isi = await panggil(`/v1/examiner/${intakeId}`, {});
+  return sahExaminer(isi);
+}
+
+/**
+ * Baris konteks coverage untuk rekomendasi — MURNI. Angka SAJA yang melintas
+ * ke konteks (bukan proses hasil interviu): satu baris berlabel asal-usul,
+ * atau null bila tidak ada angka yang bisa dipercaya.
+ */
+export function barisCoverageKonteks(examiner) {
+  const c = examiner?.coverage;
+  if (examiner?.verdict === 'unavailable' || !sahCoverage(c)) return null;
+  return `Intake interview coverage (system-computed from the interview sidecar): ${c} of 1.00 — treat as a data-completeness signal, not a quality grade.`;
+}

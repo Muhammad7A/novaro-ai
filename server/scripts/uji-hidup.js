@@ -27,6 +27,10 @@
  *   checkup  (--ai-route checkup) — /api/checkup, satu panggilan JSON
  *            terbatas. Jalur rung inilah yang dinamai keputusan §18; pilih
  *            bila revisi yang dideploy sudah membuktikan rutenya sendiri.
+ *   interview (--ai-route interview) — rantai sidecar interviu (W1):
+ *            mulai → giliran → selesai → examiner terbaca di riwayat.
+ *            Sidecar OFF di layanan = skipped 'sidecar off' (hijau jujur);
+ *            examiner 'unavailable' = gagal jujur (rantai belum lengkap).
  *   proposal (--ai-route proposal) — rantai T1 surface #1: scan (token
  *            diterbitkan) → konfirmasi satu-ketuk via /api/cashbook (baris
  *            origin 'proposal') → replay token (wajib 409 duplikat).
@@ -588,6 +592,113 @@ async function langkahPembersihan(base, kode, timeoutMs) {
   return { langkah: 'pembersihan', lulus: res.status >= 200 && res.status < 300, status: res.status, ms: res.ms };
 }
 
+/* ------------------- Rung interviu (W1 fase 3, tanpa panggilan live) ----- */
+
+/**
+ * Penilai langkah mulai rung interviu — MURNI, dieksor untuk uji.
+ *
+ * 503 = fitur sidecar OFF di layanan terdeploy — itu bukan kegagalan rantai:
+ * rung MELAPORKAN 'skipped: sidecar off' dan tetap hijau (bukti yang jujur
+ * adalah "fitur belum dibuka", bukan drama merah). 200 harus membawa
+ * intakeId + pertanyaan pembuka.
+ */
+export function rekamInterviuMulai(body, status, ms) {
+  if (status === 503) {
+    return { langkah: 'interview-mulai', lulus: true, skipped: 'sidecar off', status, ms };
+  }
+  const sah = status === 200 && /^int_[0-9a-f]{12}$/.test(String(body?.intakeId ?? '')) &&
+    typeof body?.pertanyaan === 'string' && body.pertanyaan.length > 0;
+  return sah
+    ? { langkah: 'interview-mulai', lulus: true, status, ms, intakeId: body.intakeId }
+    : { langkah: 'interview-mulai', lulus: false, status, ms, alasan: `status ${status} / bentuk jawaban mulai tidak sah` };
+}
+
+/** Penilai giliran selesai — MURNI: coverage wajib angka 0..1, selesai true. */
+export function rekamInterviuSelesai(body, status, ms) {
+  const c = body?.coverage;
+  const sah = status === 200 && body?.selesai === true && typeof c === 'number' && Number.isFinite(c) && c >= 0 && c <= 1;
+  return sah
+    ? { langkah: 'interview-selesai', lulus: true, status, ms, coverage: c }
+    : { langkah: 'interview-selesai', lulus: false, status, ms, alasan: `status ${status} / penutupan tanpa coverage yang sah` };
+}
+
+/**
+ * Penilai hasil examiner di riwayat — MURNI. verdict 'ok'/'insufficient'
+ * lulus (insufficient = data jujur, bukan galat); 'unavailable' GAGAL dengan
+ * alasan jujur: sidecar hidup untuk interviu tapi examiner-nya tidak — itu
+ * rung yang belum lengkap, bukan mode off.
+ */
+export function rekamExaminerRiwayat(body) {
+  const e = body?.examiner;
+  if (!e || !['ok', 'insufficient', 'unavailable'].includes(e.verdict)) {
+    return { langkah: 'interview-examiner', lulus: false, alasan: 'riwayat tidak membawa hasil examiner' };
+  }
+  if (e.verdict === 'unavailable') {
+    return { langkah: 'interview-examiner', lulus: false, alasan: 'examiner sidecar tidak terjangkau saat penutupan interviu' };
+  }
+  return {
+    langkah: 'interview-examiner', lulus: true,
+    verdict: e.verdict, coverage: e.coverage ?? null,
+    jumlahArea: Array.isArray(e.perArea) ? e.perArea.length : 0,
+  };
+}
+
+/**
+ * Jalur interviu (pilihan --ai-route interview): mulai → giliran → selesai →
+ * examiner terbaca di riwayat. Akun demo sekali pakai; TANPA panggilan live
+ * dari sesi builder — eksekusinya milik deploy nanti. Saat layanan menjawab
+ * 503 di mulai (sidecar off), rung dilaporkan SKIPPED — hijau, bukan gagal.
+ */
+async function langkahInterview(base, kode, timeoutMs) {
+  const mulai = await ambil(`${base}/api/interview/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${kode}` },
+    body: '{}',
+  }, timeoutMs);
+  const rekamMulai = rekamInterviuMulai(mulai.body, mulai.status, mulai.ms);
+  if (rekamMulai.skipped) {
+    return { langkah: 'interview', lulus: true, skipped: rekamMulai.skipped, status: mulai.status };
+  }
+  if (!rekamMulai.lulus) return { ...rekamMulai, langkah: 'interview' };
+
+  const giliran = await ambil(`${base}/api/interview/answer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${kode}` },
+    body: JSON.stringify({ jawaban: 'Kas akhir bulan lalu sekitar dua ribu dolar, dengan prive delapan ratus.' }),
+  }, timeoutMs);
+  let rekamSelesai = rekamInterviuSelesai(giliran.body, giliran.status, giliran.ms);
+  // Sidecar uji mungkin butuh giliran kedua — jawab lagi bila belum selesai.
+  if (rekamSelesai.lulus === false && giliran.status === 200 && giliran.body?.selesai === false) {
+    const giliran2 = await ambil(`${base}/api/interview/answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${kode}` },
+      body: JSON.stringify({ jawaban: 'Prive diambil sekali sepekan, dan tidak ada utang kartu yang berjalan.' }),
+    }, timeoutMs);
+    rekamSelesai = rekamInterviuSelesai(giliran2.body, giliran2.status, giliran2.ms);
+  }
+  if (!rekamSelesai.lulus) return { ...rekamSelesai, langkah: 'interview' };
+
+  const riwayat = await ambil(`${base}/api/advisori/riwayat`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${kode}` },
+  }, timeoutMs);
+  const rekamExaminer = riwayat.status === 200
+    ? rekamExaminerRiwayat(riwayat.body)
+    : { langkah: 'interview-examiner', lulus: false, alasan: `riwayat status ${riwayat.status}` };
+
+  const lulus = rekamSelesai.lulus && rekamExaminer.lulus;
+  return {
+    langkah: 'interview',
+    lulus,
+    status: giliran.status,
+    ms: mulai.ms + giliran.ms,
+    mulai: rekamMulai,
+    selesai: rekamSelesai,
+    examiner: rekamExaminer,
+    ...(lulus ? {} : { alasan: [rekamSelesai, rekamExaminer].filter((r) => r.lulus === false).map((r) => `${r.langkah}: ${r.alasan}`).join('; ') }),
+  };
+}
+
 /* ------------------------------------------------------------ orkestrasi */
 
 /**
@@ -596,7 +707,7 @@ async function langkahPembersihan(base, kode, timeoutMs) {
  *
  * @param {{baseUrl: string, layanan?: string, region?: string, project?: string,
  *          revision?: string|null, healthOnly?: boolean, timeoutMs?: number,
- *          aiRoute?: 'chat'|'checkup'|'rekomendasi'|'proposal'}} sasaran
+ *          aiRoute?: 'chat'|'checkup'|'rekomendasi'|'proposal'|'interview'}} sasaran
  * @returns {Promise<object>} artefak
  */
 export async function jalankanUji(sasaran) {
@@ -749,6 +860,10 @@ export async function jalankanUji(sasaran) {
     langkahAi = await langkahProposal(base, kode, sasaran.timeoutMs);
     // Satu baris uji mendarat di akun demo fiktif — sekali pakai, tanpa
     // pembersihan; replay-nya justru bagian dari bukti (409 duplikat).
+  } else if (sasaran.aiRoute === 'interview') {
+    langkahAi = await langkahInterview(base, kode, sasaran.timeoutMs);
+    // Sidecar off di layanan = skipped jujur (hijau), bukan gagal; sidecar
+    // on = rantai mulai→giliran→selesai→examiner terbukti.
   } else {
     langkahAi = await langkahPercakapan(base, kode, sasaran.timeoutMs);
     // Riwayat giliran uji dihapus lagi — akun demo tidak menumpuk sisa uji.
@@ -830,8 +945,8 @@ function bacaArgv(argv) {
   opsi.revision = nilai('--revision') ?? opsi.revision;
   const rute = nilai('--ai-route');
   if (rute !== null) {
-    if (rute !== 'chat' && rute !== 'checkup' && rute !== 'rekomendasi' && rute !== 'proposal') {
-      throw new Error(`--ai-route harus 'chat', 'checkup', 'rekomendasi', atau 'proposal', diterima: ${rute}`);
+    if (rute !== 'chat' && rute !== 'checkup' && rute !== 'rekomendasi' && rute !== 'proposal' && rute !== 'interview') {
+      throw new Error(`--ai-route harus 'chat', 'checkup', 'rekomendasi', 'proposal', atau 'interview', diterima: ${rute}`);
     }
     opsi.aiRoute = rute;
   }

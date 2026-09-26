@@ -84,6 +84,11 @@ export const SKEMA_JEJAK = {
    * (ratchet: teks bebas hidup di respons HTTP, lalu lenyap). */
   interview_started: { intakeId: 'id', jumlah: 'angka' },
   interview_completed: { intakeId: 'id', coverage: 'angka' },
+  /* Examiner sidecar (W1 fase 3): verdict kosakata tertutup ('ok'|
+   * 'insufficient'|'unavailable' — yang terakhir = sidecar tak terjangkau
+   * saat penutupan, tercatat jujur); coverage ikut bila ada. perArea TIDAK
+   * masuk jejak (area = string sidecar) — ia tinggal di user.examiner. */
+  interview_examined: { intakeId: 'id', verdict: 'kata', 'coverage?': 'angka?' },
   /* Rel proposal T1 surface #1 (scan-nota; addendum §25 2026-09-12).
    * proposal_shown: usulan tampil di layar — id + tingkat keyakinan tutup
    * ('ok'|'warning'|'low'), menunggangi tulisan usage rute scan. TANPA delta

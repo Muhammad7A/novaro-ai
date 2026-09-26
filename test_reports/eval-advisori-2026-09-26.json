@@ -1,7 +1,7 @@
 {
   "alat": "eval-advisori",
   "versi": 1,
-  "dijalankan": "2026-09-26T10:39:16.018Z",
+  "dijalankan": "2026-09-26T11:19:37.972Z",
   "fixture": "scripts/fixtures/golden-advisori.json",
   "skor": "8/23",
   "ok": false,

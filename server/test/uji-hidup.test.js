@@ -12,7 +12,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { parseDeployLog, perkiraanBiaya, potong, rekamProposalKonfirmasi, rekamProposalReplay, rekamProposalScan, rekamRekomendasi, saringEnv, gambarNotaUji } from '../scripts/uji-hidup.js';
+import { parseDeployLog, perkiraanBiaya, potong, rekamExaminerRiwayat, rekamInterviuMulai, rekamInterviuSelesai, rekamProposalKonfirmasi, rekamProposalReplay, rekamProposalScan, rekamRekomendasi, saringEnv, gambarNotaUji } from '../scripts/uji-hidup.js';
 
 test('import uji-hidup tidak menjalankan apa pun (uji tetap tanpa jaringan)', () => {
   // Sengaja kosong: keberhasilan impor sendiri sudah buktinya — modul ini
@@ -196,4 +196,42 @@ test('rekamProposalReplay: wajib 409 duplikat — bukan 404, bukan 201 kedua', (
   assert.equal(rekamProposalReplay({ kode: 'token-tak-sah' }, 400, 5).lulus, false);
   assert.equal(rekamProposalReplay({ transaction: {} }, 201, 5).lulus, false);
   assert.match(rekamProposalReplay({}, 500, 5).alasan, /sekali pakai/);
+});
+
+/* ------------------- Rung interviu (fase 3, tanpa panggilan live) -------- */
+
+test('rekamInterviuMulai: 503 = skipped jujur (hijau, bukan gagal); 200 sah membawa intakeId', () => {
+  const lewat = rekamInterviuMulai({}, 503, 40);
+  assert.equal(lewat.lulus, true, 'sidecar off bukan drama merah');
+  assert.equal(lewat.skipped, 'sidecar off');
+
+  const baik = rekamInterviuMulai({ intakeId: 'int_00000000aaaa', pertanyaan: 'Berapa kas akhir bulan?' }, 200, 90);
+  assert.equal(baik.lulus, true);
+  assert.equal(baik.intakeId, 'int_00000000aaaa');
+
+  assert.equal(rekamInterviuMulai({ intakeId: 'sampah' }, 200, 5).lulus, false);
+  assert.equal(rekamInterviuMulai({}, 500, 5).lulus, false);
+});
+
+test('rekamInterviuSelesai: wajib selesai true + coverage 0..1', () => {
+  assert.equal(rekamInterviuSelesai({ selesai: true, coverage: 0.75 }, 200, 10).lulus, true);
+  assert.equal(rekamInterviuSelesai({ selesai: false, coverage: 0.2 }, 200, 10).lulus, false);
+  assert.equal(rekamInterviuSelesai({ selesai: true, coverage: 1.5 }, 200, 10).lulus, false);
+  assert.equal(rekamInterviuSelesai({}, 502, 10).lulus, false);
+});
+
+test('rekamExaminerRiwayat: ok/insufficient lulus; unavailable gagal jujur; tanpa examiner gagal', () => {
+  const ok = rekamExaminerRiwayat({ examiner: { verdict: 'ok', coverage: 0.75, perArea: [{ area: 'cash', coverage: 0.9 }] } });
+  assert.equal(ok.lulus, true);
+  assert.equal(ok.verdict, 'ok');
+  assert.equal(ok.jumlahArea, 1);
+
+  const tipis = rekamExaminerRiwayat({ examiner: { verdict: 'insufficient', coverage: 0.35, perArea: [] } });
+  assert.equal(tipis.lulus, true, 'insufficient adalah data jujur — bukan galat rung');
+
+  const tak = rekamExaminerRiwayat({ examiner: { verdict: 'unavailable' } });
+  assert.equal(tak.lulus, false, 'sidecar hidup tapi examiner tidak = rantai belum lengkap');
+  assert.match(tak.alasan, /examiner sidecar/);
+
+  assert.equal(rekamExaminerRiwayat({}).lulus, false);
 });
