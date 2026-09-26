@@ -268,7 +268,7 @@ test('kode asing: 401', async () => {
 test('tanpa tubuh: 400 yang menjelaskan', async () => {
   const res = await mintaScan({ body: null, tipe: 'image/jpeg' });
   assert.equal(res.status, 400);
-  assert.match((await res.json()).error, /tidak terkirim|tidak terbaca/i);
+  assert.match((await res.json()).error, /not received|unreadable/i);
 });
 
 test('content-type teks: ditolak sebagai berkas tidak terbaca (parser raw dilewati)', async () => {
@@ -279,7 +279,7 @@ test('content-type teks: ditolak sebagai berkas tidak terbaca (parser raw dilewa
 test('byte korup berlabel jpeg: ditolak via pemeriksaan isi, bukan header', async () => {
   const res = await mintaScan({ body: Buffer.from('PNG-PALSU-yang-berisi-teks-biasa-panjang-agar-melewati-ambang-minimal-byte'), tipe: 'image/jpeg' });
   assert.equal(res.status, 400);
-  assert.match((await res.json()).error, /bukan gambar/i);
+  assert.match((await res.json()).error, /not a recognized image/i);
 });
 
 test('foto kebesaran: 413 dengan kalimat yang bisa ditindaklanjuti', async () => {

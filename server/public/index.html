@@ -2416,16 +2416,16 @@ const ARAH_HASIL = { membaik: '↗ membaik', memburuk: '↘ menurun', tetap: '�
 
 function renderHasilCheckpoint(e) {
   if (!e) {
-    return '<p class="sub" style="margin:6px 0 0"><b>Hasil</b> (dihitung sistem dari angka buku kas): penilaian muncul otomatis setelah bulan sesudah bulan saran selesai.</p>';
+    return '<p class="sub" style="margin:6px 0 0"><b>Outcome</b> (scored by the system from cash book numbers): the assessment appears automatically once the month after the advice completes.</p>';
   }
   if (e.status !== 'terukur') {
-    return `<p class="sub" style="margin:6px 0 0"><b>Hasil</b> (dihitung sistem dari angka buku kas): belum dapat dinilai — ${escapeHtml(e.sebab ?? 'angka penilaian tidak tersedia')}.</p>`;
+    return `<p class="sub" style="margin:6px 0 0"><b>Outcome</b> (scored by the system from cash book numbers): cannot be assessed yet — ${escapeHtml(e.sebab ?? 'assessment numbers not available')}.</p>`;
   }
   const baris = Object.entries(e.dimensi).map(([k, d]) =>
     `<li>${LABEL_DIMENSI[k] ?? k}: ${fmtRp(d.dasar)} → ${fmtRp(d.kini)} — ${ARAH_HASIL[d.status] ?? d.status}</li>`).join('');
-  return `<p class="sub" style="margin:6px 0 2px"><b>Hasil</b> (dihitung sistem dari angka buku kas):</p>
+  return `<p class="sub" style="margin:6px 0 2px"><b>Outcome</b> (scored by the system from cash book numbers):</p>
     <ul style="margin:2px 0 0;padding-left:18px">${baris}</ul>
-    <p class="sub" style="margin:4px 0 0">Perbandingan bulan saran dengan bulan berikutnya. Arah angka bukan jaminan sebab-akibat.</p>`;
+    <p class="sub" style="margin:4px 0 0">Compares the advice month with the following month. The direction of a number is not a cause-and-effect guarantee.</p>`;
 }
 
 async function loadRiwayat() {

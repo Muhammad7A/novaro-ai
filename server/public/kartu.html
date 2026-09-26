@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kartu Kesehatan Usaha — Novaro</title>
-<meta name="description" content="Kartu kesehatan usaha yang dibagikan pemilik UMKM lewat Novaro — ringkasan skor keuangan, omzet, dan laba dari catatan kas harian.">
+<title>Business Health Card — Novaro</title>
+<meta name="description" content="A shareable business health card powered by Novaro — a read-only summary of a US small business's financial health score, revenue, and profit from its daily cash book.">
 <style>
 :root{
   --paper:#FBFBF7; --card:#FFFFFF; --ink:#1A1F2B; --ink-soft:#5A6478;
@@ -51,7 +51,13 @@ body{
 .baris b{font-variant-numeric:tabular-nums;text-align:right}
 .insight{margin-top:14px;padding:14px;background:var(--gold-tint);border-radius:12px;border:1px solid var(--gold)}
 .insight h4{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
-.insight li{margin-left:18px;font-size:.88rem}
+.insight ul{list-style:none}
+.insight li{display:flex;align-items:baseline;gap:8px;font-size:.88rem;padding:3px 0}
+/* Prioritas catatan: 'high' | 'medium' | 'low' — kunci data edisi US. */
+.titik{width:8px;height:8px;border-radius:50%;flex:none;position:relative;top:-1px}
+.titik-high{background:var(--red);box-shadow:0 0 0 3px var(--red-tint)}
+.titik-medium{background:var(--gold);box-shadow:0 0 0 3px rgba(214,158,46,.16)}
+.titik-low{background:var(--green);box-shadow:0 0 0 3px var(--green-tint)}
 .periode{margin-top:14px;font-size:.78rem;color:var(--ink-soft)}
 .disclaimer{margin-top:12px;font-size:.74rem;color:var(--ink-soft);font-style:italic}
 .footer{margin-top:24px;text-align:center;font-size:.78rem;color:var(--ink-soft)}
@@ -72,7 +78,7 @@ body{
 <div class="wrap">
   <div class="brand">
     <div class="mark">N</div>
-    <div>Novaro<small>Kartu Kesehatan Usaha</small></div>
+    <div>Novaro<small>Business Health Card</small></div>
   </div>
 
   <div id="isi" class="card" style="text-align:center">
@@ -80,8 +86,8 @@ body{
   </div>
 
   <div class="footer">
-    <p>Dibuat dengan <b>Novaro</b> — pendamping keuangan untuk UMKM.</p>
-    <p class="aksi">Angka di kartu ini ringkasan baca-saja yang dibagikan pemilik usaha, bukan akun. Data lengkap tidak ikut dibagikan.</p>
+    <p>Created with <b>Novaro</b> — a bookkeeping companion for US small businesses.</p>
+    <p class="aksi">The numbers on this card are a read-only summary shared by the business owner — not an account. The full books are never shared.</p>
   </div>
 </div>
 
@@ -100,19 +106,19 @@ const token = decodeURIComponent(location.pathname.split('/').pop() ?? '');
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const rp = (n) => n == null ? '—' : 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(Number(n)));
+const usd = (n) => n == null ? '—' : (n < 0 ? '-$' : '$') + new Intl.NumberFormat('en-US').format(Math.abs(Math.round(Number(n))));
 
 function tampil(k) {
   const skor = k.skorKesehatan ?? 0;
   const panjang = 2 * Math.PI * 42;
   const terisi = (skor / 100) * panjang;
   const konsistensi = k.konsistensi?.hariBulan
-    ? k.konsistensi.hariTercatat + ' dari ' + k.konsistensi.hariBulan + ' hari bulan ini'
-    : (k.periode.hariSejakMulai ? 'sejak ' + k.periode.hariSejakMulai + ' hari terakhir' : '—');
+    ? k.konsistensi.hariTercatat + ' of ' + k.konsistensi.hariBulan + ' days recorded this month'
+    : (k.periode.hariSejakMulai ? 'last ' + k.periode.hariSejakMulai + ' days of records' : '—');
 
   document.getElementById('isi').innerHTML = `
     <div class="usaha">${esc(k.namaUsaha)}</div>
-    <div class="jenis">${esc(k.jenisUsaha ?? 'Usaha mikro Indonesia')}</div>
+    <div class="jenis">${esc(k.jenisUsaha ?? 'US small business')}</div>
     <div class="skor">
       <div class="dial">
         <svg viewBox="0 0 96 96">
@@ -122,49 +128,49 @@ function tampil(k) {
         <div class="dial-num">${skor}</div>
       </div>
       <div>
-        <div class="skor-label">Skor Kesehatan</div>
+        <div class="skor-label">Health Score</div>
         <div class="skor-status">${esc(k.statusKesehatan ?? '—')}</div>
       </div>
     </div>
-    <div class="baris"><span>Omzet setara bulanan</span><b>${rp(k.omzet)}</b></div>
-    <div class="baris"><span>Laba bersih setara bulanan</span><b>${rp(k.labaBersih)}</b></div>
-    <div class="baris"><span>Konsistensi pencatatan</span><b>${esc(konsistensi)}</b></div>
+    <div class="baris"><span>Monthly-equivalent revenue</span><b>${usd(k.omzet)}</b></div>
+    <div class="baris"><span>Monthly-equivalent net profit</span><b>${usd(k.labaBersih)}</b></div>
+    <div class="baris"><span>Recording consistency</span><b>${esc(konsistensi)}</b></div>
     <div class="insight">
       <h4>${esc(k.insightSumber === 'contoh'
-        ? 'Contoh catatan (data kurasi, bukan keluaran AI)'
+        ? 'Sample data (curated, not AI output)'
         : k.insightSumber === 'sistem'
-          ? 'Catatan sistem dari angka buku kas'
-          : 'Catatan dari analisis AI')}</h4>
-      <ul>${(k.insight ?? []).map((i) => `<li>${esc(i.judul)}</li>`).join('')}</ul>
+          ? 'System note from cash-book figures'
+          : 'Notes from AI analysis')}</h4>
+      <ul>${(k.insight ?? []).map((i) => `<li><span class="titik titik-${esc(i.prioritas ?? 'medium')}"></span><span>${esc(i.judul)}</span></li>`).join('')}</ul>
     </div>
-    <div class="periode">Periode data: ${k.periode.hariSejakMulai || '—'} hari pencatatan${k.periode.bulanLengkap ? ', termasuk bulan penuh tercatat' : ''}. Angka ${k.sumberAngka === 'catatan' ? 'dihitung dari buku kas' : 'masih perkiraan profil'}.${k.insightSumber === 'ai' && k.insightDibuat ? ` Catatan AI disusun ${new Date(k.insightDibuat).toLocaleDateString('id-ID', { dateStyle: 'long' })}.` : ''} Kartu dibuat ${new Date(k.dibuatPada).toLocaleDateString('id-ID', { dateStyle: 'long' })}.</div>
-    <div class="disclaimer">Ringkasan edukatif dari catatan usahamu sendiri; catatan berlabel analisis AI dihasilkan AI dan bisa keliru — bukan jaminan, bukan keputusan kredit. Keputusan KUR sepenuhnya ada di bank.</div>`;
+    <div class="periode">Data period: ${k.periode.hariSejakMulai || '—'} days of records${k.periode.bulanLengkap ? ', including at least one complete month' : ''}. Figures are ${k.sumberAngka === 'catatan' ? 'computed from the cash book' : 'still owner estimates'}.${k.insightSumber === 'ai' && k.insightDibuat ? ` AI analysis notes were generated ${new Date(k.insightDibuat).toLocaleDateString('en-US', { dateStyle: 'long' })}.` : ''} Card created ${new Date(k.dibuatPada).toLocaleDateString('en-US', { dateStyle: 'long' })}.</div>
+    <div class="disclaimer">Educational summary from your own records; entries labeled AI analysis are AI-generated and can be wrong — not a guarantee, not a credit decision. Loan decisions belong entirely to the lender.</div>`;
 
   document.querySelector('.dial-fill').style.strokeDasharray = `${terisi} ${panjang}`;
 }
 
 function galat(pesan) {
   document.getElementById('isi').className = 'galat';
-  document.getElementById('isi').innerHTML = `<div class="big">🔎</div><h2>Kartu tidak ditemukan</h2><p>${esc(pesan)}</p>`;
+  document.getElementById('isi').innerHTML = `<div class="big">🔎</div><h2>Card not found</h2><p>${esc(pesan)}</p>`;
 }
 
 (async () => {
   if (!/^kartu_[A-Za-z0-9_-]{20,}$/.test(token)) {
-    galat('Tautan kartu ini tidak valid atau sudah tidak berlaku.');
+    galat('This card link is not valid or is no longer active.');
     return;
   }
   try {
     const res = await fetch('/api/kartu/publik/' + encodeURIComponent(token));
     if (!res.ok) {
       galat(res.status === 404
-        ? 'Tautan ini mungkin sudah lama, salah ketik, atau kartunya sudah ditarik pemiliknya.'
-        : 'Kartu belum bisa dibuka. Coba beberapa saat lagi.');
+        ? 'This link may be old, mistyped, or the owner has withdrawn the card.'
+        : 'The card cannot be opened right now. Please try again in a moment.');
       return;
     }
     const data = await res.json();
     tampil(data.kartu);
   } catch {
-    galat('Koneksi bermasalah. Periksa internet lalu muat ulang halaman ini.');
+    galat('Connection problem. Check your internet, then reload this page.');
   }
 })();
 </script>

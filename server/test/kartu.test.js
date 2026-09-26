@@ -149,7 +149,7 @@ test('token palsu, rusak, dan milik akun tanpa profil: semuanya 404 yang rapi', 
     const res = await fetch(BASE + '/api/kartu/publik/' + encodeURIComponent(token));
     assert.equal(res.status, 404, `token "${token}" harus 404`);
     const data = await res.json();
-    assert.match(data.error, /tidak ditemukan/i);
+    assert.match(data.error, /not found|tidak ditemukan/i);
   }
 });
 
@@ -170,7 +170,7 @@ test('halaman /kartu/<token> disajikan tanpa login dan tanpa data pengguna di HT
   const res = await fetch(BASE + '/kartu/kartu_' + 'A'.repeat(30));
   assert.equal(res.status, 200);
   const html = await res.text();
-  assert.ok(html.includes('Kartu Kesehatan'), 'halaman kartu yang benar');
+  assert.ok(html.includes('Business Health Card'), 'halaman kartu yang benar');
   assert.ok(!html.includes(user.id) && !html.includes(accessCode), 'HTML statik tidak membawa data pengguna');
   assert.ok(!html.includes('loginForm'), 'halaman kartu bukan halaman masuk — tidak ada permintaan kode di sana');
 });

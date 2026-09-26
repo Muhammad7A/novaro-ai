@@ -135,7 +135,7 @@ test('modul pustaka tanpa latihan: 404 yang jujur', async () => {
   const { accessCode } = await buatPeserta('Bu Pustaka');
   const res = await minta('/api/latihan/108', { kode: accessCode });
   assert.equal(res.status, 404);
-  assert.match((await res.json()).error, /Latihan belum tersedia/);
+  assert.match((await res.json()).error, /No practice quiz is available/);
 });
 
 test('alur lulus: salah boleh diulang, benar tersimpan, lulus setelah semua benar', async () => {
@@ -193,7 +193,7 @@ test('tantangan AI terkunci sampai kuis dasar lulus', async () => {
   const { accessCode } = await buatPeserta('Bu Terkunci');
   const res = await minta('/api/latihan/102/ai', { kode: accessCode, method: 'POST' });
   assert.equal(res.status, 400);
-  assert.match((await res.json()).error, /Selesaikan kuis dasarnya dulu/);
+  assert.match((await res.json()).error, /Finish the basic quiz first/);
 });
 
 test('tantangan AI: dibuat dari materi + angka peserta, kunci tidak ke peramban, dinilai server', async () => {

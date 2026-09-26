@@ -245,7 +245,7 @@ test('fitur MATI: scan 200 tanpa proposal, tanpa peristiwa shown — bentuk lama
 test('HTML jujur: satu-ketuk berlabel, badge asal + tanggal konfirmasi, tombol buang', () => {
   const html = readFileSync(path.join(AKAR, 'public', 'index.html'), 'utf8');
   assert.match(html, /Simpan Usulan/, 'tombol satu-ketuk bernama apa adanya');
-  assert.match(html, /Buang Usulan/, 'penolakan eksplisit tersedia');
+  assert.match(html, /Discard Proposal/, 'penolakan eksplisit tersedia');
   assert.match(html, /dari usulan pemindaian, dikonfirmasi /, 'badge kebenaran tampilan membawa tanggal');
   assert.match(html, /dari usulan pemindaian/, 'baris daftar berlabel asal');
   assert.match(html, /\/proposal\/tolak/, 'penolakan lewat endpoint eksplisit');

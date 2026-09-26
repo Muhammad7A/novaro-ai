@@ -305,13 +305,13 @@ test('HTML: tombol "Saya sudah coba" + label kejujuran + endpoint terekam', () =
 test('HTML Riwayat Saran jujur: hasil berlabel sistem, teks AI berstempel', () => {
   const html = readFileSync(path.join(AKAR, 'public', 'index.html'), 'utf8');
 
-  assert.match(html, /Riwayat Saran/, 'seksinya ada');
+  assert.match(html, /Advice History/, 'seksinya ada');
   assert.match(html, /loadRiwayat/, 'pemuatnya ada');
   // Label hasil — wajib hadir di SEMUA cabang render (belum tempo, tak-terukur, terukur).
-  const hitungLabel = html.split('dihitung sistem dari angka buku kas').length - 1;
+  const hitungLabel = html.split('scored by the system from cash book numbers').length - 1;
   assert.ok(hitungLabel >= 3, `label hasil wajib di semua cabang render (ditemukan ${hitungLabel})`);
   // Rambu identitas yang sama dengan seluruh aplikasi: tidak ada nama model statis.
   assert.doesNotMatch(html, /gemini/i);
   // Peringatan korelasi tampil — arah angka bukan janji sebab-akibat.
-  assert.match(html, /bukan jaminan sebab-akibat/);
+  assert.match(html, /not a cause-and-effect guarantee/);
 });
