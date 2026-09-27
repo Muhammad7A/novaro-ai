@@ -730,12 +730,20 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
     <div class="tabbar" role="tablist">
       <button type="button" id="tabEmail" class="active" role="tab" aria-selected="true">Email sign-in</button>
       <button type="button" id="tabKode" role="tab" aria-selected="false">Access code</button>
+      <button type="button" id="tabSignup" role="tab" aria-selected="false">Sign up</button>
     </div>
     <form id="emailForm" style="display:block">
       <input class="code-input" id="emailInput" type="email" placeholder="you@business.com" autocomplete="email" aria-label="Email address" required>
       <div class="form-error" id="emailError" style="display:none"></div>
       <button class="btn btn-primary" id="emailBtn" style="width:100%;justify-content:center;margin-top:14px" type="submit">Email me a sign-in link</button>
       <p class="auth-hint" id="emailNote" style="display:none"></p>
+    </form>
+    <form id="signupForm" style="display:none">
+      <input class="code-input" id="signupEmail" type="email" placeholder="you@business.com" autocomplete="email" aria-label="Email address" required>
+      <div class="form-error" id="signupError" style="display:none"></div>
+      <button class="btn btn-primary" id="signupBtn" style="width:100%;justify-content:center;margin-top:14px" type="submit">Create my account</button>
+      <p class="auth-hint" id="signupNote" style="display:none;word-break:break-all"></p>
+      <p class="auth-hint">You'll confirm this email with a one-time link, then pick your consent settings. Email is only used to sign you in — it never goes into your books or any AI prompt.</p>
     </form>
     <form id="loginForm" style="display:none">
       <input class="code-input" id="codeInput" placeholder="NOVA-XXXX-XXXX" autocomplete="one-time-code" aria-label="Access code" required>
@@ -1361,18 +1369,23 @@ async function api(pathname, options = {}) {
 /* ============================================================
    Sign-in — email magic link + access code (W3/W2e)
 ============================================================ */
-/* Tab: Email <-> Kode. Dua jalur, satu tujuan. */
+/* Tab: Email <-> Kode <-> Signup. Tiga jalur, satu tujuan. */
 function setTab(mode) {
   const email = mode === 'email';
+  const signup = mode === 'signup';
   el('tabEmail').classList.toggle('active', email);
-  el('tabKode').classList.toggle('active', !email);
+  el('tabKode').classList.toggle('active', !email && !signup);
+  el('tabSignup').classList.toggle('active', signup);
   el('tabEmail').setAttribute('aria-selected', String(email));
-  el('tabKode').setAttribute('aria-selected', String(!email));
+  el('tabKode').setAttribute('aria-selected', String(!email && !signup));
+  el('tabSignup').setAttribute('aria-selected', String(signup));
   el('emailForm').style.display = email ? 'block' : 'none';
-  el('loginForm').style.display = email ? 'none' : 'block';
+  el('signupForm').style.display = signup ? 'block' : 'none';
+  el('loginForm').style.display = email || signup ? 'none' : 'block';
 }
 el('tabEmail').addEventListener('click', () => setTab('email'));
 el('tabKode').addEventListener('click', () => setTab('kode'));
+el('tabSignup').addEventListener('click', () => setTab('signup'));
 
 el('emailForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -1403,6 +1416,42 @@ el('emailForm').addEventListener('submit', async (e) => {
   }
 });
 
+/* ============================================================
+   Sign up — self-serve (W1 exit gap): email → verifikasi sekali-pakai
+============================================================ */
+el('signupForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = el('signupEmail').value.trim();
+  const btn = el('signupBtn');
+  const errBox = el('signupError');
+  const note = el('signupNote');
+  errBox.style.display = 'none';
+  note.style.display = 'none';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Creating…';
+  try {
+    const res = await fetch('/api/auth/request-signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not start the signup.');
+    // Kejujuran dev-mode: di server pengembangan tanpa SMTP, tautannya
+    // ditampilkan langsung (jelas berlabel DEV). Produksi: netral.
+    note.textContent = data.devLink
+      ? `DEV MODE — email delivery is off, so this is your verification link: ${data.devLink}`
+      : data.message || 'Check your email to finish creating your account.';
+    note.style.display = 'block';
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Create my account';
+  }
+});
+
 /**
  * Tautan ajaib membawa ?token= — diverifikasi di sini, satu pintu sesi.
  * Token sesi disimpan di kunci yang sama dengan kode akses: server menerima
@@ -1412,14 +1461,17 @@ async function verifikasiTokenUrl() {
   const t = new URLSearchParams(location.search).get('token');
   if (!t) return;
   history.replaceState(null, '', location.pathname);
+  // Dua bentuk token di URL: su1.* = verifikasi signup, selain itu = magic
+  // link sign-in. Keduanya bermuara ke satu pintu sesi yang sama.
+  const jalur = t.startsWith('su1.') ? '/api/auth/verify-signup' : '/api/auth/verify';
   try {
-    const res = await fetch('/api/auth/verify', {
+    const res = await fetch(jalur, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: t }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'This sign-in link is invalid or expired.');
+    if (!res.ok) throw new Error(data.error || 'This link is invalid or expired.');
     token = data.sesi;
     localStorage.setItem(TOKEN_KEY, data.sesi);
     try { localStorage.removeItem(DEMO_KEY); } catch {}

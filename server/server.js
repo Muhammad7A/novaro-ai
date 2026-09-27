@@ -64,7 +64,7 @@ import { modulPraktikTerverifikasi } from './lib/praktik.js';
 import { adaLatihan, periksa, sanitasiLatihanAI, soalPublik } from './lib/latihan.js';
 import { GalatMutasi, store } from './lib/store.js';
 import { tolakTopik } from './lib/batas-topik.js';
-import { FORMAT_TOKEN_SESI, emailSah, tokenBaru } from './lib/autentikasi.js';
+import { FORMAT_TOKEN_SESI, bukaTokenSignup, emailSah, hashPermintaan, signupTersedia, terbitkanTokenSignup, tokenBaru } from './lib/autentikasi.js';
 import { kirimSurel } from './lib/surel.js';
 import { PENYEDIA_OAUTH, penyediaSiap, urlOtorisasi, uriPanggilanBalik } from './lib/oauth.js';
 import { KODE_DEMO, isiDemoPenuh, lanjutkanDemo, personaDemo, PERSONA_DEMO } from './lib/demo-data.js';
@@ -732,11 +732,123 @@ app.post('/api/auth/verify', async (req, res) => {
   res.json(await payloadMasuk(user, { sesi }));
 });
 
+/* --------------------------------------- Pendaftaran mandiri (W1 exit gap) */
+
+/**
+ * Pembatas ketat permintaan signup — DUA lapis di memori proses (pola
+ * batasMagicLink): per IP 5 / 15 menit, per hash surel 3 / jam. Pendaftaran
+ * membuat rekam — pintunya tidak boleh dipakai menumbuhkan basis data.
+ */
+const batasSignup = (() => {
+  const JENDELA_IP_MS = 15 * 60 * 1000;
+  const MAKS_IP = 5;
+  const JENDELA_EMAIL_MS = 60 * 60 * 1000;
+  const MAKS_EMAIL = 3;
+  const perIp = new Map();
+  const perEmail = new Map();
+  const bersih = setInterval(() => {
+    const batas = Date.now() - JENDELA_EMAIL_MS;
+    for (const [k, waktu] of perIp) if (waktu.at(-1) < batas) perIp.delete(k);
+    for (const [k, waktu] of perEmail) if (waktu.at(-1) < batas) perEmail.delete(k);
+  }, 10 * 60 * 1000);
+  bersih.unref?.();
+  return {
+    ip(ip) {
+      const sekarang = Date.now();
+      const daftar = (perIp.get(ip) ?? []).filter((t) => t > sekarang - JENDELA_IP_MS);
+      if (daftar.length >= MAKS_IP) return false;
+      daftar.push(sekarang);
+      perIp.set(ip, daftar);
+      return true;
+    },
+    email(hash) {
+      const sekarang = Date.now();
+      const daftar = (perEmail.get(hash) ?? []).filter((t) => t > sekarang - JENDELA_EMAIL_MS);
+      if (daftar.length >= MAKS_EMAIL) return false;
+      daftar.push(sekarang);
+      perEmail.set(hash, daftar);
+      return true;
+    },
+  };
+})();
+
+const PESAN_SIGNUP =
+  'Check your email to finish creating your account. The link works once and expires in 15 minutes.';
+
+app.post('/api/auth/request-signup', async (req, res) => {
+  if (!signupTersedia()) {
+    return res.status(503).json({ error: 'Self-serve signup is not enabled on this server.' });
+  }
+  if (!batasSignup.ip(req.ip ?? 'tak-dikenal')) {
+    return res.status(429).json({ error: 'Too many signup requests. Please wait a few minutes.' });
+  }
+  const email = emailSah(req.body?.email);
+  if (!email) return res.status(400).json({ error: 'Enter a valid email address.' });
+
+  const requestHash = hashPermintaan(email);
+  if (!batasSignup.email(requestHash)) {
+    // Respons 429 yang sama — rate limit per surel tidak boleh bisa dibedakan dari per IP.
+    return res.status(429).json({ error: 'Too many signup requests. Please wait a few minutes.' });
+  }
+
+  // Pending identity: rekam BELUM terverifikasi (atau akun lama — yang hanya
+  // mencatat sinyal keamanannya). Respons tetap sama rata; keberadaan akun
+  // tidak boleh bisa dihitung dari jawaban.
+  const { userId, sudah } = await store.mulaiSignup(email, requestHash);
+  await store.logEvent(userId, 'signup_requested', { requestHash });
+
+  // Akun yang sudah terverifikasi tidak menerima token baru — permintaan
+  // ulangnya tercatat sebagai sinyal keamanan, titik. Respons tetap netral.
+  const token = sudah ? null : terbitkanTokenSignup(email);
+  const respons = { ok: true, message: PESAN_SIGNUP };
+  /*
+   * TIDAK ADA pengiriman surel nyata di wave ini. Tautan verifikasi HANYA
+   * muncul di respons saat NOVA_DEV_MODE=1 (pengembangan/demo lokal). Di
+   * produksi tanpa SMTP tautan tidak pernah keluar dari server — respons
+   * tetap netral dan tidak membocorkan keberadaan akun mana pun.
+   */
+  if (token && process.env.NOVA_DEV_MODE === '1') {
+    respons.devLink = `${baseUrl(req)}/?token=${token}`;
+  }
+  res.json(respons);
+});
+
+app.post('/api/auth/verify-signup', async (req, res) => {
+  const token = String(req.body?.token ?? '').trim();
+  let email;
+  try {
+    ({ email } = bukaTokenSignup(token));
+  } catch (err) {
+    // Menebak token signup melewati pagar yang sama dengan menebak kode.
+    await catatGagal(req.ip ?? 'tak-dikenal', '/api/auth/verify-signup');
+    return res.status(err?.status ?? 401).json({ error: err?.message ?? 'This signup link is not valid.' });
+  }
+  let hasil;
+  try {
+    hasil = await store.verifikasiSignup(email);
+  } catch (err) {
+    if (err instanceof GalatMutasi) {
+      return res.status(err.status).json({ error: err.message, kode: err.kode });
+    }
+    throw err;
+  }
+  if (!hasil) {
+    await catatGagal(req.ip ?? 'tak-dikenal', '/api/auth/verify-signup');
+    return res.status(401).json({ error: 'This signup link is not valid. Request a new one.' });
+  }
+  const { user, sesi } = hasil;
+  await store.logEvent(user.id, 'login');
+  // Consent v5 tampil di langkah pertama: /api/me membawa teks persetujuan
+  // selama user.consent masih kosong — jalur yang sama dengan semua akun.
+  res.json(await payloadMasuk(user, { sesi }));
+});
+
 /** Jalur masuk apa saja yang tersedia — dipakai layar depan menyusun pilihan yang jujur. */
 app.get('/api/auth/methods', (req, res) => {
   res.json({
     kode: true,
     magicLink: true,
+    signup: signupTersedia(),
     oauth: { google: penyediaSiap('google', punyaPublicHost() ? hostTujuan(req) : null) },
   });
 });

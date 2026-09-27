@@ -23,7 +23,7 @@
  * pelipatan huruf besar (base64url peka kapital; hashCode milik kode akses
  * melipat karena kode memang huruf besar semua).
  */
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 /** Umur tautan ajaib: 15 menit — cukup untuk menyalin dari surel, cukup pendek untuk tidak menjadi kredensial kedua yang berumur panjang. */
 export const TTL_MAGIC_LINK_MS = 15 * 60 * 1000;
@@ -85,3 +85,100 @@ export function entriMagicLink(token, kini = Date.now()) {
 
 export const magicLinkHidup = (m, kini = Date.now()) =>
   !m.dipakai && new Date(m.kedaluwarsa).getTime() > kini;
+
+/* ------------------------------------------- Token verifikasi signup (W1) */
+
+/**
+ * Token verifikasi pendaftaran mandiri — HMAC bernegara-minimal, disiplin
+ * yang sama dengan lib/proposal.js (awalan versi + payload base64url + mac
+ * hex, TTL pendek, galat bertipe) — DITULIS DI SINI, modul autentikasi,
+ * BUKAN modul kripto kedua: kredensial auth punya satu rumah.
+ *
+ *   su1.<base64url payload>.<hex hmac-sha256>
+ *   payload: { v: 1, email, iat, exp, jti }
+ *
+ * Bedanya dengan token proposal: email ikut DI DALAM payload — token tiba
+ * hanya di milik surel itu, dan verifikasi tak perlu mencari keadaan
+ * penerbitan. Sekali-pakai dengan label jujur: jti TIDAK disimpan di
+ * mana pun — bukti konsumsinya adalah `emailVerifiedAt` terisi pada akun
+ * (keberadaan baris, pola proposal §21.4); putaran kedua = 409 duplikat.
+ */
+export const TOKEN_SIGNUP_VER = 1;
+export const PREFIX_TOKEN_SIGNUP = `su${TOKEN_SIGNUP_VER}`;
+export const TTL_SIGNUP_MS = 15 * 60 * 1000;
+
+/** Gerbang fitur signup: rahasia HMAC dari env; tanpanya fitur OFF fail-closed. */
+export function rahasiaSignup() {
+  const r = (process.env.NOVA_SIGNUP_SECRET ?? '').trim();
+  return r ? r : null;
+}
+
+export function signupTersedia() {
+  return rahasiaSignup() !== null;
+}
+
+/** requestHash = HMAC-SHA256(email, rahasia) — unreversible tanpa rahasia, aman untuk jejak/ekspor anonim. */
+export function hashPermintaan(email) {
+  return createHmac('sha256', rahasiaSignup() ?? '').update(String(email).toLowerCase()).digest('hex');
+}
+
+const hexSama = (a, b) =>
+  a.length === b.length && timingSafeEqual(Buffer.from(a, 'hex'), Buffer.from(b, 'hex'));
+
+const galatToken = (kode, pesan) => {
+  const e = new Error(pesan);
+  e.kode = kode;
+  e.status = 401;
+  return e;
+};
+
+/**
+ * Menerbitkan token verifikasi untuk satu surel — atau null bila rahasia
+ * belum dipasang (pemanggil memperlakukan null sebagai fitur off).
+ */
+export function terbitkanTokenSignup(email, { kini = Date.now() } = {}) {
+  const rahasia = rahasiaSignup();
+  if (!rahasia) return null;
+  const iat = kini;
+  const payload = {
+    v: TOKEN_SIGNUP_VER,
+    email: String(email).toLowerCase(),
+    iat,
+    exp: iat + TTL_SIGNUP_MS,
+    jti: randomBytes(12).toString('hex'),
+  };
+  const body = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  const mac = createHmac('sha256', rahasia).update(`${PREFIX_TOKEN_SIGNUP}.${body}`).digest('hex');
+  return `${PREFIX_TOKEN_SIGNUP}.${body}.${mac}`;
+}
+
+/**
+ * Membuka token verifikasi: bentuk, versi, HMAC, kedaluwarsa. TIDAK memeriksa
+ * konsumsi — keberadaan `emailVerifiedAt` adalah urusan mutator store.
+ *
+ * @returns {{email: string, exp: number}}
+ * @throws {Error} kode 'token-tak-sah' | 'token-kedaluwarsa' (status 401)
+ */
+export function bukaTokenSignup(token, { kini = Date.now() } = {}) {
+  const bagian = String(token ?? '').split('.');
+  if (bagian.length !== 3 || bagian[0] !== PREFIX_TOKEN_SIGNUP || !bagian[1] || !bagian[2]) {
+    throw galatToken('token-tak-sah', 'This signup link is not valid. Request a new one.');
+  }
+  const mac = createHmac('sha256', rahasiaSignup() ?? '').update(`${bagian[0]}.${bagian[1]}`).digest('hex');
+  if (!hexSama(bagian[2], mac)) {
+    throw galatToken('token-tak-sah', 'This signup link is not valid. Request a new one.');
+  }
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.from(bagian[1], 'base64url').toString('utf8'));
+  } catch {
+    throw galatToken('token-tak-sah', 'This signup link is not valid. Request a new one.');
+  }
+  if (payload?.v !== TOKEN_SIGNUP_VER || !emailSah(payload.email)) {
+    throw galatToken('token-tak-sah', 'This signup link is not valid. Request a new one.');
+  }
+  if (typeof payload.exp !== 'number' || kini > payload.exp) {
+    throw galatToken('token-kedaluwarsa', 'This signup link has expired. Request a new one.');
+  }
+  return { email: payload.email, exp: payload.exp };
+}

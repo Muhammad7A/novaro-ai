@@ -680,40 +680,63 @@ export const store = {
   },
 
   async createUser({ name, business = '', batch = '' }) {
-    const code = generateAccessCode();
-    const user = {
-      id: `usr_${randomBytes(6).toString('hex')}`,
-      name,
-      business,
-      batch: normalBatch(batch),
-      codeHash: hashCode(code),
-      createdAt: new Date().toISOString(),
-      profile: null,
-      /*
-       * Tanggal mulai jalur belajar, ditetapkan pendamping — BUKAN createdAt.
-       * Peserta didaftarkan berhari-hari sebelum pendampingan, dan B2 menyusul
-       * jauh di belakang B1; memulai hitungan sendiri saat pendaftaran berarti
-       * hari ke-1 seseorang bisa jatuh sebelum pre-test-nya sendiri.
-       */
-      recommendations: null,
-      chat: [],
-      transactions: [],
-      progress: {},
-      events: [], // append-only: "apa yang terjadi, kapan"
-      usage: { requests: 0, inputTokens: 0, outputTokens: 0 },
-      // Riwayat nasihat (Sesi G — memori advisori): append-only, trim per jenis.
-      // Pengguna lama tanpa medan ini tetap sah — jalur tulis mengisi apa adanya.
-      advisori: [],
-      // Stempel skema fitur (M1-lite): metadata era bentuk data, set-if-absent.
-      // Tidak pernah menjadi penentu perilaku — jalur baca memutuskan dari
-      // medan baris, bukan dari stempel.
-      featureVersions: {},
-    };
+    const { user, accessCode: code } = bentukPenggunaBaru({ name, business, batch });
     await update((db) => {
       db.users.push(user);
       pushEvent(user, 'user_created', user.batch ? { batch: user.batch } : undefined);
     });
     return { user, accessCode: code }; // kode hanya bisa dilihat sekali, di sini
+  },
+
+  /**
+   * Pendaftaran mandiri (self-serve signup, W1 exit gap #1) — identitas
+   * PENDING: rekam pengguna lahir BELUM terverifikasi di sini, dan
+   * verifikasinya (verifikasiSignup) yang mengangkat `emailVerifiedAt`.
+   *
+   * Single-use dengan label jujur (disiplin jti = keberadaan baris di
+   * lib/proposal.js): sekali pakai token = keberadaan verifikasi itu sendiri
+   * — putaran kedua menemukan `emailVerifiedAt` terisi dan ditolak 409.
+   * Respons rute tetap NETRAL untuk surel yang sudah berakun — keberadaan
+   * akun tidak boleh bisa dihitung dari bedanya jawaban; yang terjadi di
+   * baliknya: akun lama hanya mencatat signup_requested (sinyal keamanan),
+   * tanpa rekam baru, tanpa token baru yang berarti.
+   *
+   * @returns {{userId: string, sudah: boolean}} sudah = email terverifikasi (akun lama)
+   */
+  async mulaiSignup(email, requestHash) {
+    return update((db) => {
+      let user = db.users.find((u) => u.email === email);
+      if (!user) {
+        user = bentukPenggunaBaru({ name: '', business: '', batch: '' }).user;
+        user.email = email;
+        db.users.push(user);
+        pushEvent(user, 'user_created');
+      }
+      return { userId: user.id, sudah: Boolean(user.emailVerifiedAt) };
+    });
+  },
+
+  /**
+   * Mengonsumsi verifikasi signup: mengangkat `emailVerifiedAt`, mencatat
+   * signup_verified {userId}, dan menerbitkan sesi pertama — persis pola
+   * konsumsiMagicLink. Satu-satunya jalan menaikkan verified dari jalur
+   * signup; jalur magic-link/kode akses tidak tersentuh.
+   *
+   * @returns {{user: object, sesi: object}|null} null = akunnya lenyap
+   * @throws {GalatMutasi} duplikat (409) bila sudah terverifikasi — replay
+   */
+  async verifikasiSignup(email) {
+    return update((db) => {
+      const user = db.users.find((u) => u.email === email);
+      if (!user) return null;
+      if (user.emailVerifiedAt) {
+        throw new GalatMutasi('duplikat', 409, 'This signup link was already used. Sign in instead.');
+      }
+      user.emailVerifiedAt = new Date().toISOString();
+      pushEvent(user, 'signup_verified', { userId: user.id });
+      const sesi = terbitkanSesiPada(user, 'signup');
+      return { user: structuredClone(user), sesi };
+    });
   },
 
   /**
@@ -1311,6 +1334,44 @@ export const store = {
 };
 
 /* --------------------------------------------- Pembantu di dalam mutator */
+
+/**
+ * Bentuk awal satu pengguna baru — SATU sumber untuk dua pintu pembuatan:
+ * createUser (pendamping/CLI) dan mulaiSignup (pendaftaran mandiri). Dua
+ * pintu, satu bentuk — medan baru pada rekam pengguna cukup ditambah di sini.
+ */
+function bentukPenggunaBaru({ name, business = '', batch = '' }) {
+  const code = generateAccessCode();
+  const user = {
+    id: `usr_${randomBytes(6).toString('hex')}`,
+    name,
+    business,
+    batch: normalBatch(batch),
+    codeHash: hashCode(code),
+    createdAt: new Date().toISOString(),
+    profile: null,
+    /*
+     * Tanggal mulai jalur belajar, ditetapkan pendamping — BUKAN createdAt.
+     * Peserta didaftarkan berhari-hari sebelum pendampingan, dan B2 menyusul
+     * jauh di belakang B1; memulai hitungan sendiri saat pendaftaran berarti
+     * hari ke-1 seseorang bisa jatuh sebelum pre-test-nya sendiri.
+     */
+    recommendations: null,
+    chat: [],
+    transactions: [],
+    progress: {},
+    events: [], // append-only: "apa yang terjadi, kapan"
+    usage: { requests: 0, inputTokens: 0, outputTokens: 0 },
+    // Riwayat nasihat (Sesi G — memori advisori): append-only, trim per jenis.
+    // Pengguna lama tanpa medan ini tetap sah — jalur tulis mengisi apa adanya.
+    advisori: [],
+    // Stempel skema fitur (M1-lite): metadata era bentuk data, set-if-absent.
+    // Tidak pernah menjadi penentu perilaku — jalur baca memutuskan dari
+    // medan baris, bukan dari stempel.
+    featureVersions: {},
+  };
+  return { user, accessCode: code };
+}
 
 /*
  * Bentuk sah satu baris buku kas. Konstanta di sini adalah KONTRAK, bukan

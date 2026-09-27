@@ -89,6 +89,13 @@ export const SKEMA_JEJAK = {
    * saat penutupan, tercatat jujur); coverage ikut bila ada. perArea TIDAK
    * masuk jejak (area = string sidecar) — ia tinggal di user.examiner. */
   interview_examined: { intakeId: 'id', verdict: 'kata', 'coverage?': 'angka?' },
+  /* Pendaftaran mandiri (W1 exit gap #1): DILARANG email/PII masuk jejak.
+   * requestHash = HMAC-SHA256(email, NOVA_SIGNUP_SECRET) — unreversible
+   * tanpa rahasia, jadi aman ikut ekspor anonim; ia menghubungkan permintaan
+   * dengan rekamnya TANPA pernah menyebut surelnya. signup_verified tinggal
+   * id pengguna — surelnya sendiri tinggal di user.email (tempatnya). */
+  signup_requested: { requestHash: 'id' },
+  signup_verified: { userId: 'id' },
   /* Rel proposal T1 surface #1 (scan-nota; addendum §25 2026-09-12).
    * proposal_shown: usulan tampil di layar — id + tingkat keyakinan tutup
    * ('ok'|'warning'|'low'), menunggangi tulisan usage rute scan. TANPA delta
