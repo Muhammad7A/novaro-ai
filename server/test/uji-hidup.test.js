@@ -149,11 +149,13 @@ test('rekamRekomendasi gagal jujur: slot hilang, butir kosong, status bukan 200'
 
 /* ------------------- Rung proposal (fase 5, tanpa panggilan live) -------- */
 
-test('gambarNotaUji: PNG sah deterministik — magic, ukuran, byte-identik', () => {
+test('gambarNotaUji: PNG sah deterministik — magic, ukuran, byte-identik, piksel bervariasi', () => {
   const a = gambarNotaUji();
   const b = gambarNotaUji();
   assert.equal(a.slice(0, 8).toString('hex'), '89504e470d0a1a0a', 'magic PNG');
-  assert.ok(a.length > 50 && a.length < 500, 'kecil dan tetap sah');
+  // 256x128 gradien: Vertex/Gemini menolak fixture 64x32 nyaris-polos dengan
+  // "Provided image is not valid" (2026-09-28) — batas bawah naik bersadarkan.
+  assert.ok(a.length > 1000 && a.length < 50000, 'cukup berisi untuk provider, tetap kecil');
   assert.deepEqual(a, b, 'deterministik — artefak rung bisa dibandingkan');
 });
 

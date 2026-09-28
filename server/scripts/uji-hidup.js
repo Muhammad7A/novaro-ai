@@ -438,7 +438,7 @@ async function langkahRekomendasi(base, kode, timeoutMs) {
  * replay), bukan kualitas OCR — sanitasiHasilNota tidak pernah menolak hasil
  * kosong, jadi citra polos pun menghasilkan usulan bertoken.
  */
-export function gambarNotaUji(lebar = 64, tinggi = 32) {
+export function gambarNotaUji(lebar = 256, tinggi = 128) {
   const crc = (buf) => {
     let c, tabel = crc.tabel ?? (crc.tabel = Array.from({ length: 256 }, (_, n) => {
       c = n;
@@ -463,7 +463,21 @@ export function gambarNotaUji(lebar = 64, tinggi = 32) {
   ihdr.writeUInt32BE(tinggi, 4);
   ihdr[8] = 8;  // kedalaman bit
   ihdr[9] = 0;  // grayscale
-  const mentah = Buffer.alloc(tinggi * (1 + lebar), 0xee); // baris filter-0 + piksel abu muda
+  /*
+   * Gradien deterministik, bukan bidang seragam: Vertex/Gemini menolak gambar
+   * yang nyaris kosong dengan "Provided image is not valid" (bukti rung
+   * 2026-09-28, revisi novaexplorer-next-00002-nl4). Piksel bervariasi supaya
+   * fixture ini diterima provider sungguhan, dan tetap deterministik supaya
+   * artefak rung bisa dibandingkan antar-eksekusi.
+   */
+  const mentah = Buffer.alloc(tinggi * (1 + lebar));
+  let p = 0;
+  for (let y = 0; y < tinggi; y++) {
+    mentah[p++] = 0; // filter baris 0
+    for (let x = 0; x < lebar; x++) {
+      mentah[p++] = (x * 3 + y * 5 + ((x * y) >> 3)) & 0xff;
+    }
+  }
   const idat = deflateSync(mentah);
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
@@ -880,10 +894,12 @@ export async function jalankanUji(sasaran) {
     ? sesudah.mingguan.terpakai - sebelum.mingguan.terpakai
     : null;
 
-  if (langkahAi.lulus) {
+  if (langkahAi.lulus && !langkahAi.skipped) {
     // Server tidak mengirim pemisahan input/output ke klien — yang bisa
     // direkam adalah DELTA penghitung anggarannya sendiri (hitungToken).
     // Itu bukti dari sisi server bahwa provider benar-benar dipakai.
+    // Langkah yang di-SKIP (mis. interviu saat sidecar off) sengaja tidak
+    // dicek: tidak ada pemakaian provider memang perilaku yang benar.
     langkahAi.tokenTerpakai = {
       harian: pakaiHarian,
       mingguan: pakaiMingguan,
