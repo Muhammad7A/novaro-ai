@@ -96,6 +96,11 @@ export const SKEMA_JEJAK = {
    * id pengguna — surelnya sendiri tinggal di user.email (tempatnya). */
   signup_requested: { requestHash: 'id' },
   signup_verified: { userId: 'id' },
+  /* Klik headline berita (W1 news feed): kategori = SEKTOR pengguna bila
+   * headline cocok sektornya, selain itu 'umum' — kosakata tertutup.
+   * Judul, URL, dan sumber TIDAK PERNAH masuk jejak (news bukan permukaan
+   * AI; klik adalah fakta perilaku contentless). */
+  news_klik: { kategori: 'kata' },
   /* Rel proposal T1 surface #1 (scan-nota; addendum §25 2026-09-12).
    * proposal_shown: usulan tampil di layar — id + tingkat keyakinan tutup
    * ('ok'|'warning'|'low'), menunggangi tulisan usage rute scan. TANPA delta

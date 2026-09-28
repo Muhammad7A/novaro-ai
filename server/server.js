@@ -60,6 +60,7 @@ import { bulanCheckpoint, catatTindakAdvisori, evaluasiTertunda } from './lib/ad
 import { deteksiKonteks } from './lib/deteksi.js';
 import { buatIdProposal, proposalScanAktif, terbitkanToken } from './lib/proposal.js';
 import { kirimJawaban, mulaiInterviu, panggilExaminer, barisCoverageKonteks, sidecarTersedia } from './lib/interview.js';
+import { ambilPool, newsAktif, sektorKlik, susunBerita } from './lib/news.js';
 import { modulPraktikTerverifikasi } from './lib/praktik.js';
 import { adaLatihan, periksa, sanitasiLatihanAI, soalPublik } from './lib/latihan.js';
 import { GalatMutasi, store } from './lib/store.js';
@@ -1128,6 +1129,44 @@ app.get('/api/fokus', authenticate, async (req, res) => {
  * Ringkasan nasihat tetap membawa stempel asal-usulnya (sumber/model) —
  * teks AI tidak pernah melewati rute ini tanpa label.
  */
+/* ----------------------------------------------------- News feed (W1) */
+
+/**
+ * Pool headline berita — SATU pool untuk semua pengguna (TTL 15 menit),
+ * urutan per profil. News BUKAN permukaan AI: headline verbatim dari feed,
+ * tanpa ringkasan, tanpa tulisan ulang. Tanpa profil = broad global.
+ * Fitur mati / semua feed gagal → 'unavailable' yang jujur, items kosong.
+ */
+app.get('/api/news', authenticate, requireConsent, async (req, res) => {
+  const pool = newsAktif() ? await ambilPool() : { status: 'unavailable', items: [] };
+  if (pool.status !== 'ok') {
+    return res.json({ status: 'unavailable', mode: req.user.profile ? 'tailored' : 'broad', items: [] });
+  }
+  res.json({
+    status: 'ok',
+    mode: req.user.profile ? 'tailored' : 'broad',
+    items: susunBerita(pool.items, req.user.profile).map((h) => ({
+      id: h.id, title: h.title, source: h.source, publishedAt: h.publishedAt, url: h.url,
+    })),
+  });
+});
+
+/**
+ * Klik satu headline: catat fakta perilaku SEKTOR (contentless — judul
+ * tidak pernah masuk jejak) lalu arahkan ke sumber aslinya. Item tak
+ * dikenal → 404 TANPA redirect liar. Dipanggil peramban dengan Bearer
+ * (fetch redirect-manual lalu buka location) — pengalihan tetap 302.
+ */
+app.get('/api/news/:id/klik', authenticate, requireConsent, async (req, res) => {
+  const pool = newsAktif() ? await ambilPool() : { status: 'unavailable', items: [] };
+  const item = pool.items.find((h) => h.id === req.params.id);
+  if (!item) {
+    return res.status(404).json({ error: 'Headline not found in the current pool.' });
+  }
+  await store.logEvent(req.user.id, 'news_klik', { kategori: sektorKlik(item, req.user.profile) });
+  res.redirect(302, item.url);
+});
+
 app.get('/api/advisori/riwayat', authenticate, requireConsent, async (req, res) => {
   try {
     // Checkpoint dulu, supaya riwayat yang dikembalikan sudah memuat hasil
