@@ -1,0 +1,170 @@
+{
+  "alat": "uji-hidup",
+  "versiAlat": "1.0.0",
+  "schemaVersi": 1,
+  "mulai": "2026-09-28T22:49:23.542Z",
+  "hasil": "LULUS",
+  "ruteAi": "checkup",
+  "sasaran": {
+    "baseUrl": "https://novaexplorer-next-ta2323emhq-et.a.run.app",
+    "layanan": "novaexplorer-next",
+    "region": "asia-southeast2",
+    "project": "project-421f02fa-4c0b-4b27-b30",
+    "revision": "novaexplorer-next-00002-nl4"
+  },
+  "identitasRuntime": {
+    "serviceAccount": "532597100979-compute@developer.gserviceaccount.com",
+    "sumber": "gcloud run services describe (baca-saja)",
+    "peran": [
+      "roles/aiplatform.user",
+      "roles/artifactregistry.writer",
+      "roles/cloudsql.client",
+      "roles/developerconnect.readTokenAccessor",
+      "roles/iam.serviceAccountUser",
+      "roles/logging.logWriter",
+      "roles/run.admin",
+      "roles/secretmanager.secretAccessor",
+      "roles/storage.objectAdmin",
+      "roles/storage.objectViewer"
+    ],
+    "roles/aiplatform.user": true,
+    "apiVertexAktif": true
+  },
+  "konfigurasiTerbaca": {
+    "env": {
+      "NODE_ENV": "production",
+      "NOVA_AI_BACKEND": "gemini",
+      "CLOUD_ML_REGION": "us-central1"
+    },
+    "envLainHanyaNama": [
+      {
+        "nama": "TZ",
+        "secret": false
+      },
+      {
+        "nama": "LOG_FORMAT",
+        "secret": false
+      },
+      {
+        "nama": "NOVA_DATA_DIR",
+        "secret": false
+      },
+      {
+        "nama": "GOOGLE_CLOUD_PROJECT",
+        "secret": false
+      },
+      {
+        "nama": "ANTHROPIC_API_KEY",
+        "secret": true
+      }
+    ],
+    "catatan": "nilai env lain sengaja TIDAK direkam; secret hanya dicatat sebagai nama"
+  },
+  "langkah": {
+    "kesehatan": {
+      "langkah": "kesehatan",
+      "lulus": true,
+      "status": 200,
+      "ms": 330,
+      "model": "gemini-2.5-flash",
+      "aiConfigured": true,
+      "penyimpanan": {
+        "jenis": "json",
+        "baca": "ok",
+        "tulis": "ok",
+        "peserta": 20
+      }
+    },
+    "demo": {
+      "langkah": "demo",
+      "lulus": true,
+      "status": 200,
+      "ms": 175,
+      "demoUserId": "usr_f7d0ad301afa",
+      "akunDemo": "Lark & Ember Coffee Roasters",
+      "anggaranSebelum": {
+        "harian": {
+          "terpakai": 0,
+          "batas": 60000,
+          "sisa": 60000
+        },
+        "mingguan": {
+          "terpakai": 0,
+          "batas": 300000,
+          "sisa": 300000
+        },
+        "sisa": 60000,
+        "hariIni": "2026-09-29",
+        "mingguMulai": "2026-09-28"
+      },
+      "kode": "DIREDAKSI — kode akses tidak pernah direkam"
+    },
+    "checkup": {
+      "langkah": "checkup",
+      "lulus": true,
+      "status": 200,
+      "ms": 3073,
+      "hasil": {
+        "item": [
+          {
+            "tipe": "ok",
+            "teks": "Your financial health score is very healthy at 92/100, reflecting strong business practices."
+          },
+          {
+            "tipe": "ok",
+            "teks": "Your net profit margin of 15.5% is healthy, contributing 22/30 to your financial health score."
+          },
+          {
+            "tipe": "ok",
+            "teks": "Your loan payments are safe at 13% of net profit, well below the 30% ceiling."
+          },
+          {
+            "tipe": "attention",
+            "teks": "Your recording habit shows 83 entries this month versus 91 last month, try to maintain consistency."
+          },
+          {
+            "tipe": "attention",
+            "teks": "Revenue is down 2.4% compared to the previous month, consider strategies to boost sales."
+          }
+        ],
+        "insight": "Focus on identifying why revenue dipped slightly this month and explore ways to increase sales while maintaining your efficient operating expenses."
+      },
+      "anggaranSesudah": {
+        "harian": {
+          "terpakai": 909,
+          "batas": 60000,
+          "sisa": 59091
+        },
+        "mingguan": {
+          "terpakai": 909,
+          "batas": 300000,
+          "sisa": 299091
+        },
+        "sisa": 59091,
+        "hariIni": "2026-09-29",
+        "mingguMulai": "2026-09-28"
+      },
+      "tokenTerpakai": {
+        "harian": 909,
+        "mingguan": 909,
+        "sumber": "anggaran server sebelum/sesudah (hitungToken)"
+      }
+    }
+  },
+  "perkiraanBiaya": {
+    "usd": 0.002273,
+    "idrPerkiraan": 37,
+    "tarif": {
+      "input": 0.3,
+      "output": 2.5,
+      "cacheBuat": 0,
+      "cacheBaca": 0.3,
+      "asal": "Google — Gemini 2.5 Flash, tarif standar Vertex AI/Gemini API",
+      "asOf": "2026-09-11",
+      "catatan": "cache_read dihargai setara input (diskon cache tidak diterapkan — batas atas)"
+    },
+    "basis": "delta anggaran 909 token unit-anggaran, dihargai dengan tarif output"
+  },
+  "catatan": [],
+  "selesai": "2026-09-28T22:49:35.876Z"
+}

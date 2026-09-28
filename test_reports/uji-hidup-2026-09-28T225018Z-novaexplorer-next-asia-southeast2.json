@@ -1,0 +1,113 @@
+{
+  "alat": "uji-hidup",
+  "versiAlat": "1.0.0",
+  "schemaVersi": 1,
+  "mulai": "2026-09-28T22:50:08.519Z",
+  "hasil": "GAGAL",
+  "ruteAi": "proposal",
+  "sasaran": {
+    "baseUrl": "https://novaexplorer-next-ta2323emhq-et.a.run.app",
+    "layanan": "novaexplorer-next",
+    "region": "asia-southeast2",
+    "project": "project-421f02fa-4c0b-4b27-b30",
+    "revision": "novaexplorer-next-00002-nl4"
+  },
+  "identitasRuntime": {
+    "serviceAccount": "532597100979-compute@developer.gserviceaccount.com",
+    "sumber": "gcloud run services describe (baca-saja)",
+    "peran": [
+      "roles/aiplatform.user",
+      "roles/artifactregistry.writer",
+      "roles/cloudsql.client",
+      "roles/developerconnect.readTokenAccessor",
+      "roles/iam.serviceAccountUser",
+      "roles/logging.logWriter",
+      "roles/run.admin",
+      "roles/secretmanager.secretAccessor",
+      "roles/storage.objectAdmin",
+      "roles/storage.objectViewer"
+    ],
+    "roles/aiplatform.user": true,
+    "apiVertexAktif": true
+  },
+  "konfigurasiTerbaca": {
+    "env": {
+      "NODE_ENV": "production",
+      "NOVA_AI_BACKEND": "gemini",
+      "CLOUD_ML_REGION": "us-central1"
+    },
+    "envLainHanyaNama": [
+      {
+        "nama": "TZ",
+        "secret": false
+      },
+      {
+        "nama": "LOG_FORMAT",
+        "secret": false
+      },
+      {
+        "nama": "NOVA_DATA_DIR",
+        "secret": false
+      },
+      {
+        "nama": "GOOGLE_CLOUD_PROJECT",
+        "secret": false
+      },
+      {
+        "nama": "ANTHROPIC_API_KEY",
+        "secret": true
+      }
+    ],
+    "catatan": "nilai env lain sengaja TIDAK direkam; secret hanya dicatat sebagai nama"
+  },
+  "langkah": {
+    "kesehatan": {
+      "langkah": "kesehatan",
+      "lulus": true,
+      "status": 200,
+      "ms": 209,
+      "model": "gemini-2.5-flash",
+      "aiConfigured": true,
+      "penyimpanan": {
+        "jenis": "json",
+        "baca": "ok",
+        "tulis": "ok",
+        "peserta": 20
+      }
+    },
+    "demo": {
+      "langkah": "demo",
+      "lulus": true,
+      "status": 200,
+      "ms": 195,
+      "demoUserId": "usr_ef8b2310dd18",
+      "akunDemo": "Ember & Oak Candle Co.",
+      "anggaranSebelum": {
+        "harian": {
+          "terpakai": 0,
+          "batas": 60000,
+          "sisa": 60000
+        },
+        "mingguan": {
+          "terpakai": 0,
+          "batas": 300000,
+          "sisa": 300000
+        },
+        "sisa": 60000,
+        "hariIni": "2026-09-29",
+        "mingguMulai": "2026-09-28"
+      },
+      "kode": "DIREDAKSI — kode akses tidak pernah direkam"
+    },
+    "proposal": {
+      "langkah": "proposal",
+      "lulus": false,
+      "status": 400,
+      "ms": 1651,
+      "alasan": "status 400"
+    }
+  },
+  "perkiraanBiaya": null,
+  "catatan": [],
+  "selesai": "2026-09-28T22:50:18.032Z"
+}
