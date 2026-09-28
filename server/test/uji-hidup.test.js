@@ -12,7 +12,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { parseDeployLog, perkiraanBiaya, potong, rekamExaminerRiwayat, rekamInterviuMulai, rekamInterviuSelesai, rekamProposalKonfirmasi, rekamProposalReplay, rekamProposalScan, rekamRekomendasi, saringEnv, gambarNotaUji } from '../scripts/uji-hidup.js';
+import { bacaArgv, parseDeployLog, perkiraanBiaya, potong, rekamExaminerRiwayat, rekamInterviuMulai, rekamInterviuSelesai, rekamProposalKonfirmasi, rekamProposalReplay, rekamProposalScan, rekamRekomendasi, saringEnv, gambarNotaUji } from '../scripts/uji-hidup.js';
 
 test('import uji-hidup tidak menjalankan apa pun (uji tetap tanpa jaringan)', () => {
   // Sengaja kosong: keberhasilan impor sendiri sudah buktinya — modul ini
@@ -234,4 +234,17 @@ test('rekamExaminerRiwayat: ok/insufficient lulus; unavailable gagal jujur; tanp
   assert.match(tak.alasan, /examiner sidecar/);
 
   assert.equal(rekamExaminerRiwayat({}).lulus, false);
+});
+
+test('bacaArgv tanpa --ai-route jatuh ke default chat (regresi CI 2026-09-28)', () => {
+  // Bug nyata: langkah uji-hidup di Cloud Build memanggil skrip ini TANPA
+  // --ai-route; nilai() mengembalikan undefined (bukan null), dan cek lama
+  // `rute !== null` melempar "diterima: undefined" setelah deploy sukses.
+  const opsi = bacaArgv(['node', 'uji-hidup.js', '--project', 'p', '--region', 'r', '--service', 's']);
+  assert.equal(opsi.aiRoute, 'chat', 'tanpa bendera, rung chat default, tanpa lemparan');
+
+  const eksplisit = bacaArgv(['node', 'uji-hidup.js', '--ai-route', 'proposal']);
+  assert.equal(eksplisit.aiRoute, 'proposal');
+
+  assert.throws(() => bacaArgv(['node', 'uji-hidup.js', '--ai-route', 'aneh']), /harus 'chat'/);
 });

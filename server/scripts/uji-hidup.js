@@ -921,7 +921,7 @@ function potongObjek(obj, n = 160) {
 
 /* ------------------------------------------------------------- CLI utama */
 
-function bacaArgv(argv) {
+export function bacaArgv(argv) {
   const opsi = {
     base: process.env.NOVA_BASE_URL ?? '',
     layanan: 'novaexplorer',
@@ -944,7 +944,9 @@ function bacaArgv(argv) {
   opsi.project = nilai('--project') ?? opsi.project;
   opsi.revision = nilai('--revision') ?? opsi.revision;
   const rute = nilai('--ai-route');
-  if (rute !== null) {
+  // `nilai` mengembalikan undefined saat bendera absen (bukan null): tanpa
+  // --ai-route, default 'chat' di atas yang berlaku. CI memanggil persis begitu.
+  if (rute !== undefined && rute !== null) {
     if (rute !== 'chat' && rute !== 'checkup' && rute !== 'rekomendasi' && rute !== 'proposal' && rute !== 'interview') {
       throw new Error(`--ai-route harus 'chat', 'checkup', 'rekomendasi', 'proposal', atau 'interview', diterima: ${rute}`);
     }
