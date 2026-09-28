@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Business Health Card — Novaro</title>
-<meta name="description" content="A shareable business health card powered by Novaro — a read-only summary of a US small business's financial health score, revenue, and profit from its daily cash book.">
+<title>Novaro Business Health Card</title>
+<meta name="description" content="A shareable business health card powered by Novaro: a read-only summary of a US small business's financial health score, revenue, and profit from its daily cash book.">
 <style>
 :root{
   --paper:#FBFBF7; --card:#FFFFFF; --ink:#1A1F2B; --ink-soft:#5A6478;
@@ -86,8 +86,8 @@ body{
   </div>
 
   <div class="footer">
-    <p>Created with <b>Novaro</b> — a bookkeeping companion for US small businesses.</p>
-    <p class="aksi">The numbers on this card are a read-only summary shared by the business owner — not an account. The full books are never shared.</p>
+    <p>Created with <b>Novaro</b>, a bookkeeping companion for US small businesses.</p>
+    <p class="aksi">The numbers on this card are a read-only summary shared by the business owner, not an account. The full books are never shared.</p>
   </div>
 </div>
 
@@ -106,7 +106,7 @@ const token = decodeURIComponent(location.pathname.split('/').pop() ?? '');
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const usd = (n) => n == null ? '—' : (n < 0 ? '-$' : '$') + new Intl.NumberFormat('en-US').format(Math.abs(Math.round(Number(n))));
+const usd = (n) => n == null ? 'n/a' : (n < 0 ? '-$' : '$') + new Intl.NumberFormat('en-US').format(Math.abs(Math.round(Number(n))));
 
 function tampil(k) {
   const skor = k.skorKesehatan ?? 0;
@@ -114,7 +114,7 @@ function tampil(k) {
   const terisi = (skor / 100) * panjang;
   const konsistensi = k.konsistensi?.hariBulan
     ? k.konsistensi.hariTercatat + ' of ' + k.konsistensi.hariBulan + ' days recorded this month'
-    : (k.periode.hariSejakMulai ? 'last ' + k.periode.hariSejakMulai + ' days of records' : '—');
+    : (k.periode.hariSejakMulai ? 'last ' + k.periode.hariSejakMulai + ' days of records' : 'n/a');
 
   document.getElementById('isi').innerHTML = `
     <div class="usaha">${esc(k.namaUsaha)}</div>
@@ -129,7 +129,7 @@ function tampil(k) {
       </div>
       <div>
         <div class="skor-label">Health Score</div>
-        <div class="skor-status">${esc(k.statusKesehatan ?? '—')}</div>
+        <div class="skor-status">${esc(k.statusKesehatan ?? 'n/a')}</div>
       </div>
     </div>
     <div class="baris"><span>Monthly-equivalent revenue</span><b>${usd(k.omzet)}</b></div>
@@ -143,8 +143,8 @@ function tampil(k) {
           : 'Notes from AI analysis')}</h4>
       <ul>${(k.insight ?? []).map((i) => `<li><span class="titik titik-${esc(i.prioritas ?? 'medium')}"></span><span>${esc(i.judul)}</span></li>`).join('')}</ul>
     </div>
-    <div class="periode">Data period: ${k.periode.hariSejakMulai || '—'} days of records${k.periode.bulanLengkap ? ', including at least one complete month' : ''}. Figures are ${k.sumberAngka === 'catatan' ? 'computed from the cash book' : 'still owner estimates'}.${k.insightSumber === 'ai' && k.insightDibuat ? ` AI analysis notes were generated ${new Date(k.insightDibuat).toLocaleDateString('en-US', { dateStyle: 'long' })}.` : ''} Card created ${new Date(k.dibuatPada).toLocaleDateString('en-US', { dateStyle: 'long' })}.</div>
-    <div class="disclaimer">Educational summary from your own records; entries labeled AI analysis are AI-generated and can be wrong — not a guarantee, not a credit decision. Loan decisions belong entirely to the lender.</div>`;
+    <div class="periode">Data period: ${k.periode.hariSejakMulai || 'n/a'} days of records${k.periode.bulanLengkap ? ', including at least one complete month' : ''}. Figures are ${k.sumberAngka === 'catatan' ? 'computed from the cash book' : 'still owner estimates'}.${k.insightSumber === 'ai' && k.insightDibuat ? ` AI analysis notes were generated ${new Date(k.insightDibuat).toLocaleDateString('en-US', { dateStyle: 'long' })}.` : ''} Card created ${new Date(k.dibuatPada).toLocaleDateString('en-US', { dateStyle: 'long' })}.</div>
+    <div class="disclaimer">Educational summary from your own records; entries labeled AI analysis are AI-generated and can be wrong. Not a guarantee, not a credit decision. Loan decisions belong entirely to the lender.</div>`;
 
   document.querySelector('.dial-fill').style.strokeDasharray = `${terisi} ${panjang}`;
 }

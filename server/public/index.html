@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Novaro — Finance Companion for Your Business</title>
+<title>Novaro: Finance Companion for Your Business</title>
 <meta name="description" content="Small-business finance companion: business profile, personal recommendations, and AI consulting grounded in your real numbers.">
 <meta name="robots" content="noindex, nofollow">
 <!--
@@ -750,7 +750,7 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
       <div class="form-error" id="signupError" style="display:none"></div>
       <button class="btn btn-primary" id="signupBtn" style="width:100%;justify-content:center;margin-top:14px" type="submit">Create my account</button>
       <p class="auth-hint" id="signupNote" style="display:none;word-break:break-all"></p>
-      <p class="auth-hint">You'll confirm this email with a one-time link, then pick your consent settings. Email is only used to sign you in — it never goes into your books or any AI prompt.</p>
+      <p class="auth-hint">You'll confirm this email with a one-time link, then pick your consent settings. Email is only used to sign you in. It never goes into your books or any AI prompt.</p>
     </form>
     <form id="loginForm" style="display:none">
       <input class="code-input" id="codeInput" placeholder="NOVA-XXXX-XXXX" autocomplete="one-time-code" aria-label="Access code" required>
@@ -758,8 +758,8 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
       <button class="btn btn-primary" id="loginBtn" style="width:100%;justify-content:center;margin-top:14px" type="submit">Sign in</button>
     </form>
     <div class="demo-divider"><span>or</span></div>
-    <button class="btn btn-ghost" id="demoBtn" style="width:100%;justify-content:center" type="button">▶ Try it without an account — Demo</button>
-    <p class="auth-hint">Have an access code? Use the code tab. Demo codes <b>101–120</b> also work — sample businesses you can freely explore.</p>
+    <button class="btn btn-ghost" id="demoBtn" style="width:100%;justify-content:center" type="button">▶ Try the demo, no account needed</button>
+    <p class="auth-hint">Have an access code? Use the code tab. Demo codes <b>101–120</b> also work: sample businesses you can freely explore.</p>
   </div>
 </div>
 
@@ -770,7 +770,7 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
       🪪 Business Health Card
       <button class="nota-close" id="kartuClose" aria-label="Close" type="button">✕</button>
     </h3>
-    <p class="no-print" style="font-size:.8rem;color:var(--ink-soft);margin-bottom:12px">The link only opens this read-only summary — no access to your account or books.</p>
+    <p class="no-print" style="font-size:.8rem;color:var(--ink-soft);margin-bottom:12px">The link only opens this read-only summary. There’s no access to your account or books.</p>
     <div id="kartuPratinjau"></div>
     <div class="form-error no-print" id="kartuError" style="display:none"></div>
     <div class="actions no-print" style="justify-content:flex-end;margin-top:14px">
@@ -795,7 +795,7 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
       I understand and agree
     </button>
     <button class="btn btn-ghost" id="consentDecline" style="width:100%;justify-content:center;margin-top:8px" type="button">
-      Not yet — sign out
+      Not yet, sign out
     </button>
   </div>
 </div>
@@ -834,7 +834,7 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
     <!-- ---------- Garis waktu kesehatan usaha ---------- -->
     <div class="card" id="timelineCard" style="margin-top:16px;display:none">
       <h3>📈 Business Health</h3>
-      <p style="font-size:.8rem;color:var(--ink-soft);margin-bottom:12px">Scored from months you actually recorded — empty months are never invented.</p>
+      <p style="font-size:.8rem;color:var(--ink-soft);margin-bottom:12px">Scored from months you actually recorded. Empty months are never invented.</p>
       <div id="timelineBody"></div>
     </div>
 
@@ -848,7 +848,7 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
     <!-- ---------- Check-up keuangan (AI, dipicu pengguna) ---------- -->
     <div class="card" id="checkupCard" style="margin-top:16px;display:none">
       <h3>🩺 Check Up My Business</h3>
-      <p style="font-size:.8rem;color:var(--ink-soft);margin:4px 0 12px">AI reads your cash book numbers — educational analysis, not a guarantee or professional financial advice.</p>
+      <p style="font-size:.8rem;color:var(--ink-soft);margin:4px 0 12px">AI reads your cash book numbers. It’s educational analysis, not a guarantee or professional financial advice.</p>
       <button class="btn btn-primary" id="checkupBtn" type="button">🩺 Run Check-up</button>
       <div class="form-error" id="checkupError" style="display:none"></div>
       <div id="checkupHasil" style="margin-top:14px"></div>
@@ -862,7 +862,7 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
     <div class="page-head">
       <div class="eyebrow">Community</div>
       <h2>Progress Board</h2>
-      <p class="sub">Health scores of Novaro sample businesses, ranked this month — with their direction of change. Each row is computed with the exact same formulas as your dashboard.</p>
+      <p class="sub">Health scores of Novaro sample businesses, ranked this month, with their direction of change. Each row is computed with the exact same formulas as your dashboard.</p>
     </div>
     <div id="papanBody"></div>
   </div>
@@ -886,7 +886,7 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
         <div class="field">
           <label for="jenisUsaha">Business type *</label>
           <select id="jenisUsaha" name="jenisUsaha" required>
-            <option value="">— choose —</option>
+            <option value="">Select…</option>
             <option value="kuliner">Food service (restaurant/café/catering)</option>
             <option value="retail">Retail store</option>
             <option value="jasa">Services (repair, salon, laundry)</option>
@@ -916,7 +916,7 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
         <div class="field">
           <label for="omzetBulanan">Revenue / total sales ($) *</label>
           <input id="omzetBulanan" name="omzetBulanan" type="number" min="0" placeholder="12000000" required>
-          <span class="help">A rough estimate is fine — what matters is being close.</span>
+          <span class="help">A rough estimate is fine. What matters is being close.</span>
         </div>
         <div class="field">
           <label for="belanjaBulanan">Purchases / cost of goods ($)</label>
@@ -937,7 +937,7 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
         <div class="field">
           <label for="pencatatan">How do you record finances today? *</label>
           <select id="pencatatan" name="pencatatan" required>
-            <option value="">— choose —</option>
+            <option value="">Select…</option>
             <option value="belum">Not recording at all yet</option>
             <option value="kadang">Sometimes</option>
             <option value="buku">Paper notebook</option>
@@ -948,7 +948,7 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
         <div class="field">
           <label for="tujuan">Main goal for the next 6 months *</label>
           <select id="tujuan" name="tujuan" required>
-            <option value="">— choose —</option>
+            <option value="">Select…</option>
             <option value="rapikan-keuangan">Get the books in order</option>
             <option value="naikkan-laba">Raise profit</option>
             <option value="ajukan-kur">Prepare a loan application</option>
@@ -996,12 +996,12 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
     <div class="page-head">
       <div class="eyebrow">Cash Book</div>
       <h2>Record today’s transactions</h2>
-      <p class="sub">Record every dollar in and out — about 10 seconds each. The steadier your records, the more accurate every number and piece of advice; after 3 months your records are lender-ready.</p>
+      <p class="sub">Record every dollar in and out. About 10 seconds each. The steadier your records, the more accurate every number and piece of advice; after 3 months your records are lender-ready.</p>
     </div>
 
     <button class="scan-cta" id="scanNotaBtn" type="button" hidden>
       <span class="sc-ic">📷</span>
-      <span><b>Scan Receipt</b><small>Photograph a purchase receipt — auto-filled, you review before saving.</small></span>
+      <span><b>Scan Receipt</b><small>Photograph a purchase receipt and it fills in the form. You review before saving.</small></span>
     </button>
     <input type="file" id="scanNotaFile" accept="image/jpeg,image/png,image/webp" capture="environment" hidden>
 
@@ -1018,7 +1018,7 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
 
       <div class="kat-chips" id="katChips"></div>
       <div class="prive-hint" id="priveHint">
-        💡 <b>Owner draw</b> is business money you take for personal use. It is <b>not a business expense</b>, so it doesn’t reduce profit — but it still reduces cash on hand. That’s why it’s recorded separately (Module 2).
+        💡 <b>Owner draw</b> is business money you take for personal use. It is <b>not a business expense</b>, so it doesn’t reduce profit, but it still reduces cash on hand. That’s why it’s recorded separately (Module 2).
       </div>
 
       <div class="kas-row">
@@ -1055,7 +1055,7 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
     </div>
 
     <div class="kas-filter no-print">
-      <input id="kasCari" type="search" placeholder="Cari transaksi — keterangan / kategori…" autocomplete="off" aria-label="Cari transaksi">
+      <input id="kasCari" type="search" placeholder="Search by note or category…" autocomplete="off" aria-label="Search transactions">
       <div class="kf-row">
         <div class="kf-chips" id="kasJenisFilter">
           <button type="button" data-jf="" aria-pressed="true">All</button>
@@ -1136,7 +1136,7 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
         🧮 Payment Simulator
         <span class="sim-tag">SIMULATOR</span>
       </h3>
-      <p style="font-size:.82rem;color:var(--ink-soft);margin-top:4px">A simulation from your business data. An estimate, not a credit decision — the decision belongs entirely to the lender.</p>
+      <p style="font-size:.82rem;color:var(--ink-soft);margin-top:4px">A simulation from your business data. An estimate, not a credit decision. The decision belongs entirely to the lender.</p>
 
       <div class="sim-row">
         <div class="sim-label"><span>Loan amount</span><output id="simJumlahOut"></output></div>
@@ -1162,12 +1162,12 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
     <div class="page-head">
       <div class="eyebrow">Personal</div>
       <h2>Recommendations for your business</h2>
-      <p class="sub">An improvement plan the AI builds from your own numbers and condition — not generic advice.</p>
+      <p class="sub">An improvement plan the AI builds from your own numbers and condition, not generic advice.</p>
     </div>
     <div id="recBody"></div>
     <div class="card" id="riwayatSaran" style="margin-top:14px">
       <h3 style="margin-top:0">Advice History</h3>
-      <p class="sub">Advice previously given, and what happened afterwards. Outcomes are scored by the system from cash book numbers — never by the AI itself.</p>
+      <p class="sub">Advice previously given, and what happened afterwards. Outcomes are scored by the system from cash book numbers, never by the AI itself.</p>
       <div id="riwayatBody"><p class="sub" style="margin:0">Loading…</p></div>
     </div>
   </div>
@@ -1199,7 +1199,7 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
       </form>
     </div>
     <p class="ai-note" id="anggaranNote"></p>
-    <p class="ai-note">Powered by an AI assistant. AI answers can be wrong — for taxes, disputes, or large loans, consult a professional.</p>
+    <p class="ai-note">Powered by an AI assistant. AI answers can be wrong. For taxes, disputes, or large loans, consult a professional.</p>
   </div>
 </section>
 
@@ -1212,7 +1212,7 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
       <div class="page-head">
         <div class="eyebrow">Belajar</div>
         <h2 id="modJudul">Applied finance &amp; accounting modules</h2>
-        <p class="sub">Short lessons you can read right here. The <b>Core</b> track runs one session a day for a week — the next session opens the following day, and unlocked sessions can be re-read anytime. The other paths open whenever you need them.</p>
+        <p class="sub">Short lessons you can read right here. The <b>Core</b> track runs one session a day for a week. The next session opens the following day, and unlocked sessions can be re-read anytime. The other paths open whenever you need them.</p>
       </div>
 
       <!-- Satu sesi untuk today -->
@@ -1447,7 +1447,7 @@ el('signupForm').addEventListener('submit', async (e) => {
     // Kejujuran dev-mode: di server pengembangan tanpa SMTP, tautannya
     // ditampilkan langsung (jelas berlabel DEV). Produksi: netral.
     note.textContent = data.devLink
-      ? `DEV MODE — email delivery is off, so this is your verification link: ${data.devLink}`
+      ? `DEV MODE: email delivery is off, so this is your verification link: ${data.devLink}`
       : data.message || 'Check your email to finish creating your account.';
     note.style.display = 'block';
   } catch (err) {
@@ -1557,7 +1557,7 @@ el('demoBtn').addEventListener('click', async () => {
     errBox.style.display = 'block';
   } finally {
     btn.disabled = false;
-    btn.textContent = '▶ Try without a code — Demo Mode';
+    btn.textContent = '▶ Try the demo, no code needed';
   }
 });
 
@@ -1697,7 +1697,7 @@ async function hapusDataSaya() {
     'Type HAPUS to continue:';
   const jawab = prompt(pesan);
   if (jawab === null) return;
-  if (jawab.trim().toUpperCase() !== 'HAPUS') return toast('Canceled — your data is untouched.');
+  if (jawab.trim().toUpperCase() !== 'HAPUS') return toast('Canceled. Your data is untouched.');
 
   try {
     await api('/my-account', { method: 'DELETE', body: JSON.stringify({ konfirmasi: 'HAPUS' }) });
@@ -1848,11 +1848,11 @@ function cekDemo() {
 const LANGKAH_TUR = [
   { halaman: 'dasbor', judul: 'Dashboard & health score', ringkas: 'Revenue, profit, and a 0–100 score from your own bookkeeping.' },
   { halaman: 'dasbor', judul: 'Putar Ulang 🎬', ringkas: 'Satu tombol: pembukuan 3 bulanmu diputar jadi film 15 detik.' },
-  { halaman: 'kas', judul: 'Buku Kas', ringkas: 'Grafik surplus per hari — coba catat satu transaksi, grafiknya langsung bergerak.' },
+  { halaman: 'kas', judul: 'Cash Book', ringkas: 'A daily surplus chart. Record one transaction and watch it move.' },
   { halaman: 'rekomendasi', judul: 'AI recommendations', ringkas: 'Improvement advice that cites this business’s own numbers, not generic tips.' },
   { halaman: 'konsultasi', judul: 'Tanya AI', ringkas: 'A consultant that reads your cash book. Try: "what’s my monthly profit?"' },
   { halaman: 'laporan', judul: 'Loan report', ringkas: 'A 3–12 month summary, print-ready as a PDF for a bank application.' },
-  { halaman: 'papan', judul: 'Progress Board 🏆', ringkas: 'A live ranking of the sample businesses — and where you stand among them.' },
+  { halaman: 'papan', judul: 'Progress Board 🏆', ringkas: 'A live ranking of the sample businesses, and where you stand among them.' },
   { halaman: 'modul', judul: 'A 14-session course', ringkas: '10 minutes/day micro-learning; one session opens each day.' },
 ];
 
@@ -1961,7 +1961,7 @@ async function bagikanWa() {
     const tglID = (s) => new Date(s + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
     const garis = '───────────────';
     const teks =
-`📊 *7-Day Cash Summary* — ${nama}
+`📊 *7-Day Cash Summary*: ${nama}
 ${tglID(awal)} – ${tglID(akhir)}
 
 *Money in:* ${fmtRp(masuk)} (${trx7.filter((t) => t.jenis === 'masuk').length} entries)
@@ -2022,11 +2022,11 @@ function renderDashboard() {
    */
   const b = m.berjalan;
   const periodeNote = m.sumber === 'catatan' && m.disetarakan
-    ? `<p class="sub" style="font-size:.82rem;margin:-4px 0 10px">This month is only <b>${m.hariBerjalan} of ${m.hariBulan} days</b> in. The figures below are a <b>full-month equivalent</b>, computed from your daily pace — so it can be compared with other months.</p>`
+    ? `<p class="sub" style="font-size:.82rem;margin:-4px 0 10px">This month is only <b>${m.hariBerjalan} of ${m.hariBulan} days</b> in. The figures below are a <b>full-month equivalent</b>, computed from your daily pace so it can be compared with other months.</p>`
     : m.sumber === 'catatan'
-      ? `<p class="sub" style="font-size:.82rem;margin:-4px 0 10px">A full ${m.hariBulan}-day month — these are the true monthly figures.</p>`
+      ? `<p class="sub" style="font-size:.82rem;margin:-4px 0 10px">A full ${m.hariBulan}-day month, so these are the true monthly figures.</p>`
       : m.catatanBelumCukup
-        ? `<p class="sub" style="font-size:.82rem;margin:-4px 0 10px">Only <b>${m.hariTercatat} of ${m.hariBerjalan} elapsed days</b> are recorded this month — not dense enough to treat as a monthly figure, so your estimates are still what is shown. Record more regularly and this figure switches to your real numbers automatically.</p>`
+        ? `<p class="sub" style="font-size:.82rem;margin:-4px 0 10px">Only <b>${m.hariTercatat} of ${m.hariBerjalan} elapsed days</b> are recorded this month. That’s not dense enough to treat as a monthly figure, so your estimates are still what is shown. Record more regularly and this figure switches to your real numbers automatically.</p>`
         : '';
 
   // Baris ini hanya muncul kalau angkanya berasal dari buku kas nyata.
@@ -2075,10 +2075,10 @@ function renderDashboard() {
           <br>
           <span class="source-badge ${m.sumber === 'catatan' ? 'real' : ''}">
             ${m.sumber === 'catatan'
-              ? `✓ From the cash book — ${m.hariTercatat} days recorded this month`
+              ? `✓ From the cash book: ${m.hariTercatat} days recorded this month`
               : m.catatanBelumCukup
-                ? `≈ Still from your estimates — ${m.hariTercatat} of ${m.hariBerjalan} days recorded`
-                : '≈ Still from your estimates — record in the Cash Book for accuracy'}
+                ? `≈ Still from your estimates: ${m.hariTercatat} of ${m.hariBerjalan} days recorded`
+                : '≈ Still from your estimates. Record in the Cash Book for accuracy'}
           </span>
         </div>
       </div>
@@ -2111,7 +2111,7 @@ function renderDashboard() {
     <div class="chart-card viz" id="dashChartCard" style="margin-top:16px;display:none">
       <div class="chart-head">
         <div>
-          <h3>Cash left per day — this month</h3>
+          <h3>Cash left per day, this month</h3>
           <p>Which days you broke even or went negative, and which were busiest.</p>
         </div>
         <button class="btn btn-ghost" style="padding:7px 13px;font-size:.82rem" onclick="goTo('kas')">Open cash book →</button>
@@ -2160,7 +2160,7 @@ async function loadPapan() {
     const data = await api('/papan');
     const baris = data.baris ?? [];
     if (!baris.length) {
-      box.innerHTML = `<div class="card empty"><span class="big">🏆</span><h3>Board is empty</h3><p style="margin-top:6px">Sample accounts are not ready yet — try again in a moment.</p></div>`;
+      box.innerHTML = `<div class="card empty"><span class="big">🏆</span><h3>Board is empty</h3><p style="margin-top:6px">Sample accounts are not ready yet. Try again in a moment.</p></div>`;
       return;
     }
     const medali = { 1: '🥇', 2: '🥈', 3: '🥉' };
@@ -2179,7 +2179,7 @@ async function loadPapan() {
             </span>
           </div>`).join('')}
       </div>
-      <p class="papan-ket">This board shows the 20 sample businesses in Nova demo mode — revenue recorded as monthly-equivalent figures. Real participant data is never shown here.</p>`;
+      <p class="papan-ket">This board shows the 20 sample businesses in Nova demo mode. Revenue is recorded as monthly-equivalent figures. Real participant data is never shown here.</p>`;
   } catch (err) {
     box.innerHTML = `<div class="card empty"><span class="big">🏆</span><h3>Board could not be loaded</h3><p style="margin-top:6px">${escapeHtml(err.message || 'Check the connection and try again.')}</p></div>`;
   }
@@ -2350,7 +2350,7 @@ function tampilkanAkhirFilm(film) {
   const tglID = (s) => new Date(s + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
   const pill = m.skorKesehatan >= 60 ? '' : m.skorKesehatan >= 40 ? 'warn' : 'bad';
   const kalimatTren = naik == null ? '' : naik > 0
-    ? `<p class="sub" style="margin-top:10px">Skormu naik <b>${naik} poin</b> since the first recorded month — keep the rhythm.</p>`
+    ? `<p class="sub" style="margin-top:10px">Skormu naik <b>${naik} poin</b> since the first recorded month. Keep the rhythm.</p>`
     : naik < 0
       ? `<p class="sub" style="margin-top:10px">Your score dropped ${Math.abs(naik)} points. Check the latest advice to get back on track.</p>`
       : `<p class="sub" style="margin-top:10px">Your score has held steady since the first recorded month.</p>`;
@@ -2444,10 +2444,10 @@ el('profileForm').addEventListener('submit', async (e) => {
 function stempelRekomendasi(rec) {
   const kapan = new Date(rec.generatedAt).toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
   if (rec.sumber === 'contoh') {
-    return `Contoh tampilan (data kurasi — bukan keluaran AI), disusun ${kapan}.`;
+    return `Sample view (curated data, not AI output), prepared ${kapan}.`;
   }
   const hari = Math.floor((Date.now() - new Date(rec.generatedAt).getTime()) / 86400000);
-  const umur = hari >= 1 ? ` — update it if your profile or numbers have changed` : '';
+  const umur = hari >= 1 ? ` · update it if your profile or numbers have changed` : '';
   const siapa = rec.model ? ` oleh AI ${rec.model}` : ' oleh AI';
   return `Disusun ${kapan}${siapa}${umur}.`;
 }
@@ -2465,9 +2465,9 @@ function stempelRekomendasi(rec) {
  */
 function stempelAdvisori(a) {
   const kapan = new Date(a.dibuat).toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
-  if (a.sumber === 'contoh') return `Contoh tampilan (data kurasi — bukan keluaran AI), disusun ${kapan}.`;
+  if (a.sumber === 'contoh') return `Sample view (curated data, not AI output), prepared ${kapan}.`;
   const hari = Math.floor((Date.now() - new Date(a.dibuat).getTime()) / 86400000);
-  const umur = hari >= 1 ? ' — update it if your profile or numbers have changed' : '';
+  const umur = hari >= 1 ? ' · update it if your profile or numbers have changed' : '';
   const siapa = a.model ? ` oleh AI ${a.model}` : ' oleh AI';
   return `Disusun ${kapan}${siapa}${umur}.`;
 }
@@ -2480,10 +2480,10 @@ function renderHasilCheckpoint(e) {
     return '<p class="sub" style="margin:6px 0 0"><b>Outcome</b> (scored by the system from cash book numbers): the assessment appears automatically once the month after the advice completes.</p>';
   }
   if (e.status !== 'terukur') {
-    return `<p class="sub" style="margin:6px 0 0"><b>Outcome</b> (scored by the system from cash book numbers): cannot be assessed yet — ${escapeHtml(e.sebab ?? 'assessment numbers not available')}.</p>`;
+    return `<p class="sub" style="margin:6px 0 0"><b>Outcome</b> (scored by the system from cash book numbers): cannot be assessed yet; ${escapeHtml(e.sebab ?? 'assessment numbers not available')}.</p>`;
   }
   const baris = Object.entries(e.dimensi).map(([k, d]) =>
-    `<li>${LABEL_DIMENSI[k] ?? k}: ${fmtRp(d.dasar)} → ${fmtRp(d.kini)} — ${ARAH_HASIL[d.status] ?? d.status}</li>`).join('');
+    `<li>${LABEL_DIMENSI[k] ?? k}: ${fmtRp(d.dasar)} → ${fmtRp(d.kini)}: ${ARAH_HASIL[d.status] ?? d.status}</li>`).join('');
   return `<p class="sub" style="margin:6px 0 2px"><b>Outcome</b> (scored by the system from cash book numbers):</p>
     <ul style="margin:2px 0 0;padding-left:18px">${baris}</ul>
     <p class="sub" style="margin:4px 0 0">Compares the advice month with the following month. The direction of a number is not a cause-and-effect guarantee.</p>`;
@@ -2495,7 +2495,7 @@ async function loadRiwayat() {
   try {
     const data = await api('/api/advisori/riwayat');
     if (!data.riwayat.length) {
-      box.innerHTML = '<p class="sub" style="margin:0">No history yet — advice generated from today on will be recorded here, with its outcomes.</p>';
+      box.innerHTML = '<p class="sub" style="margin:0">No history yet. Advice generated from today on will be recorded here, with its outcomes.</p>';
       return;
     }
     box.innerHTML = data.riwayat.map((a) => `
@@ -2518,7 +2518,7 @@ async function loadRiwayat() {
       } catch (err) {
         b.disabled = false;
         b.textContent = 'I tried this';
-        toast(err.message || 'Marking failed — try again.');
+        toast(err.message || 'Marking failed. Try again.');
       }
     }));
   } catch {
@@ -2669,8 +2669,8 @@ function addMsg(text, who, meta) {
 function welcomeMessage() {
   const nama = state.user.profile?.namaUsaha;
   return nama
-    ? `Hi! 👋 I’m **${nama}**, your financial consultant. I’ve read your profile and business numbers, so let’s get straight to it — what would you like to ask today?`
-    : 'Hi! 👋 I’m Novaro’s financial consultant. Set up your **Business Profile** first so my answers can use your own numbers — but feel free to ask anything now.';
+    ? `Hi! 👋 I’m **${nama}**, your financial consultant. I’ve read your profile and business numbers, so let’s get straight to it. What would you like to ask today?`
+    : 'Hi! 👋 I’m Novaro’s financial consultant. Set up your **Business Profile** first so my answers can use your own numbers. But feel free to ask anything now.';
 }
 
 async function loadChat() {
@@ -2992,7 +2992,7 @@ function renderMonthlyChart(container, summaries) {
       <line x1="0" y1="${zeroY}" x2="${W}" y2="${zeroY}" stroke="var(--zero)" stroke-width="1.5"></line>
     </svg>
     <div class="chart-tip" id="bulanTip"></div>
-    ${adaBerjalan ? '<p style="font-size:.78rem;color:var(--ink-soft);margin-top:4px">A striped bar (•) = a month not yet fully recorded — still in progress or with gaps. Its figure is not a full-month picture.</p>' : ''}`;
+    ${adaBerjalan ? '<p style="font-size:.78rem;color:var(--ink-soft);margin-top:4px">A striped bar (•) = a month not yet fully recorded: still in progress or with gaps. Its figure is not a full-month picture.</p>' : ''}`;
 
   // Lapisan hover, sama seperti grafik harian — grafik yang bisa disentuh
   // seharusnya menjawab "bulan ini angkanya berapa", bukan hanya bentuknya.
@@ -3189,7 +3189,7 @@ function renderKasList(rows, terfilter = false) {
       : `<div class="card empty">
           <span class="big">🧾</span>
           <h3>Nothing recorded this month yet</h3>
-          <p style="margin:8px auto 0;max-width:380px">Start with today’s first transaction — a sale, or this morning’s supply run.</p>
+          <p style="margin:8px auto 0;max-width:380px">Start with today’s first transaction: a sale, or this morning’s supply run.</p>
         </div>`;
     return;
   }
@@ -3550,7 +3550,7 @@ el('notaSimpan').addEventListener('click', async () => {
 function notaTersimpanPesan(row) {
   if (row?.origin !== 'proposal') return '✅ Transaction saved';
   const kapan = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
-  return `✅ Saved — from a scan proposal, confirmed ${kapan}`;
+  return `✅ Saved from a scan proposal, confirmed ${kapan}`;
 }
 
 el('kasForm').addEventListener('submit', async (e) => {
@@ -3583,7 +3583,7 @@ el('kasForm').addEventListener('submit', async (e) => {
     tandaiPraktikLokal(data);
     renderDashboard();
     await loadCashbook(el('kasMonth').value); // grafik dasbor ikut disegarkan di sini
-    toast('✅ Tercatat' + (data.praktikTerverifikasi?.length ? ' — module practice verified ✓' : ''));
+    toast('✅ Recorded' + (data.praktikTerverifikasi?.length ? ' · module practice verified ✓' : ''));
     el('kasJumlah').focus();
   } catch (err) {
     errBox.textContent = err.message;
@@ -3694,8 +3694,8 @@ async function loadReport() {
           <tbody>
             <tr><td>Months with records</td><td class="num">${r.bulanTerisi} months</td></tr>
             <tr><td>Full months averaged</td><td class="num">${r.bulanLengkap} months</td></tr>
-            <tr><td>Average net profit per full month</td><td class="num"><b>${r.bulanLengkap ? fmtRp(r.rataLabaBulanan) : '—'}</b></td></tr>
-            <tr><td>Healthy installment capacity (30% of profit)</td><td class="num"><b>${r.bulanLengkap ? fmtRp(Math.round(r.rataLabaBulanan * 0.3)) : '—'}</b></td></tr>
+            <tr><td>Average net profit per full month</td><td class="num"><b>${r.bulanLengkap ? fmtRp(r.rataLabaBulanan) : 'n/a'}</b></td></tr>
+            <tr><td>Healthy installment capacity (30% of profit)</td><td class="num"><b>${r.bulanLengkap ? fmtRp(Math.round(r.rataLabaBulanan * 0.3)) : 'n/a'}</b></td></tr>
             <tr><td>Total owner draws</td><td class="num">${fmtRp(t.prive)}</td></tr>
             <tr><td>Total installments</td><td class="num">${fmtRp(t.cicilan)}</td></tr>
           </tbody>
@@ -3763,28 +3763,28 @@ function renderSimulasiKur() {
 
   let alasan;
   if (!simKonteks.adaLaba) {
-    alasan = 'The average profit can’t be computed yet — no full month has been recorded densely enough. Keep recording daily; this simulation becomes honest on its own once the numbers exist.';
+    alasan = 'The average profit can’t be computed yet: no full month has been recorded densely enough. Keep recording daily; this simulation becomes honest on its own once the numbers exist.';
   } else if (hasil.status === 'aman') {
-    alasan = `Total installment load ${fmtRp(totalBeban)} = ${hasil.rasioPorsen}% of average profit ${fmtRp(simKonteks.laba)} — under the 30% healthy ceiling this app uses.`;
+    alasan = `Total installment load ${fmtRp(totalBeban)} = ${hasil.rasioPorsen}% of average profit ${fmtRp(simKonteks.laba)}. That’s under the 30% healthy ceiling this app uses.`;
   } else if (hasil.status === 'hati-hati') {
-    alasan = `Total installment load ${fmtRp(totalBeban)} = ${hasil.rasioPorsen}% of average profit — above the 30% healthy ceiling but not yet past 50%. Tight: one slow month could push installments into essentials.`;
+    alasan = `Total installment load ${fmtRp(totalBeban)} = ${hasil.rasioPorsen}% of average profit. That’s above the 30% healthy ceiling, but not yet past 50%. Tight: one slow month could push installments into essentials.`;
   } else if (!simKonteks.laba || simKonteks.laba <= 0) {
     alasan = 'Your average profit is zero or negative, so any installment load is too heavy. Fix the margin and recording habit before considering a loan.';
   } else {
-    alasan = `Total installment load ${fmtRp(totalBeban)} = ${hasil.rasioPorsen}% of average profit — above 50%. At this profit pattern, the installments could force extra owner draws or debt.`;
+    alasan = `Total installment load ${fmtRp(totalBeban)} = ${hasil.rasioPorsen}% of average profit. That’s above 50%. At this profit pattern, the installments could force extra owner draws or debt.`;
   }
 
   el('simHasil').innerHTML = `
     <div class="sim-baris"><span>Estimated monthly installment</span><b>${fmtRp(hasil.cicilan)}</b></div>
     ${barisCicilanLama}
-    <div class="sim-baris"><span>Average net profit (cash book)</span><b>${simKonteks.adaLaba ? fmtRp(simKonteks.laba) : '—'}</b></div>
+    <div class="sim-baris"><span>Average net profit (cash book)</span><b>${simKonteks.adaLaba ? fmtRp(simKonteks.laba) : 'n/a'}</b></div>
     <div class="sim-baris"><span>Installment load vs profit</span><b>${hasil.rasioPorsen >= 999 ? '≥ 999%' : hasil.rasioPorsen + '%'}</b></div>
     <div class="sim-baris"><span>Total paid over ${tenor} months</span><b>${fmtRp(hasil.totalBayar)}</b></div>
     <div class="sim-status ${kelas}">${teks}</div>
     <p class="sim-alasan">${alasan}</p>`;
 
   el('simCatatan').textContent =
-    `Estimate using a 6% flat annual rate and your cash book’s average profit. The simulation is based on your business data — not a guarantee, not a credit decision. The lending decision rests entirely with the bank.`;
+    `Estimate using a 6% flat annual rate and your cash book’s average profit. The simulation is based on your business data. It’s not a guarantee and not a credit decision. The lending decision rests entirely with the bank.`;
 }
 
 el('simJumlah').addEventListener('input', renderSimulasiKur);
@@ -3842,7 +3842,7 @@ async function loadPerubahan() {
   ];
   const panah = (p) => p == null ? '·' : p > 0 ? '↑' : p < 0 ? '↓' : '→';
   const warna = (p) => p == null ? 'var(--ink-soft)' : p > 0 ? 'var(--green)' : p < 0 ? 'var(--red)' : 'var(--ink-soft)';
-  const teksPersen = (p) => p == null ? '—' : (p > 0 ? '+' : '') + p + '%';
+  const teksPersen = (p) => p == null ? 'n/a' : (p > 0 ? '+' : '') + p + '%';
 
   el('perubahanBody').innerHTML = baris.map((b) => {
     const p = data.ubah[b.kunci];
@@ -3961,7 +3961,7 @@ function beritaKartuHtml(payload, { sektor, kini = Date.now() } = {}) {
       <p class="sub" style="margin:6px 0 0">News unavailable right now.</p></div>`;
   }
   const judul = payload.mode === 'tailored' && BERITA_LABEL_SEKTOR[sektor]
-    ? `For your business — ${BERITA_LABEL_SEKTOR[sektor]}`
+    ? `For your business: ${BERITA_LABEL_SEKTOR[sektor]}`
     : 'Top business headlines';
   const li = payload.items.map((h) => {
     const umur = umurBerita(h.publishedAt, kini);
@@ -4105,18 +4105,18 @@ function latihanAiHTML() {
   if (!L.lulus || !state.aiConfigured) return '';
   if (L.ai) {
     if (L.ai.umpan) {
-      return `<div class="lat-ai"><div class="eyebrow" style="color:var(--gold)">⚡ Tantangan AI — pakai angka usahamu</div>
+      return `<div class="lat-ai"><div class="eyebrow" style="color:var(--gold)">⚡ AI challenge from your own numbers</div>
         <p class="lat-tanya">${escapeHtml(L.ai.soal.pertanyaan)}</p>
         <div class="lat-umpan ${L.ai.umpan.benar ? 'ok' : 'gagal'}">${L.ai.umpan.benar ? '✓ Benar!' : '✗ Not quite'}</div>
         <p class="lat-jelas">${escapeHtml(L.ai.umpan.penjelasan)}</p></div>`;
     }
-    return `<div class="lat-ai"><div class="eyebrow" style="color:var(--gold)">⚡ Tantangan AI — pakai angka usahamu</div>
+    return `<div class="lat-ai"><div class="eyebrow" style="color:var(--gold)">⚡ AI challenge from your own numbers</div>
       <p class="lat-tanya">${escapeHtml(L.ai.soal.pertanyaan)}</p>
       <div class="lat-pil">${Object.entries(L.ai.soal.pilihan).map(([h, t]) =>
         `<button class="lat-pilihan" data-ai="${h}"><b>${h}.</b> ${escapeHtml(t)}</button>`).join('')}</div></div>`;
   }
   return `<div class="lat-ai"><div class="eyebrow" style="color:var(--gold)">⚡ Tantangan AI</div>
-    <p class="sub">One extra question the AI composes from your own business numbers — for this session only.</p>
+    <p class="sub">One extra question the AI composes from your own business numbers, for this session only.</p>
     <div class="actions"><button class="btn btn-primary" id="latAiBuat">Buat tantangannya</button></div></div>`;
 }
 
@@ -4148,7 +4148,7 @@ function latihanIsiKartu() {
 
   return `${kepala}
     ${L.lulus
-      ? `<div class="lat-lulus">✓ All answers correct — you’ve got this session. The status is saved to your progress.</div>`
+      ? `<div class="lat-lulus">✓ All answers correct. You’ve got this session. The status is saved to your progress.</div>`
       : `<p class="lat-tanya"><b>Question ${L.kursor + 1} of ${L.soal.length}.</b> ${escapeHtml(s.pertanyaan)}</p>${badan}`}
     ${latihanAiHTML()}`;
 }
@@ -4282,7 +4282,7 @@ el('checkupBtn').addEventListener('click', async () => {
         </div>`).join('')}
       </div>
       <div class="ck-insight"><b>Insight:</b> ${escapeHtml(data.hasil.insight)}</div>
-      <p style="font-size:.76rem;color:var(--ink-soft);margin-top:10px">Educational analysis based on your cash records — not a guarantee, not a credit decision, not professional financial advice.</p>`;
+      <p style="font-size:.76rem;color:var(--ink-soft);margin-top:10px">Educational analysis based on your cash records. Not a guarantee, not a credit decision, not professional financial advice.</p>`;
     if (data.anggaran) setAnggaran(data.anggaran);
   } catch (err) {
     errBox.textContent = err.message;
@@ -4345,12 +4345,12 @@ function renderKartuPratinjau(k) {
         </div>
         <div>
           <div class="kp-label">Skor Kesehatan</div>
-          <div class="kp-status">${escapeHtml(k.statusKesehatan ?? '—')}</div>
+          <div class="kp-status">${escapeHtml(k.statusKesehatan ?? 'n/a')}</div>
         </div>
       </div>
-      <div class="sim-baris"><span>Omzet setara bulanan</span><b>${k.omzet == null ? '—' : fmtRp(k.omzet)}</b></div>
-      <div class="sim-baris"><span>Laba bersih setara bulanan</span><b>${k.labaBersih == null ? '—' : fmtRp(k.labaBersih)}</b></div>
-      <div class="sim-baris"><span>Konsistensi pencatatan</span><b>${k.konsistensi.hariBulan ? k.konsistensi.hariTercatat + '/' + k.konsistensi.hariBulan + ' hari' : '—'}</b></div>
+      <div class="sim-baris"><span>Omzet setara bulanan</span><b>${k.omzet == null ? 'n/a' : fmtRp(k.omzet)}</b></div>
+      <div class="sim-baris"><span>Laba bersih setara bulanan</span><b>${k.labaBersih == null ? 'n/a' : fmtRp(k.labaBersih)}</b></div>
+      <div class="sim-baris"><span>Konsistensi pencatatan</span><b>${k.konsistensi.hariBulan ? k.konsistensi.hariTercatat + '/' + k.konsistensi.hariBulan + ' hari' : 'n/a'}</b></div>
       ${(k.insight ?? []).map((i) => `<div class="sim-baris"><span>Note</span><b style="font-weight:600;text-align:right">${escapeHtml(i.judul)}</b></div>`).join('')}
       <div class="kp-foot">Summary from <b>Novaro</b> · dibagikan sebagai tautan baca-saja · ${k.sumberAngka === 'catatan' ? 'numbers from the cash book' : 'angka masih perkiraan profil'}</div>
     </div>`;
@@ -4367,7 +4367,7 @@ el('kartuBackdrop').addEventListener('click', (e) => {
 async function salinTautanKartu() {
   try {
     await navigator.clipboard.writeText(kartuTautan);
-    toast('🔗 Tautan disalin — tempel di chat mana pun');
+    toast('🔗 Link copied. Paste it into any chat');
   } catch {
     // Fallback peramban lama / konteks non-aman: textarea tersembunyi + perintah salin.
     const ta = document.createElement('textarea');
@@ -4390,7 +4390,7 @@ el('kartuBagikan').addEventListener('click', async () => {
   if (navigator.share) {
     try {
       await navigator.share({
-        title: 'Business Health Card — Novaro',
+        title: 'Novaro Business Health Card',
         text: 'See my business health summary:',
         url: kartuTautan,
       });
@@ -4500,8 +4500,8 @@ function renderSesiHariIni() {
       <div class="sesi-kini">
         <div class="eyebrow">Hari ke-${j.hariKe} · sesi ${j.sesiTerbuka} dari ${SESI.length} sudah terbuka</div>
         <h3>You’ve completed today’s session</h3>
-        <p>Sesi ${m.sesi} — ${escapeHtml(m.judul)} — terbuka <b>${tanggalPanjang(buka)}</b>.
-        Ten minutes a day, not seven hours at once — the one-day gap between sessions is part of how the learning works.</p>
+        <p>Session ${m.sesi}, ${escapeHtml(m.judul)}, opens <b>${tanggalPanjang(buka)}</b>.
+        Ten minutes a day, not seven hours at once. The one-day gap between sessions is part of how the learning works.</p>
         <p style="margin-top:10px">Use today to do the practice: record today’s transactions in the Cash Book.</p>
         <div class="actions">
           <button class="btn btn-primary" onclick="goTo('kas')">🧾 Record a transaction</button>
@@ -4518,8 +4518,8 @@ function renderSesiHariIni() {
     kotak.innerHTML = `
       <div class="sesi-kini">
         <div class="eyebrow">✓ Core track completed</div>
-        <h3>${SESI.length} sesi harian sudah kamu tuntaskan</h3>
-        <p>Kebiasaan mencatatnya sudah terbentuk — itu bagian yang paling sulit. ${sisa
+        <h3>You’ve finished all ${SESI.length} daily sessions</h3>
+        <p>The recording habit is now in place. That was the hardest part. ${sisa
           ? `There are still <b>${sisa} modules</b> in the advanced library: profit per menu item, break-even, selling online, up to the loan-application file.`
           : 'You’ve read every module.'}</p>
         ${sisa ? `<div class="actions"><button class="btn btn-primary" id="keLanjutan">View the advanced library →</button></div>` : ''}
@@ -4616,9 +4616,9 @@ function praktikBoxHTML(m) {
   const selesai = praktikSelesai(m.no);
   const halaman = PRAKTIK_HALAMAN.includes(m.aksi?.halaman) ? m.aksi.halaman : null;
   const status = selesai
-    ? `<div class="praktik-status">✓ Verified — the action shows up in the app (${new Date(selesai.pada).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}).</div>`
+    ? `<div class="praktik-status">✓ Verified: the action shows up in the app (${new Date(selesai.pada).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}).</div>`
     : (m.aksi?.terverifikasi
-      ? `<div class="praktik-status tunggu">This status updates automatically once the action shows up in the app — merely opening the page doesn’t count.</div>`
+      ? `<div class="praktik-status tunggu">This status updates automatically once the action shows up in the app. Merely opening the page doesn’t count.</div>`
       : '');
   const cta = halaman
     ? `<button class="btn btn-primary" onclick="goTo('${halaman}')">${escapeHtml(m.aksi.label ?? 'Do it now')} →</button>`
@@ -4722,7 +4722,7 @@ async function bacaModul(no) {
 
     <div class="baca-bawah">
       <button class="btn ${done[m.no] ? 'btn-ghost' : 'btn-primary'}" id="bacaTandai">
-        ${done[m.no] ? '✓ Completed — undo' : 'Mark complete'}
+        ${done[m.no] ? '✓ Completed · undo' : 'Mark complete'}
       </button>
       ${/*
            Tautan video hanya dirender kalau modulnya memang punya video

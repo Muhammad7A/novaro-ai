@@ -46,7 +46,7 @@ const PAYLOAD_TAILORED = {
 
 /* ------------------------------------------------------------ Label mode */
 
-test('label mode: broad = Top business headlines; tailored = For your business — sektor', () => {
+test('label mode: broad = Top business headlines; tailored = For your business: sektor', () => {
   const broad = beritaKartuHtml(PAYLOAD_BROAD, { sektor: null, kini: KINI });
   assert.ok(broad.includes('Top business headlines'), 'judul broad');
   assert.ok(!broad.includes('For your business'), 'broad tidak menyebut sektor');
@@ -54,10 +54,10 @@ test('label mode: broad = Top business headlines; tailored = For your business �
   const kuliner = beritaKartuHtml(PAYLOAD_TAILORED, { sektor: 'kuliner', kini: KINI });
   // Label sektor = kosakata milik aplikasi (konstanta), bukan teks pihak
   // ketiga — tampil mentah, tanpa escape ganda.
-  assert.ok(kuliner.includes('For your business — Food & Dining'), 'judul dinamis membawa sektor');
+  assert.ok(kuliner.includes('For your business: Food & Dining'), 'judul dinamis membawa sektor');
 
   const retail = beritaKartuHtml(PAYLOAD_TAILORED, { sektor: 'retail', kini: KINI });
-  assert.ok(retail.includes('For your business — Retail'));
+  assert.ok(retail.includes('For your business: Retail'));
 
   // Sekor tanpa label map ('lainnya'/null) dengan mode tailored → label
   // broad yang jujur, bukan nama sektor karangan.
