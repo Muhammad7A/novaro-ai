@@ -705,6 +705,13 @@ nav{border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
 .tabbar{display:flex;gap:6px;background:var(--code-bg);border-radius:10px;padding:4px;margin-bottom:16px}
 .tabbar button{flex:1;font-size:.84rem;font-weight:650;color:var(--ink-soft);padding:8px 10px;border-radius:8px;transition:background .15s,color .15s}
 .tabbar button.active{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(12,27,42,.12)}
+
+/* Kartu berita dasbor (W1) */
+.berita-list { list-style:none; margin:0; padding:0; display:grid; gap:2px }
+.berita-list a { display:flex; flex-direction:column; gap:2px; padding:8px 10px; border-radius:10px; text-decoration:none; color:inherit }
+.berita-list a:hover { background:var(--panel-2, rgba(127,127,127,.08)) }
+.berita-list b { font-size:.9rem; line-height:1.35 }
+.berita-list span { font-size:.74rem; color:var(--ink-soft, #888) }
 </style>
 </head>
 <body>
@@ -2051,6 +2058,7 @@ function renderDashboard() {
 
   box.innerHTML = `
     <div id="fokusHariIni"></div>
+    <div id="kartuBerita"></div>
     <div class="hero-row">
       <div class="score-card">
         <div class="dial">
@@ -2134,6 +2142,7 @@ function renderDashboard() {
     </div>`;
 
   isiFokusHarian();
+  isiKartuBerita(); // news card — pool server, urutan per profil
 }
 
 /* ============================================================
@@ -3910,6 +3919,101 @@ async function isiKonteksBaca() {
   const kotak = document.getElementById('bacaKonteks');
   if (!kotak || !k) return;
   kotak.innerHTML = kartuKonteksUsahaHTML(k);
+}
+
+/* ============================================================
+   News — kartu headline di dasbor (W1 news feed)
+============================================================
+ * Pool headline dari server (SATU pool per 15 menit, urutan per profil).
+ * News BUKAN permukaan AI: headline verbatim — tanpa ringkasan, tanpa
+ * tulisan ulang. Klik = rute /api/news/:id/klik yang TERCATAT (event
+ * contentless di server), lalu sumber dibuka di tab baru noopener.
+ */
+let beritaCache = { muat: false, pada: 0, data: null };
+
+/* BERITA-KARTU-MURNI — murni dan diekstrak untuk uji (news-ui.test.js):
+ * jangan pakai apa pun di luar argumen + helper yang ikut blok ini. */
+const BERITA_LABEL_SEKTOR = {
+  kuliner: 'Food & Dining', retail: 'Retail', jasa: 'Services',
+  produksi: 'Manufacturing', online: 'Online Business',
+};
+const beritaEsc = (t) => String(t ?? '')
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+const umurBerita = (iso, kini = Date.now()) => {
+  const t = Date.parse(iso ?? '');
+  if (!Number.isFinite(t)) return '';
+  const mnt = Math.max(0, Math.round((kini - t) / 60000));
+  if (mnt < 60) return `${mnt}m ago`;
+  const jam = Math.round(mnt / 60);
+  if (jam < 24) return `${jam}h ago`;
+  return `${Math.round(jam / 24)}d ago`;
+};
+/**
+ * HTML kartu berita dari payload /api/news apa adanya — MURNI, tanpa DOM.
+ * unavailable → kartu singkat yang jujur (tanpa skeleton palsu). Semua teks
+ * pihak ketiga (judul, sumber) di-escape: konten feed tidak pernah dipercaya
+ * sebagai markup.
+ */
+function beritaKartuHtml(payload, { sektor, kini = Date.now() } = {}) {
+  if (!payload || payload.status !== 'ok' || !Array.isArray(payload.items) || !payload.items.length) {
+    return `<div class="card berita"><div class="eyebrow">News</div>
+      <p class="sub" style="margin:6px 0 0">News unavailable right now.</p></div>`;
+  }
+  const judul = payload.mode === 'tailored' && BERITA_LABEL_SEKTOR[sektor]
+    ? `For your business — ${BERITA_LABEL_SEKTOR[sektor]}`
+    : 'Top business headlines';
+  const li = payload.items.map((h) => {
+    const umur = umurBerita(h.publishedAt, kini);
+    const sub = umur ? `${beritaEsc(h.source)} · ${umur}` : beritaEsc(h.source);
+    return `<li><a href="${beritaEsc(h.url)}" data-klik-berita="${beritaEsc(h.id)}" target="_blank" rel="noopener noreferrer">
+      <b>${beritaEsc(h.title)}</b><span>${sub}</span></a></li>`;
+  }).join('');
+  return `<div class="card berita">
+    <div class="bar-top" style="margin-bottom:8px"><b style="font-size:.92rem;color:var(--ink)">📰 ${judul}</b>
+      <span class="source-badge" style="margin-top:0">Headlines as published</span></div>
+    <ul class="berita-list">${li}</ul>
+  </div>`;
+}
+/* /BERITA-KARTU-MURNI */
+
+let beritaSektorAktif = null;
+
+async function muatBerita(paksa = false) {
+  if (!paksa && beritaCache.muat && Date.now() - beritaCache.pada < 5 * 60 * 1000) {
+    return beritaCache.data;
+  }
+  try {
+    const data = await api('/news');
+    beritaCache.data = data;
+    beritaCache.muat = true;
+    beritaCache.pada = Date.now();
+    return data;
+  } catch {
+    return { status: 'unavailable', items: [] }; // gagal jaringan = unavailable jujur
+  }
+}
+
+/** Isi kartu berita di dasbor + pasang klik yang TERCATAT. */
+async function isiKartuBerita() {
+  const kotak = document.getElementById('kartuBerita');
+  if (!kotak) return;
+  beritaSektorAktif = state.user?.profile?.jenisUsaha ?? null;
+  const data = await muatBerita();
+  kotak.innerHTML = beritaKartuHtml(data, { sektor: beritaSektorAktif });
+  // Klik: rute /api/news/:id/klik ditembak dengan Bearer (peristiwa tercatat
+  // di server, redirect 302 di sana), LALU sumber dibuka di tab baru noopener
+  // — navigasi langsung tak bisa membawa header, jadi urutannya begini.
+  kotak.querySelectorAll('[data-klik-berita]').forEach((a) => a.addEventListener('click', (e) => {
+    e.preventDefault();
+    const id = a.dataset.klikBerita;
+    fetch(`/api/news/${id}/klik`, {
+      method: 'GET',
+      redirect: 'manual',
+      headers: { Authorization: 'Bearer ' + token },
+    }).catch(() => {}); // pencatatan best-effort; sumber tetap dibuka
+    window.open(a.href, '_blank', 'noopener,noreferrer');
+  }));
 }
 
 /* ============================================================
